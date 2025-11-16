@@ -1,0 +1,436 @@
+{
+  "openapi": "3.0.0",
+  "paths": {
+    "/health": {
+      "get": {
+        "operationId": "HealthController_check",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "The Health Check is successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "ok"
+                    },
+                    "info": {
+                      "type": "object",
+                      "example": {
+                        "database": {
+                          "status": "up"
+                        }
+                      },
+                      "additionalProperties": {
+                        "type": "object",
+                        "required": [
+                          "status"
+                        ],
+                        "properties": {
+                          "status": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": true
+                      },
+                      "nullable": true
+                    },
+                    "error": {
+                      "type": "object",
+                      "example": {},
+                      "additionalProperties": {
+                        "type": "object",
+                        "required": [
+                          "status"
+                        ],
+                        "properties": {
+                          "status": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": true
+                      },
+                      "nullable": true
+                    },
+                    "details": {
+                      "type": "object",
+                      "example": {
+                        "database": {
+                          "status": "up"
+                        }
+                      },
+                      "additionalProperties": {
+                        "type": "object",
+                        "required": [
+                          "status"
+                        ],
+                        "properties": {
+                          "status": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": true
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The Health Check is not successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "error"
+                    },
+                    "info": {
+                      "type": "object",
+                      "example": {
+                        "database": {
+                          "status": "up"
+                        }
+                      },
+                      "additionalProperties": {
+                        "type": "object",
+                        "required": [
+                          "status"
+                        ],
+                        "properties": {
+                          "status": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": true
+                      },
+                      "nullable": true
+                    },
+                    "error": {
+                      "type": "object",
+                      "example": {
+                        "redis": {
+                          "status": "down",
+                          "message": "Could not connect"
+                        }
+                      },
+                      "additionalProperties": {
+                        "type": "object",
+                        "required": [
+                          "status"
+                        ],
+                        "properties": {
+                          "status": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": true
+                      },
+                      "nullable": true
+                    },
+                    "details": {
+                      "type": "object",
+                      "example": {
+                        "database": {
+                          "status": "up"
+                        },
+                        "redis": {
+                          "status": "down",
+                          "message": "Could not connect"
+                        }
+                      },
+                      "additionalProperties": {
+                        "type": "object",
+                        "required": [
+                          "status"
+                        ],
+                        "properties": {
+                          "status": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": true
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/whatsapp/execute": {
+      "post": {
+        "operationId": "WhatsAppController_executeMethod",
+        "summary": "Exécuter une méthode du client WhatsApp",
+        "description": "Endpoint générique pour exécuter n'importe quelle méthode disponible sur le client whatsapp-web.js",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExecuteMethodDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Méthode exécutée avec succès"
+          },
+          "400": {
+            "description": "Méthode invalide ou paramètres incorrects"
+          }
+        },
+        "tags": [
+          "WhatsApp"
+        ]
+      }
+    },
+    "/whatsapp/status": {
+      "get": {
+        "operationId": "WhatsAppController_getStatus",
+        "summary": "Récupérer le statut du client WhatsApp",
+        "description": "Retourne l'état actuel du client (prêt, QR code disponible, etc.)",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Statut récupéré avec succès"
+          }
+        },
+        "tags": [
+          "WhatsApp"
+        ]
+      }
+    },
+    "/whatsapp/qr": {
+      "get": {
+        "operationId": "WhatsAppController_getQrCode",
+        "summary": "Récupérer le QR code",
+        "description": "Retourne le QR code actuel si disponible (pour authentification)",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "QR code disponible"
+          },
+          "404": {
+            "description": "Aucun QR code disponible"
+          }
+        },
+        "tags": [
+          "WhatsApp"
+        ]
+      }
+    },
+    "/whatsapp/webhooks": {
+      "get": {
+        "operationId": "WhatsAppController_getWebhooks",
+        "summary": "Récupérer la liste des webhooks configurés",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Liste des webhooks"
+          }
+        },
+        "tags": [
+          "WhatsApp"
+        ]
+      },
+      "post": {
+        "operationId": "WhatsAppController_setWebhooks",
+        "summary": "Configurer les URLs de webhooks",
+        "description": "Met à jour la liste des URLs qui recevront les événements WhatsApp",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetWebhooksDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Webhooks configurés avec succès"
+          }
+        },
+        "tags": [
+          "WhatsApp"
+        ]
+      }
+    },
+    "/whatsapp/request-pairing-code": {
+      "post": {
+        "operationId": "WhatsAppController_requestPairingCode",
+        "summary": "Request a pairing code for phone number authentication",
+        "description": "Generates a pairing code that can be used to authenticate WhatsApp using a phone number instead of QR code",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RequestPairingCodeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Pairing code generated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "success": true,
+                    "code": "ABCD1234"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Failed to generate pairing code"
+          }
+        },
+        "tags": [
+          "WhatsApp"
+        ]
+      }
+    },
+    "/whatsapp/business-profile": {
+      "get": {
+        "operationId": "WhatsAppController_getBusinessProfile",
+        "summary": "Get business profile information",
+        "description": "Retrieves the WhatsApp Business profile details",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Business profile retrieved successfully"
+          },
+          "400": {
+            "description": "Failed to retrieve business profile"
+          }
+        },
+        "tags": [
+          "WhatsApp"
+        ]
+      }
+    },
+    "/whatsapp/catalog": {
+      "get": {
+        "operationId": "WhatsAppController_getCatalog",
+        "summary": "Get product catalog",
+        "description": "Retrieves the WhatsApp Business product catalog",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Catalog retrieved successfully"
+          },
+          "400": {
+            "description": "Failed to retrieve catalog"
+          }
+        },
+        "tags": [
+          "WhatsApp"
+        ]
+      }
+    },
+    "/whatsapp/labels": {
+      "get": {
+        "operationId": "WhatsAppController_getLabels",
+        "summary": "Get chat labels/tags",
+        "description": "Retrieves all labels/tags configured in WhatsApp",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Labels retrieved successfully"
+          },
+          "400": {
+            "description": "Failed to retrieve labels"
+          }
+        },
+        "tags": [
+          "WhatsApp"
+        ]
+      }
+    }
+  },
+  "info": {
+    "title": "WhatsApp Connector API",
+    "description": "REST wrapper for whatsapp-web.js - Execute WhatsApp methods and receive events via webhooks",
+    "version": "1.0",
+    "contact": {}
+  },
+  "tags": [],
+  "servers": [],
+  "components": {
+    "schemas": {
+      "ExecuteMethodDto": {
+        "type": "object",
+        "properties": {
+          "method": {
+            "type": "string",
+            "description": "Nom de la méthode à exécuter sur le client WhatsApp",
+            "example": "sendMessage"
+          },
+          "parameters": {
+            "description": "Paramètres à passer à la méthode (dans l'ordre)",
+            "example": [
+              "123456789@c.us",
+              "Hello World!"
+            ],
+            "type": "array",
+            "items": {
+              "type": "array"
+            }
+          }
+        },
+        "required": [
+          "method"
+        ]
+      },
+      "SetWebhooksDto": {
+        "type": "object",
+        "properties": {
+          "urls": {
+            "description": "Liste des URLs de webhooks à configurer",
+            "example": [
+              "http://whatsapp-agent:3002/webhook/message"
+            ],
+            "type": "array",
+            "items": {
+              "type": "array"
+            }
+          }
+        },
+        "required": [
+          "urls"
+        ]
+      },
+      "RequestPairingCodeDto": {
+        "type": "object",
+        "properties": {
+          "phoneNumber": {
+            "type": "string",
+            "description": "Phone number to pair with WhatsApp",
+            "example": "1234567890"
+          }
+        },
+        "required": [
+          "phoneNumber"
+        ]
+      }
+    }
+  }
+}

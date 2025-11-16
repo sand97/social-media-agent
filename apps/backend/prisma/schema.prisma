@@ -6,23 +6,486 @@
 
 generator client {
   provider = "prisma-client-js"
-  output   = "../../node_modules/.prisma/client"
+  output   = "../src/generated/client"
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider          = "postgresql"
+  url               = env("DATABASE_URL")
+  shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
 }
 
-model User {
-  id String @id @unique @default(cuid())
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
+// ============================================
+// ENUMS
+// ============================================
 
 enum UserRole {
   MANAGER
   CUSTOMER
   PARTNER
+}
+
+enum UserStatus {
+  PENDING_PAIRING // En attente du pairing WhatsApp
+  PAIRING // Pairing en cours (a reçu le code)
+  PAIRED // WhatsApp connecté mais onboarding non terminé
+  ONBOARDING // En cours d'onboarding
+  ACTIVE // Compte actif et opérationnel
+  SUSPENDED // Compte suspendu
+  DELETED // Compte supprimé
+}
+
+enum WhatsAppAgentStatus {
+  PROVISIONING // En cours de provisioning
+  RUNNING // Agent en cours d'exécution
+  STOPPED // Agent arrêté
+  ERROR // Erreur
+  DELETED // Agent supprimé
+}
+
+enum ConnectionStatus {
+  CONNECTED // WhatsApp connecté
+  DISCONNECTED // WhatsApp déconnecté
+  QR_REQUIRED // QR code requis
+  PAIRING_REQUIRED // Code de pairing requis
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  AUDIO
+  VIDEO
+  DOCUMENT
+  LOCATION
+  CONTACT
+  STICKER
+}
+
+enum OrderStatus {
+  NEGOTIATION // En cours de négociation
+  CONFIRMED // Commande confirmée
+  DELIVERED // Commande livrée
+  CANCELLED // Commande annulée
+}
+
+enum SubscriptionTier {
+  STARTER
+  PRO
+  ENTERPRISE
+}
+
+enum CreditType {
+  PURCHASE // Achat de crédits
+  USAGE // Utilisation (décompte)
+  REFUND // Remboursement
+  SUBSCRIPTION // Crédits de l'abonnement
+}
+
+enum PaymentMethodType {
+  CASH
+  MOBILE_MONEY
+}
+
+enum GroupType {
+  IMPROVEMENT // Groupe d'amélioration (échange avec IA)
+  ORDERS // Groupe de commandes
+  SUPPORT // Groupe de support/réclamations
+  CUSTOM // Groupe personnalisé
+}
+
+// ============================================
+// MODELS
+// ============================================
+
+model User {
+  id          String     @id @unique @default(cuid())
+  phoneNumber String     @unique
+  email       String?    @unique
+  role        UserRole   @default(MANAGER)
+  status      UserStatus @default(PENDING_PAIRING)
+
+  // Profil WhatsApp importé (JSON)
+  whatsappProfile Json? // { pseudo, avatar, verifiedName, etc. }
+
+  // Token de pairing temporaire
+  pairingToken          String? // Token unique pour la session de pairing
+  pairingTokenExpiresAt DateTime? // Expiration du token (2 min)
+
+  // Crédits
+  credits Int @default(0)
+
+  // Dates
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  lastLoginAt DateTime?
+
+  // Relations
+  whatsappAgent     WhatsAppAgent?
+  businessInfo      BusinessInfo?
+  products          Product[]
+  tags              Tag[]
+  groups            Group[]
+  conversations     Conversation[]
+  deliveryLocations DeliveryLocation[]
+  paymentMethods    PaymentMethod[]
+  orders            Order[]
+  creditHistory     Credit[]
+  subscription      Subscription?
+  messages          Message[]
+
+  @@index([phoneNumber])
+  @@index([status])
+}
+
+model WhatsAppAgent {
+  id     String  @id @unique @default(cuid())
+  userId String? @unique
+  user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Configuration serveur
+  ipAddress         String
+  port              Int // Port de l'agent WhatsApp
+  connectorPort     Int // Port du connector WhatsApp
+  encryptedPassword String // Mot de passe chiffré pour accéder à l'agent
+
+  // Statuts
+  status           WhatsAppAgentStatus @default(PROVISIONING)
+  connectionStatus ConnectionStatus    @default(PAIRING_REQUIRED)
+
+  // Métadonnées (JSON pour flexibilité)
+  metadata Json? // { containerId, vpsProvider, region, etc. }
+
+  // Dates
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  lastHealthCheckAt DateTime?
+
+  @@index([userId])
+  @@index([status])
+}
+
+model BusinessInfo {
+  id     String @id @unique @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Informations de base
+  name        String?
+  description String?
+  address     String?
+  city        String?
+  country     String?
+  website     String?
+
+  // Horaires d'ouverture (JSON)
+  openingHours Json? // { monday: "09:00-18:00", tuesday: "09:00-18:00", ... }
+
+  // Numéros de téléphone supplémentaires
+  phoneNumbers String[] // Array de numéros
+
+  // Dates
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model Product {
+  id                String  @id @unique @default(cuid())
+  userId            String
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  whatsappProductId String? // ID du produit dans WhatsApp Business
+
+  // Informations de base
+  name        String
+  description String?
+  price       Float?
+  currency    String? @default("XAF")
+  category    String?
+
+  // Images (array de URLs)
+  images String[] // Array d'URLs d'images
+
+  // Métadonnées
+  metadata ProductMetadata[]
+
+  // Suggestions de l'IA (JSON)
+  aiSuggestions Json? // { spellingCorrections: [], metadataSuggestions: [], descriptionImprovements: [] }
+
+  // Dates
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([whatsappProductId])
+}
+
+model ProductMetadata {
+  id        String  @id @unique @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  // Métadonnée
+  key   String // Ex: "taille", "couleur", "stockage"
+  value String // Ex: "M", "Rouge", "256GB"
+
+  // Visibilité
+  isVisible     Boolean @default(true) // Afficher au client ou non
+  suggestedByAI Boolean @default(false) // Suggéré par l'IA
+
+  // Dates
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([productId])
+}
+
+model Tag {
+  id     String  @id @unique @default(cuid())
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  name     String
+  color    String  @default("#3B82F6") // Couleur hex
+  isSystem Boolean @default(false) // Tag système (non modifiable)
+
+  // Relations
+  conversations ConversationTag[]
+
+  // Dates
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, name])
+  @@index([userId])
+  @@index([isSystem])
+}
+
+model Group {
+  id     String    @id @unique @default(cuid())
+  userId String?
+  user   User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name   String
+  type   GroupType @default(CUSTOM)
+
+  isSystem Boolean @default(false) // Groupe système (non modifiable)
+
+  // Relations
+  conversations Conversation[]
+
+  // Dates
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, name])
+  @@index([userId])
+  @@index([isSystem])
+}
+
+model Conversation {
+  id     String @id @unique @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Informations WhatsApp
+  whatsappChatId String // ID du chat WhatsApp
+  contactName    String?
+  contactNumber  String
+
+  // Dernier message
+  lastMessage   String?
+  lastMessageAt DateTime?
+
+  // Flags
+  requiresManualResponse Boolean @default(false)
+
+  // Relations
+  groupId  String?
+  group    Group?            @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  tags     ConversationTag[]
+  messages Message[]
+  orders   Order[]
+
+  // Dates
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, whatsappChatId])
+  @@index([userId])
+  @@index([groupId])
+}
+
+// Table de liaison pour la relation many-to-many entre Conversation et Tag
+model ConversationTag {
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  tagId String
+  tag   Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@id([conversationId, tagId])
+  @@index([conversationId])
+  @@index([tagId])
+}
+
+model Message {
+  id             String       @id @unique @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Informations WhatsApp
+  whatsappMessageId String? // ID du message WhatsApp
+  from              String
+  to                String
+  body              String?
+  mediaUrl          String?
+  type              MessageType @default(TEXT)
+
+  // Flags
+  isFromCustomer  Boolean @default(true)
+  isGeneratedByAI Boolean @default(false)
+  tokensUsed      Int     @default(0) // Nombre de tokens utilisés pour cette réponse
+
+  // Statuts WhatsApp
+  sentAt      DateTime?
+  deliveredAt DateTime?
+  readAt      DateTime?
+
+  // Dates
+  createdAt DateTime @default(now())
+
+  @@index([conversationId])
+  @@index([userId])
+  @@index([whatsappMessageId])
+}
+
+model DeliveryLocation {
+  id     String @id @unique @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  country String
+  city    String
+  name    String // Nom de la zone (ex: "Centre-ville", "Banlieue nord")
+  price   Float
+
+  isActive Boolean @default(true)
+
+  // Relations
+  orders Order[]
+
+  // Dates
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model PaymentMethod {
+  id     String            @id @unique @default(cuid())
+  userId String
+  user   User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type   PaymentMethodType
+
+  // Pour Mobile Money
+  mobileMoneyNumber String?
+  mobileMoneyName   String?
+  requiresProof     Boolean @default(false) // Demander une capture du transfert
+
+  isActive Boolean @default(true)
+
+  // Relations
+  orders Order[]
+
+  // Dates
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model Order {
+  id             String       @id @unique @default(cuid())
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  // Informations client
+  customerName  String
+  customerPhone String
+
+  // Produits (JSON array)
+  products Json // [{ productId, name, quantity, price }, ...]
+
+  // Totaux
+  totalAmount Float
+
+  // Livraison et paiement
+  deliveryLocationId String?
+  deliveryLocation   DeliveryLocation? @relation(fields: [deliveryLocationId], references: [id], onDelete: SetNull)
+
+  paymentMethodId String?
+  paymentMethod   PaymentMethod? @relation(fields: [paymentMethodId], references: [id], onDelete: SetNull)
+
+  // Statut
+  status OrderStatus @default(NEGOTIATION)
+
+  // Promesse de commande (pour relance automatique)
+  promiseDate DateTime?
+
+  // Dates
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  deliveredAt       DateTime?
+  reviewRequestedAt DateTime? // Date de demande d'avis
+
+  @@index([userId])
+  @@index([conversationId])
+  @@index([status])
+}
+
+model Credit {
+  id     String     @id @unique @default(cuid())
+  userId String
+  user   User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount Int // Positif = ajout, négatif = décompte
+  type   CreditType
+
+  description String
+
+  // Message lié (pour les décomptes)
+  relatedMessageId String?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([type])
+}
+
+model Subscription {
+  id     String           @id @unique @default(cuid())
+  userId String           @unique
+  user   User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tier   SubscriptionTier
+
+  creditsIncluded Int // Crédits inclus dans l'abonnement
+  creditsUsed     Int @default(0) // Crédits utilisés ce mois
+
+  startDate DateTime
+  endDate   DateTime
+  isActive  Boolean  @default(true)
+  autoRenew Boolean  @default(true)
+
+  // Dates
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([tier])
 }

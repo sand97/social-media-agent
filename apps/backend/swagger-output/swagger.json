@@ -1,0 +1,2546 @@
+{
+  "openapi": "3.0.0",
+  "paths": {
+    "/health": {
+      "get": {
+        "operationId": "HealthController_check",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "The Health Check is successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "ok"
+                    },
+                    "info": {
+                      "type": "object",
+                      "example": {
+                        "database": {
+                          "status": "up"
+                        }
+                      },
+                      "additionalProperties": {
+                        "type": "object",
+                        "required": [
+                          "status"
+                        ],
+                        "properties": {
+                          "status": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": true
+                      },
+                      "nullable": true
+                    },
+                    "error": {
+                      "type": "object",
+                      "example": {},
+                      "additionalProperties": {
+                        "type": "object",
+                        "required": [
+                          "status"
+                        ],
+                        "properties": {
+                          "status": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": true
+                      },
+                      "nullable": true
+                    },
+                    "details": {
+                      "type": "object",
+                      "example": {
+                        "database": {
+                          "status": "up"
+                        }
+                      },
+                      "additionalProperties": {
+                        "type": "object",
+                        "required": [
+                          "status"
+                        ],
+                        "properties": {
+                          "status": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": true
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The Health Check is not successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "error"
+                    },
+                    "info": {
+                      "type": "object",
+                      "example": {
+                        "database": {
+                          "status": "up"
+                        }
+                      },
+                      "additionalProperties": {
+                        "type": "object",
+                        "required": [
+                          "status"
+                        ],
+                        "properties": {
+                          "status": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": true
+                      },
+                      "nullable": true
+                    },
+                    "error": {
+                      "type": "object",
+                      "example": {
+                        "redis": {
+                          "status": "down",
+                          "message": "Could not connect"
+                        }
+                      },
+                      "additionalProperties": {
+                        "type": "object",
+                        "required": [
+                          "status"
+                        ],
+                        "properties": {
+                          "status": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": true
+                      },
+                      "nullable": true
+                    },
+                    "details": {
+                      "type": "object",
+                      "example": {
+                        "database": {
+                          "status": "up"
+                        },
+                        "redis": {
+                          "status": "down",
+                          "message": "Could not connect"
+                        }
+                      },
+                      "additionalProperties": {
+                        "type": "object",
+                        "required": [
+                          "status"
+                        ],
+                        "properties": {
+                          "status": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": true
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/whatsapp-agents/me": {
+      "get": {
+        "operationId": "WhatsAppAgentController_getMyAgent",
+        "summary": "Get current user's WhatsApp agent",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Returns the WhatsApp agent for the current user"
+          },
+          "404": {
+            "description": "WhatsApp agent not found for this user"
+          }
+        },
+        "tags": [
+          "whatsapp-agents"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/whatsapp-agents/provision": {
+      "post": {
+        "operationId": "WhatsAppAgentController_provisionAgent",
+        "summary": "Provision a WhatsApp agent for the current user",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "WhatsApp agent successfully provisioned"
+          },
+          "409": {
+            "description": "WhatsApp agent already exists for this user"
+          }
+        },
+        "tags": [
+          "whatsapp-agents"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/whatsapp-agents/{id}/status": {
+      "patch": {
+        "operationId": "WhatsAppAgentController_updateAgentStatus",
+        "summary": "Update agent status",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "WhatsApp agent ID",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateAgentStatusDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Agent status successfully updated"
+          },
+          "404": {
+            "description": "WhatsApp agent not found"
+          }
+        },
+        "tags": [
+          "whatsapp-agents"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/whatsapp-agents/{id}/health": {
+      "get": {
+        "operationId": "WhatsAppAgentController_checkAgentHealth",
+        "summary": "Check agent health",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "WhatsApp agent ID",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Returns the health status of the agent"
+          },
+          "404": {
+            "description": "WhatsApp agent not found"
+          }
+        },
+        "tags": [
+          "whatsapp-agents"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/auth/request-pairing": {
+      "post": {
+        "operationId": "AuthController_requestPairingCode",
+        "summary": "Request pairing code",
+        "description": "Request a pairing code to link WhatsApp account with the application",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RequestPairingDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Pairing code sent successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string",
+                      "example": "12345678"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Pairing code sent successfully"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request - User is already paired"
+          }
+        },
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/auth/verify-pairing": {
+      "post": {
+        "operationId": "AuthController_verifyPairing",
+        "summary": "Verify pairing success",
+        "description": "Verify that WhatsApp pairing was successful (called by webhook from connector)",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyPairingDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Pairing verified successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "accessToken": {
+                      "type": "string"
+                    },
+                    "user": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "phoneNumber": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string"
+                        },
+                        "whatsappProfile": {
+                          "type": "object"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "User not found"
+          }
+        },
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/auth/confirm-pairing": {
+      "post": {
+        "operationId": "AuthController_confirmPairing",
+        "summary": "Confirm pairing completion",
+        "description": "Called by frontend when user confirms they have completed the pairing process on their phone",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmPairingDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Pairing confirmed successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "accessToken": {
+                      "type": "string"
+                    },
+                    "user": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "phoneNumber": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string"
+                        },
+                        "whatsappProfile": {
+                          "type": "object"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "WhatsApp connection not yet confirmed"
+          },
+          "401": {
+            "description": "Invalid or expired pairing token"
+          }
+        },
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "operationId": "AuthController_login",
+        "summary": "Login with phone number",
+        "description": "Send OTP code to user WhatsApp for login",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "OTP sent successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "OTP envoyé avec succès"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "User must complete pairing before logging in"
+          },
+          "404": {
+            "description": "User not found"
+          }
+        },
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/auth/verify-otp": {
+      "post": {
+        "operationId": "AuthController_verifyOtp",
+        "summary": "Verify OTP code",
+        "description": "Verify OTP code and complete login",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyOtpDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "OTP verified successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "accessToken": {
+                      "type": "string"
+                    },
+                    "user": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "phoneNumber": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string"
+                        },
+                        "whatsappProfile": {
+                          "type": "object"
+                        },
+                        "lastLoginAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid or expired OTP"
+          }
+        },
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/auth/me": {
+      "get": {
+        "operationId": "AuthController_getMe",
+        "summary": "Get current user",
+        "description": "Get the currently authenticated user information",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Current user information",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "phoneNumber": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string"
+                    },
+                    "whatsappProfile": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "tags": [
+          "auth"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/users/me": {
+      "get": {
+        "operationId": "UserController_getMe",
+        "summary": "Get current user profile",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "User profile retrieved successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "User not found"
+          }
+        },
+        "tags": [
+          "users"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "patch": {
+        "operationId": "UserController_updateMe",
+        "summary": "Update current user profile",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateUserDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "User profile updated successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "User not found"
+          }
+        },
+        "tags": [
+          "users"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/users/me/import-whatsapp": {
+      "post": {
+        "operationId": "UserController_importWhatsAppData",
+        "summary": "Import WhatsApp Business data for current user",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "WhatsApp data imported successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportWhatsAppDataResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "WhatsApp agent not found for this user"
+          },
+          "500": {
+            "description": "Failed to import WhatsApp data"
+          }
+        },
+        "tags": [
+          "users"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/users/me/stats": {
+      "get": {
+        "operationId": "UserController_getStats",
+        "summary": "Get current user statistics",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "User statistics retrieved successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "User not found"
+          }
+        },
+        "tags": [
+          "users"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/products": {
+      "get": {
+        "operationId": "ProductsController_getAllProducts",
+        "summary": "Get all products for current user",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "List of products retrieved successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "tags": [
+          "products"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "post": {
+        "operationId": "ProductsController_createProduct",
+        "summary": "Create a new product",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateProductDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Product created successfully"
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "tags": [
+          "products"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/products/{id}": {
+      "get": {
+        "operationId": "ProductsController_getProduct",
+        "summary": "Get product by ID",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Product retrieved successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Product not found"
+          }
+        },
+        "tags": [
+          "products"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "patch": {
+        "operationId": "ProductsController_updateProduct",
+        "summary": "Update an existing product",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateProductDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Product updated successfully"
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Product not found"
+          }
+        },
+        "tags": [
+          "products"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "delete": {
+        "operationId": "ProductsController_deleteProduct",
+        "summary": "Delete a product",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Product deleted successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Product not found"
+          }
+        },
+        "tags": [
+          "products"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/products/{id}/metadata": {
+      "post": {
+        "operationId": "ProductsController_addMetadata",
+        "summary": "Add metadata to a product",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddMetadataDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Metadata added successfully"
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Product not found"
+          }
+        },
+        "tags": [
+          "products"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/settings/business": {
+      "get": {
+        "operationId": "SettingsController_getBusinessInfo",
+        "summary": "Get business information",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Business information retrieved successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Business information not found"
+          }
+        },
+        "tags": [
+          "settings"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "patch": {
+        "operationId": "SettingsController_updateBusinessInfo",
+        "summary": "Update business information",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateBusinessInfoDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Business information updated successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "User not found"
+          }
+        },
+        "tags": [
+          "settings"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/settings/delivery-locations": {
+      "get": {
+        "operationId": "SettingsController_getDeliveryLocations",
+        "summary": "Get all delivery locations",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Delivery locations retrieved successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "User not found"
+          }
+        },
+        "tags": [
+          "settings"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "post": {
+        "operationId": "SettingsController_createDeliveryLocation",
+        "summary": "Create a new delivery location",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateDeliveryLocationDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Delivery location created successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "User not found"
+          }
+        },
+        "tags": [
+          "settings"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/settings/delivery-locations/{id}": {
+      "patch": {
+        "operationId": "SettingsController_updateDeliveryLocation",
+        "summary": "Update a delivery location",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateDeliveryLocationDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Delivery location updated successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Delivery location not found"
+          }
+        },
+        "tags": [
+          "settings"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "delete": {
+        "operationId": "SettingsController_deleteDeliveryLocation",
+        "summary": "Delete a delivery location",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Delivery location deleted successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Delivery location not found"
+          }
+        },
+        "tags": [
+          "settings"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/settings/payment-methods": {
+      "get": {
+        "operationId": "SettingsController_getPaymentMethods",
+        "summary": "Get all payment methods",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Payment methods retrieved successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "User not found"
+          }
+        },
+        "tags": [
+          "settings"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "post": {
+        "operationId": "SettingsController_createPaymentMethod",
+        "summary": "Create a new payment method",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePaymentMethodDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Payment method created successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "User not found"
+          }
+        },
+        "tags": [
+          "settings"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/settings/payment-methods/{id}": {
+      "patch": {
+        "operationId": "SettingsController_updatePaymentMethod",
+        "summary": "Update a payment method",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePaymentMethodDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Payment method updated successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Payment method not found"
+          }
+        },
+        "tags": [
+          "settings"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "delete": {
+        "operationId": "SettingsController_deletePaymentMethod",
+        "summary": "Delete a payment method",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Payment method deleted successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Payment method not found"
+          }
+        },
+        "tags": [
+          "settings"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/conversations": {
+      "get": {
+        "operationId": "ConversationsController_getAllConversations",
+        "summary": "Get all conversations for current user",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "List of conversations retrieved successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "tags": [
+          "conversations"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "post": {
+        "operationId": "ConversationsController_createConversation",
+        "summary": "Create a new conversation",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateConversationDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Conversation created successfully"
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "tags": [
+          "conversations"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/conversations/{id}": {
+      "get": {
+        "operationId": "ConversationsController_getConversation",
+        "summary": "Get conversation by ID with messages",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Conversation ID",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Conversation retrieved successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Conversation not found"
+          }
+        },
+        "tags": [
+          "conversations"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "patch": {
+        "operationId": "ConversationsController_updateConversation",
+        "summary": "Update an existing conversation",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Conversation ID",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateConversationDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Conversation updated successfully"
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Conversation not found"
+          }
+        },
+        "tags": [
+          "conversations"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/conversations/{id}/tags": {
+      "post": {
+        "operationId": "ConversationsController_addTag",
+        "summary": "Add tag to conversation",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Conversation ID",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Tag added successfully"
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Conversation or tag not found"
+          }
+        },
+        "tags": [
+          "conversations"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/conversations/{id}/tags/{tagId}": {
+      "delete": {
+        "operationId": "ConversationsController_removeTag",
+        "summary": "Remove tag from conversation",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Conversation ID",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "tagId",
+            "required": true,
+            "in": "path",
+            "description": "Tag ID",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Tag removed successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Conversation or tag not found"
+          }
+        },
+        "tags": [
+          "conversations"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/conversations/{id}/group": {
+      "patch": {
+        "operationId": "ConversationsController_setGroup",
+        "summary": "Set group for conversation",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Conversation ID",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Group set successfully"
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Conversation or group not found"
+          }
+        },
+        "tags": [
+          "conversations"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/conversations/{id}/messages": {
+      "get": {
+        "operationId": "ConversationsController_getMessages",
+        "summary": "Get messages for conversation",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Conversation ID",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Number of messages to retrieve",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Messages retrieved successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Conversation not found"
+          }
+        },
+        "tags": [
+          "conversations"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/orders": {
+      "get": {
+        "operationId": "OrdersController_getAllOrders",
+        "summary": "Get all orders for current user",
+        "parameters": [
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "description": "Filter by order status",
+            "schema": {
+              "enum": [
+                "NEGOTIATION",
+                "CONFIRMED",
+                "DELIVERED",
+                "CANCELLED"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of orders retrieved successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "tags": [
+          "orders"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "post": {
+        "operationId": "OrdersController_createOrder",
+        "summary": "Create a new order",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateOrderDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Order created successfully"
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "tags": [
+          "orders"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/orders/{id}": {
+      "get": {
+        "operationId": "OrdersController_getOrder",
+        "summary": "Get order by ID",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Order ID",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Order retrieved successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Order not found"
+          }
+        },
+        "tags": [
+          "orders"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "patch": {
+        "operationId": "OrdersController_updateOrder",
+        "summary": "Update an existing order",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Order ID",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateOrderDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Order updated successfully"
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Order not found"
+          }
+        },
+        "tags": [
+          "orders"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/orders/{id}/status": {
+      "patch": {
+        "operationId": "OrdersController_updateOrderStatus",
+        "summary": "Update order status",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Order ID",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateOrderStatusDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Order status updated successfully"
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Order not found"
+          }
+        },
+        "tags": [
+          "orders"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/orders/{id}/delivered": {
+      "post": {
+        "operationId": "OrdersController_markAsDelivered",
+        "summary": "Mark order as delivered",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Order ID",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Order marked as delivered successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Order not found"
+          }
+        },
+        "tags": [
+          "orders"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/webhooks/whatsapp/connected": {
+      "post": {
+        "operationId": "WebhooksController_whatsappConnected",
+        "summary": "Webhook appelé quand WhatsApp se connecte",
+        "description": "Endpoint appelé par le whatsapp-connector quand le client WhatsApp est prêt",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WhatsAppConnectedDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Connexion traitée avec succès"
+          }
+        },
+        "tags": [
+          "webhooks"
+        ]
+      }
+    }
+  },
+  "info": {
+    "title": "Monorepo API",
+    "description": "Interractive documentation for the Monorepo API",
+    "version": "1.0",
+    "contact": {}
+  },
+  "tags": [],
+  "servers": [],
+  "components": {
+    "securitySchemes": {
+      "bearer": {
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "type": "http"
+      }
+    },
+    "schemas": {
+      "UpdateAgentStatusDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "PROVISIONING",
+              "RUNNING",
+              "STOPPED",
+              "ERROR",
+              "DELETED"
+            ],
+            "description": "The new status of the agent",
+            "example": "RUNNING"
+          },
+          "connectionStatus": {
+            "type": "string",
+            "enum": [
+              "CONNECTED",
+              "DISCONNECTED",
+              "QR_REQUIRED",
+              "PAIRING_REQUIRED"
+            ],
+            "description": "The connection status of WhatsApp",
+            "example": "CONNECTED"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "RequestPairingDto": {
+        "type": "object",
+        "properties": {
+          "phoneNumber": {
+            "type": "string",
+            "description": "Phone number in E.164 format",
+            "example": "+15551234567"
+          }
+        },
+        "required": [
+          "phoneNumber"
+        ]
+      },
+      "VerifyPairingDto": {
+        "type": "object",
+        "properties": {
+          "phoneNumber": {
+            "type": "string",
+            "description": "Phone number in E.164 format",
+            "example": "+15551234567"
+          },
+          "whatsappProfile": {
+            "type": "object",
+            "description": "WhatsApp profile information",
+            "example": {
+              "name": "John Doe",
+              "picture": "https://..."
+            }
+          }
+        },
+        "required": [
+          "phoneNumber",
+          "whatsappProfile"
+        ]
+      },
+      "ConfirmPairingDto": {
+        "type": "object",
+        "properties": {
+          "pairingToken": {
+            "type": "string",
+            "description": "The pairing token received when requesting the pairing code",
+            "example": "a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6a7b8c9d0e1f2"
+          }
+        },
+        "required": [
+          "pairingToken"
+        ]
+      },
+      "LoginDto": {
+        "type": "object",
+        "properties": {
+          "phoneNumber": {
+            "type": "string",
+            "description": "Phone number in E.164 format",
+            "example": "+15551234567"
+          }
+        },
+        "required": [
+          "phoneNumber"
+        ]
+      },
+      "VerifyOtpDto": {
+        "type": "object",
+        "properties": {
+          "phoneNumber": {
+            "type": "string",
+            "description": "Phone number in E.164 format",
+            "example": "+15551234567"
+          },
+          "code": {
+            "type": "string",
+            "description": "6-digit OTP code",
+            "example": "123456"
+          }
+        },
+        "required": [
+          "phoneNumber",
+          "code"
+        ]
+      },
+      "UpdateUserDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "description": "User email address"
+          },
+          "phoneNumber": {
+            "type": "string",
+            "description": "User phone number"
+          }
+        }
+      },
+      "ImportWhatsAppDataResponseDto": {
+        "type": "object",
+        "properties": {
+          "businessInfo": {
+            "type": "object",
+            "description": "Business information imported from WhatsApp"
+          },
+          "productsImported": {
+            "type": "number",
+            "description": "Number of products imported from catalog"
+          },
+          "contactsImported": {
+            "type": "number",
+            "description": "Number of contacts imported"
+          }
+        },
+        "required": [
+          "businessInfo",
+          "productsImported",
+          "contactsImported"
+        ]
+      },
+      "CreateProductDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Product name",
+            "example": "iPhone 15 Pro"
+          },
+          "description": {
+            "type": "string",
+            "description": "Product description",
+            "example": "Latest iPhone model with advanced features"
+          },
+          "price": {
+            "type": "number",
+            "description": "Product price",
+            "example": 999.99
+          },
+          "currency": {
+            "type": "string",
+            "description": "Currency code",
+            "example": "XAF",
+            "default": "XAF"
+          },
+          "category": {
+            "type": "string",
+            "description": "Product category",
+            "example": "Electronics"
+          },
+          "images": {
+            "description": "Product images URLs",
+            "example": [
+              "https://example.com/image1.jpg",
+              "https://example.com/image2.jpg"
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "UpdateProductDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Product name",
+            "example": "iPhone 15 Pro"
+          },
+          "description": {
+            "type": "string",
+            "description": "Product description",
+            "example": "Latest iPhone model with advanced features"
+          },
+          "price": {
+            "type": "number",
+            "description": "Product price",
+            "example": 999.99
+          },
+          "currency": {
+            "type": "string",
+            "description": "Currency code",
+            "example": "XAF",
+            "default": "XAF"
+          },
+          "category": {
+            "type": "string",
+            "description": "Product category",
+            "example": "Electronics"
+          },
+          "images": {
+            "description": "Product images URLs",
+            "example": [
+              "https://example.com/image1.jpg",
+              "https://example.com/image2.jpg"
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "AddMetadataDto": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "description": "Metadata key",
+            "example": "size"
+          },
+          "value": {
+            "type": "string",
+            "description": "Metadata value",
+            "example": "Large"
+          },
+          "isVisible": {
+            "type": "boolean",
+            "description": "Whether the metadata is visible to customers",
+            "example": true
+          }
+        },
+        "required": [
+          "key",
+          "value",
+          "isVisible"
+        ]
+      },
+      "UpdateBusinessInfoDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Business name",
+            "example": "My Business"
+          },
+          "description": {
+            "type": "string",
+            "description": "Business description",
+            "example": "We provide quality products and services"
+          },
+          "address": {
+            "type": "string",
+            "description": "Business address",
+            "example": "123 Main Street"
+          },
+          "city": {
+            "type": "string",
+            "description": "Business city",
+            "example": "Douala"
+          },
+          "country": {
+            "type": "string",
+            "description": "Business country",
+            "example": "Cameroon"
+          },
+          "website": {
+            "type": "string",
+            "description": "Business website",
+            "example": "https://mybusiness.com"
+          },
+          "openingHours": {
+            "type": "object",
+            "description": "Opening hours in JSON format",
+            "example": {
+              "monday": "09:00-18:00",
+              "tuesday": "09:00-18:00",
+              "wednesday": "09:00-18:00",
+              "thursday": "09:00-18:00",
+              "friday": "09:00-18:00",
+              "saturday": "09:00-14:00",
+              "sunday": "closed"
+            }
+          },
+          "phoneNumbers": {
+            "description": "Additional phone numbers",
+            "example": [
+              "+237699999999",
+              "+237600000000"
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "CreateDeliveryLocationDto": {
+        "type": "object",
+        "properties": {
+          "country": {
+            "type": "string",
+            "description": "Country name",
+            "example": "Cameroon"
+          },
+          "city": {
+            "type": "string",
+            "description": "City name",
+            "example": "Douala"
+          },
+          "name": {
+            "type": "string",
+            "description": "Location name or zone identifier",
+            "example": "Downtown"
+          },
+          "price": {
+            "type": "number",
+            "description": "Delivery price for this location",
+            "example": 5000
+          }
+        },
+        "required": [
+          "country",
+          "city",
+          "name",
+          "price"
+        ]
+      },
+      "UpdateDeliveryLocationDto": {
+        "type": "object",
+        "properties": {
+          "country": {
+            "type": "string",
+            "description": "Country name",
+            "example": "Cameroon"
+          },
+          "city": {
+            "type": "string",
+            "description": "City name",
+            "example": "Douala"
+          },
+          "name": {
+            "type": "string",
+            "description": "Location name or zone identifier",
+            "example": "Downtown"
+          },
+          "price": {
+            "type": "number",
+            "description": "Delivery price for this location",
+            "example": 5000
+          }
+        }
+      },
+      "CreatePaymentMethodDto": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "Payment method type",
+            "enum": [
+              "CASH",
+              "MOBILE_MONEY"
+            ],
+            "example": "MOBILE_MONEY"
+          },
+          "mobileMoneyNumber": {
+            "type": "string",
+            "description": "Mobile money number (required if type is MOBILE_MONEY)",
+            "example": "+237699999999"
+          },
+          "mobileMoneyName": {
+            "type": "string",
+            "description": "Mobile money provider name (e.g., MTN, Orange)",
+            "example": "MTN"
+          },
+          "requiresProof": {
+            "type": "boolean",
+            "description": "Whether proof of transfer is required",
+            "example": true
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "UpdatePaymentMethodDto": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "Payment method type",
+            "enum": [
+              "CASH",
+              "MOBILE_MONEY"
+            ],
+            "example": "MOBILE_MONEY"
+          },
+          "mobileMoneyNumber": {
+            "type": "string",
+            "description": "Mobile money number (required if type is MOBILE_MONEY)",
+            "example": "+237699999999"
+          },
+          "mobileMoneyName": {
+            "type": "string",
+            "description": "Mobile money provider name (e.g., MTN, Orange)",
+            "example": "MTN"
+          },
+          "requiresProof": {
+            "type": "boolean",
+            "description": "Whether proof of transfer is required",
+            "example": true
+          }
+        }
+      },
+      "CreateConversationDto": {
+        "type": "object",
+        "properties": {
+          "whatsappChatId": {
+            "type": "string",
+            "description": "WhatsApp chat ID",
+            "example": "237612345678@c.us"
+          },
+          "contactName": {
+            "type": "string",
+            "description": "Contact name",
+            "example": "John Doe"
+          },
+          "contactNumber": {
+            "type": "string",
+            "description": "Contact phone number",
+            "example": "237612345678"
+          }
+        },
+        "required": [
+          "whatsappChatId",
+          "contactNumber"
+        ]
+      },
+      "UpdateConversationDto": {
+        "type": "object",
+        "properties": {
+          "contactName": {
+            "type": "string",
+            "description": "Contact name",
+            "example": "John Doe"
+          },
+          "requiresManualResponse": {
+            "type": "boolean",
+            "description": "Whether the conversation requires manual response",
+            "example": false
+          }
+        }
+      },
+      "CreateOrderDto": {
+        "type": "object",
+        "properties": {
+          "conversationId": {
+            "type": "string",
+            "description": "Conversation ID",
+            "example": "clxxx123456789"
+          },
+          "customerName": {
+            "type": "string",
+            "description": "Customer name",
+            "example": "John Doe"
+          },
+          "customerPhone": {
+            "type": "string",
+            "description": "Customer phone number",
+            "example": "237612345678"
+          },
+          "products": {
+            "type": "object",
+            "description": "Products (JSON array)",
+            "example": [
+              {
+                "productId": "clxxx123",
+                "name": "iPhone 15 Pro",
+                "quantity": 1,
+                "price": 999.99
+              }
+            ]
+          },
+          "totalAmount": {
+            "type": "number",
+            "description": "Total amount",
+            "example": 999.99
+          },
+          "deliveryLocationId": {
+            "type": "string",
+            "description": "Delivery location ID",
+            "example": "clxxx789"
+          },
+          "paymentMethodId": {
+            "type": "string",
+            "description": "Payment method ID",
+            "example": "clxxx456"
+          },
+          "promiseDate": {
+            "type": "string",
+            "description": "Promise date for the order",
+            "example": "2025-11-20T10:00:00Z"
+          }
+        },
+        "required": [
+          "conversationId",
+          "customerName",
+          "customerPhone",
+          "products",
+          "totalAmount"
+        ]
+      },
+      "UpdateOrderDto": {
+        "type": "object",
+        "properties": {
+          "customerName": {
+            "type": "string",
+            "description": "Customer name",
+            "example": "John Doe"
+          },
+          "customerPhone": {
+            "type": "string",
+            "description": "Customer phone number",
+            "example": "237612345678"
+          },
+          "products": {
+            "type": "object",
+            "description": "Products (JSON array)",
+            "example": [
+              {
+                "productId": "clxxx123",
+                "name": "iPhone 15 Pro",
+                "quantity": 1,
+                "price": 999.99
+              }
+            ]
+          },
+          "totalAmount": {
+            "type": "number",
+            "description": "Total amount",
+            "example": 999.99
+          },
+          "deliveryLocationId": {
+            "type": "string",
+            "description": "Delivery location ID",
+            "example": "clxxx789"
+          },
+          "paymentMethodId": {
+            "type": "string",
+            "description": "Payment method ID",
+            "example": "clxxx456"
+          },
+          "promiseDate": {
+            "type": "string",
+            "description": "Promise date for the order",
+            "example": "2025-11-20T10:00:00Z"
+          },
+          "status": {
+            "type": "string",
+            "description": "Order status",
+            "enum": [
+              "NEGOTIATION",
+              "CONFIRMED",
+              "DELIVERED",
+              "CANCELLED"
+            ]
+          }
+        }
+      },
+      "UpdateOrderStatusDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "description": "Order status",
+            "enum": [
+              "NEGOTIATION",
+              "CONFIRMED",
+              "DELIVERED",
+              "CANCELLED"
+            ],
+            "example": "CONFIRMED"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "WhatsAppConnectedDto": {
+        "type": "object",
+        "properties": {}
+      }
+    }
+  }
+}

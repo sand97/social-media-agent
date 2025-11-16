@@ -6,6 +6,7 @@ export const theme: ThemeConfig = {
     colorPrimary: '#00b96b',
     borderRadius: 2,
 
+    colorLink: '#00b96b',
     // Alias Token
     colorBgContainer: '#ffffff',
   },

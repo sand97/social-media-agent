@@ -8,6 +8,16 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { SentryModule } from '@sentry/nestjs/setup';
 import { AcceptLanguageResolver, I18nModule } from 'nestjs-i18n';
+import { AuthModule } from './auth/auth.module';
+import { UserModule } from './user/user.module';
+import { ProductsModule } from './products/products.module';
+import { SettingsModule } from './settings/settings.module';
+import { ConversationsModule } from './conversations/conversations.module';
+import { OrdersModule } from './orders/orders.module';
+import { WhatsAppAgentModule } from './whatsapp-agent/whatsapp-agent.module';
+import { ConnectorClientModule } from './connector-client/connector-client.module';
+import { WebhooksModule } from './webhooks/webhooks.module';
+import { CommonModule } from './common/common.module';
 
 @Module({
   imports: [
@@ -24,16 +34,26 @@ import { AcceptLanguageResolver, I18nModule } from 'nestjs-i18n';
     ConfigModule.forRoot({
       isGlobal: true,
     }),
-    CacheModule.registerAsync({
+    CacheModule.register({
       isGlobal: true,
-      imports: [ConfigModule],
-      inject: [ConfigService],
-      useFactory: async (configService: ConfigService) => ({
-        stores: [new KeyvRedis(configService.get('REDIS_URL'))],
+      imports: [],
+      inject: [],
+      useFactory: () => ({
+        stores: [new KeyvRedis(process.env.REDIS_URL)],
       }),
     }),
     PrismaModule,
     HealthModule,
+    CommonModule,
+    ConnectorClientModule,
+    WhatsAppAgentModule,
+    AuthModule,
+    UserModule,
+    ProductsModule,
+    SettingsModule,
+    ConversationsModule,
+    OrdersModule,
+    WebhooksModule,
   ],
   controllers: [],
   providers: [],

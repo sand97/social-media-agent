@@ -4,6 +4,7 @@ import { HealthModule } from '@app/health/health.module';
 import { ConnectorModule } from './connector/connector.module';
 import { LangChainModule } from './langchain/langchain.module';
 import { WebhookModule } from './webhook/webhook.module';
+import { ProductsModule } from './products/products.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { WebhookModule } from './webhook/webhook.module';
     ConnectorModule,
     LangChainModule,
     WebhookModule,
+    ProductsModule,
   ],
   controllers: [],
   providers: [],

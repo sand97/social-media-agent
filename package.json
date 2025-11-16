@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "concurrently \"pnpm dev:backend\" \"pnpm dev:frontend\"",
+    "dev:all": "concurrently -n \"backend,frontend,connector,agent\" -c \"bgBlue,bgMagenta,bgGreen,bgYellow\" \"pnpm dev:backend\" \"pnpm dev:frontend\" \"pnpm dev:whatsapp-connector\" \"pnpm dev:whatsapp-agent\"",
     "dev:backend": "pnpm --filter backend start:dev",
     "dev:frontend": "pnpm --filter frontend dev",
     "dev:whatsapp-connector": "pnpm --filter whatsapp-connector start:dev",

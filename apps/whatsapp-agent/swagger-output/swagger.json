@@ -1,0 +1,354 @@
+{
+  "openapi": "3.0.0",
+  "paths": {
+    "/health": {
+      "get": {
+        "operationId": "HealthController_check",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "The Health Check is successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "ok"
+                    },
+                    "info": {
+                      "type": "object",
+                      "example": {
+                        "database": {
+                          "status": "up"
+                        }
+                      },
+                      "additionalProperties": {
+                        "type": "object",
+                        "required": [
+                          "status"
+                        ],
+                        "properties": {
+                          "status": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": true
+                      },
+                      "nullable": true
+                    },
+                    "error": {
+                      "type": "object",
+                      "example": {},
+                      "additionalProperties": {
+                        "type": "object",
+                        "required": [
+                          "status"
+                        ],
+                        "properties": {
+                          "status": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": true
+                      },
+                      "nullable": true
+                    },
+                    "details": {
+                      "type": "object",
+                      "example": {
+                        "database": {
+                          "status": "up"
+                        }
+                      },
+                      "additionalProperties": {
+                        "type": "object",
+                        "required": [
+                          "status"
+                        ],
+                        "properties": {
+                          "status": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": true
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The Health Check is not successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "error"
+                    },
+                    "info": {
+                      "type": "object",
+                      "example": {
+                        "database": {
+                          "status": "up"
+                        }
+                      },
+                      "additionalProperties": {
+                        "type": "object",
+                        "required": [
+                          "status"
+                        ],
+                        "properties": {
+                          "status": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": true
+                      },
+                      "nullable": true
+                    },
+                    "error": {
+                      "type": "object",
+                      "example": {
+                        "redis": {
+                          "status": "down",
+                          "message": "Could not connect"
+                        }
+                      },
+                      "additionalProperties": {
+                        "type": "object",
+                        "required": [
+                          "status"
+                        ],
+                        "properties": {
+                          "status": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": true
+                      },
+                      "nullable": true
+                    },
+                    "details": {
+                      "type": "object",
+                      "example": {
+                        "database": {
+                          "status": "up"
+                        },
+                        "redis": {
+                          "status": "down",
+                          "message": "Could not connect"
+                        }
+                      },
+                      "additionalProperties": {
+                        "type": "object",
+                        "required": [
+                          "status"
+                        ],
+                        "properties": {
+                          "status": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": true
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/webhook/message": {
+      "post": {
+        "operationId": "WebhookController_handleEvent",
+        "summary": "Receive WhatsApp events from connector",
+        "description": "This endpoint receives all WhatsApp events from the connector service",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Event received successfully"
+          }
+        },
+        "tags": [
+          "Webhook"
+        ]
+      }
+    },
+    "/products/analyze": {
+      "post": {
+        "operationId": "ProductsController_analyzeProduct",
+        "summary": "Analyser un produit avec IA",
+        "description": "Analyse un produit pour détecter les erreurs d'orthographe, suggérer des métadonnées et améliorer la description",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnalyzeProductDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Analyse réussie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalysisResultDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Données invalides"
+          },
+          "500": {
+            "description": "Erreur lors de l'analyse"
+          }
+        },
+        "tags": [
+          "products"
+        ]
+      }
+    }
+  },
+  "info": {
+    "title": "WhatsApp Agent API",
+    "description": "AI-powered WhatsApp agent using LangChain - Receives events and generates intelligent responses",
+    "version": "1.0",
+    "contact": {}
+  },
+  "tags": [],
+  "servers": [],
+  "components": {
+    "schemas": {
+      "AnalyzeProductDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Nom du produit",
+            "example": "T-shirt en coton bio"
+          },
+          "description": {
+            "type": "string",
+            "description": "Description du produit",
+            "example": "Un t-shirt confortable en coton biologique, parfait pour l'été"
+          },
+          "category": {
+            "type": "string",
+            "description": "Catégorie du produit",
+            "example": "Vêtements"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "SpellingCorrection": {
+        "type": "object",
+        "properties": {
+          "original": {
+            "type": "string",
+            "description": "Texte original avec l'erreur",
+            "example": "confortabel"
+          },
+          "corrected": {
+            "type": "string",
+            "description": "Correction suggérée",
+            "example": "confortable"
+          },
+          "position": {
+            "type": "number",
+            "description": "Position de l'erreur dans le texte",
+            "example": 15
+          }
+        },
+        "required": [
+          "original",
+          "corrected"
+        ]
+      },
+      "MetadataSuggestion": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "description": "Clé de métadonnée suggérée",
+            "example": "taille"
+          },
+          "values": {
+            "description": "Valeurs possibles pour cette métadonnée",
+            "example": [
+              "XS",
+              "S",
+              "M",
+              "L",
+              "XL",
+              "XXL"
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "reason": {
+            "type": "string",
+            "description": "Raison de la suggestion",
+            "example": "Les vêtements nécessitent généralement une indication de taille"
+          }
+        },
+        "required": [
+          "key",
+          "values"
+        ]
+      },
+      "AnalysisResultDto": {
+        "type": "object",
+        "properties": {
+          "spellingCorrections": {
+            "description": "Corrections orthographiques et grammaticales",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SpellingCorrection"
+            }
+          },
+          "metadataSuggestions": {
+            "description": "Suggestions de métadonnées basées sur la catégorie",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MetadataSuggestion"
+            }
+          },
+          "descriptionImprovements": {
+            "description": "Suggestions d'amélioration de la description",
+            "example": [
+              "Ajouter des détails sur la composition exacte du coton",
+              "Préciser les instructions d'entretien",
+              "Mentionner les certifications biologiques"
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "spellingCorrections",
+          "metadataSuggestions",
+          "descriptionImprovements"
+        ]
+      }
+    }
+  }
+}

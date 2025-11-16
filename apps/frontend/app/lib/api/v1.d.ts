@@ -20,14 +20,15 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/user/me": {
+    "/whatsapp-agents/me": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get: operations["UsersController_me"];
+        /** Get current user's WhatsApp agent */
+        get: operations["WhatsAppAgentController_getMyAgent"];
         put?: never;
         post?: never;
         delete?: never;
@@ -36,7 +37,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/user/{email}/disable": {
+    "/whatsapp-agents/provision": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Provision a WhatsApp agent for the current user */
+        post: operations["WhatsAppAgentController_provisionAgent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/whatsapp-agents/{id}/status": {
         parameters: {
             query?: never;
             header?: never;
@@ -46,68 +64,22 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        delete: operations["UsersController_disableUserFromEmail"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/user/enable-user-from-contact": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["UsersController_enableUserFromContact"];
         delete?: never;
         options?: never;
         head?: never;
-        patch?: never;
+        /** Update agent status */
+        patch: operations["WhatsAppAgentController_updateAgentStatus"];
         trace?: never;
     };
-    "/user/init-hubspot-user": {
+    "/whatsapp-agents/{id}/health": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get?: never;
-        put?: never;
-        post: operations["UsersController_create"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/user/init-hubspot-partner": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["UsersController_createPartner"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/user/hubspot-contact/{contactId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["UsersController_getHubspotUser"];
+        /** Check agent health */
+        get: operations["WhatsAppAgentController_checkAgentHealth"];
         put?: never;
         post?: never;
         delete?: never;
@@ -116,7 +88,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/user/resend-first-email": {
+    "/auth/request-pairing": {
         parameters: {
             query?: never;
             header?: never;
@@ -125,14 +97,18 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["UsersController_resendFirstEmail"];
+        /**
+         * Request pairing code
+         * @description Request a pairing code to link WhatsApp account with the application
+         */
+        post: operations["AuthController_requestPairingCode"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/user/{email}/update-hubspot": {
+    "/auth/verify-pairing": {
         parameters: {
             query?: never;
             header?: never;
@@ -140,79 +116,19 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        put: operations["UsersController_updateUserFromHubspot"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/user/{id}/update": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put: operations["UsersController_adminUpdate"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/user/update": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put: operations["UsersController_update"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/user/update/password": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put: operations["UsersController_updatePassword"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/user/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["UsersController_showDetailUser"];
         put?: never;
-        post?: never;
+        /**
+         * Verify pairing success
+         * @description Verify that WhatsApp pairing was successful (called by webhook from connector)
+         */
+        post: operations["AuthController_verifyPairing"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/user/update/avatar": {
+    "/auth/confirm-pairing": {
         parameters: {
             query?: never;
             header?: never;
@@ -220,8 +136,12 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        put: operations["UsersController_uploadFile"];
-        post?: never;
+        put?: never;
+        /**
+         * Confirm pairing completion
+         * @description Called by frontend when user confirms they have completed the pairing process on their phone
+         */
+        post: operations["AuthController_confirmPairing"];
         delete?: never;
         options?: never;
         head?: never;
@@ -237,6 +157,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
+        /**
+         * Login with phone number
+         * @description Send OTP code to user WhatsApp for login
+         */
         post: operations["AuthController_login"];
         delete?: never;
         options?: never;
@@ -244,7 +168,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/auth/forgot-password": {
+    "/auth/verify-otp": {
         parameters: {
             query?: never;
             header?: never;
@@ -253,69 +177,29 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["AuthController_forgotPassword"];
+        /**
+         * Verify OTP code
+         * @description Verify OTP code and complete login
+         */
+        post: operations["AuthController_verifyOtp"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/auth/reset-password": {
+    "/auth/me": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get?: never;
-        put?: never;
-        post: operations["AuthController_resetPassword"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/auth/create-password": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["AuthController_createPassword"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/auth/activation-token/status": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["AuthController_getTokenStatus"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/auth/refresh-token": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["AuthController_refreshPassword"];
+        /**
+         * Get current user
+         * @description Get the currently authenticated user information
+         */
+        get: operations["AuthController_getMe"];
         put?: never;
         post?: never;
         delete?: never;
@@ -324,16 +208,390 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/auth/hubspot-impersonate/{userId}": {
+    "/users/me": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get: operations["AuthController_getHubspotUser"];
+        /** Get current user profile */
+        get: operations["UserController_getMe"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update current user profile */
+        patch: operations["UserController_updateMe"];
+        trace?: never;
+    };
+    "/users/me/import-whatsapp": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Import WhatsApp Business data for current user */
+        post: operations["UserController_importWhatsAppData"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/users/me/stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get current user statistics */
+        get: operations["UserController_getStats"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/products": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get all products for current user */
+        get: operations["ProductsController_getAllProducts"];
+        put?: never;
+        /** Create a new product */
+        post: operations["ProductsController_createProduct"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/products/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get product by ID */
+        get: operations["ProductsController_getProduct"];
+        put?: never;
+        post?: never;
+        /** Delete a product */
+        delete: operations["ProductsController_deleteProduct"];
+        options?: never;
+        head?: never;
+        /** Update an existing product */
+        patch: operations["ProductsController_updateProduct"];
+        trace?: never;
+    };
+    "/products/{id}/metadata": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add metadata to a product */
+        post: operations["ProductsController_addMetadata"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/settings/business": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get business information */
+        get: operations["SettingsController_getBusinessInfo"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update business information */
+        patch: operations["SettingsController_updateBusinessInfo"];
+        trace?: never;
+    };
+    "/settings/delivery-locations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get all delivery locations */
+        get: operations["SettingsController_getDeliveryLocations"];
+        put?: never;
+        /** Create a new delivery location */
+        post: operations["SettingsController_createDeliveryLocation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/settings/delivery-locations/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete a delivery location */
+        delete: operations["SettingsController_deleteDeliveryLocation"];
+        options?: never;
+        head?: never;
+        /** Update a delivery location */
+        patch: operations["SettingsController_updateDeliveryLocation"];
+        trace?: never;
+    };
+    "/settings/payment-methods": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get all payment methods */
+        get: operations["SettingsController_getPaymentMethods"];
+        put?: never;
+        /** Create a new payment method */
+        post: operations["SettingsController_createPaymentMethod"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/settings/payment-methods/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete a payment method */
+        delete: operations["SettingsController_deletePaymentMethod"];
+        options?: never;
+        head?: never;
+        /** Update a payment method */
+        patch: operations["SettingsController_updatePaymentMethod"];
+        trace?: never;
+    };
+    "/conversations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get all conversations for current user */
+        get: operations["ConversationsController_getAllConversations"];
+        put?: never;
+        /** Create a new conversation */
+        post: operations["ConversationsController_createConversation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/conversations/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get conversation by ID with messages */
+        get: operations["ConversationsController_getConversation"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update an existing conversation */
+        patch: operations["ConversationsController_updateConversation"];
+        trace?: never;
+    };
+    "/conversations/{id}/tags": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add tag to conversation */
+        post: operations["ConversationsController_addTag"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/conversations/{id}/tags/{tagId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove tag from conversation */
+        delete: operations["ConversationsController_removeTag"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/conversations/{id}/group": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Set group for conversation */
+        patch: operations["ConversationsController_setGroup"];
+        trace?: never;
+    };
+    "/conversations/{id}/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get messages for conversation */
+        get: operations["ConversationsController_getMessages"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get all orders for current user */
+        get: operations["OrdersController_getAllOrders"];
+        put?: never;
+        /** Create a new order */
+        post: operations["OrdersController_createOrder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/orders/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get order by ID */
+        get: operations["OrdersController_getOrder"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update an existing order */
+        patch: operations["OrdersController_updateOrder"];
+        trace?: never;
+    };
+    "/orders/{id}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update order status */
+        patch: operations["OrdersController_updateOrderStatus"];
+        trace?: never;
+    };
+    "/orders/{id}/delivered": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mark order as delivered */
+        post: operations["OrdersController_markAsDelivered"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/webhooks/whatsapp/connected": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Webhook appelé quand WhatsApp se connecte
+         * @description Endpoint appelé par le whatsapp-connector quand le client WhatsApp est prêt
+         */
+        post: operations["WebhooksController_whatsappConnected"];
         delete?: never;
         options?: never;
         head?: never;
@@ -344,60 +602,450 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        CreateUserDto: {
-            /** @example MANAGER */
-            role: Record<string, never>;
-            hs_object_id: number;
-            token: string;
+        UpdateAgentStatusDto: {
+            /**
+             * @description The new status of the agent
+             * @example RUNNING
+             * @enum {string}
+             */
+            status: "PROVISIONING" | "RUNNING" | "STOPPED" | "ERROR" | "DELETED";
+            /**
+             * @description The connection status of WhatsApp
+             * @example CONNECTED
+             * @enum {string}
+             */
+            connectionStatus?: "CONNECTED" | "DISCONNECTED" | "QR_REQUIRED" | "PAIRING_REQUIRED";
         };
-        CreatePartnerDto: {
-            contact_hs_object_id: number;
-            token: number;
+        RequestPairingDto: {
+            /**
+             * @description Phone number in E.164 format
+             * @example +15551234567
+             */
+            phoneNumber: string;
         };
-        ForgotPasswordDto: {
-            email: string;
+        VerifyPairingDto: {
+            /**
+             * @description Phone number in E.164 format
+             * @example +15551234567
+             */
+            phoneNumber: string;
+            /**
+             * @description WhatsApp profile information
+             * @example {
+             *       "name": "John Doe",
+             *       "picture": "https://..."
+             *     }
+             */
+            whatsappProfile: Record<string, never>;
         };
-        AdminUserDto: {
-            firstname: string;
-            lastname: string;
-            salutation: string;
-            name: string;
-            entreprise_raison_sociale__c: string;
-            salesforcecontactid: string;
-            nom_du_propri_taire__c: string;
-            mobilephone: string;
-            hubspot_contact_id: number;
-            /** @example MANAGER */
-            role: Record<string, never>;
+        ConfirmPairingDto: {
+            /**
+             * @description The pairing token received when requesting the pairing code
+             * @example a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6a7b8c9d0e1f2
+             */
+            pairingToken: string;
         };
-        SfUserDto: {
-            token: string;
-            user: components["schemas"]["AdminUserDto"];
+        LoginDto: {
+            /**
+             * @description Phone number in E.164 format
+             * @example +15551234567
+             */
+            phoneNumber: string;
+        };
+        VerifyOtpDto: {
+            /**
+             * @description Phone number in E.164 format
+             * @example +15551234567
+             */
+            phoneNumber: string;
+            /**
+             * @description 6-digit OTP code
+             * @example 123456
+             */
+            code: string;
         };
         UpdateUserDto: {
-            firstname: string;
-            lastname: string;
-            salutation: string;
+            /** @description User email address */
+            email?: string;
+            /** @description User phone number */
+            phoneNumber?: string;
+        };
+        ImportWhatsAppDataResponseDto: {
+            /** @description Business information imported from WhatsApp */
+            businessInfo: Record<string, never>;
+            /** @description Number of products imported from catalog */
+            productsImported: number;
+            /** @description Number of contacts imported */
+            contactsImported: number;
+        };
+        CreateProductDto: {
+            /**
+             * @description Product name
+             * @example iPhone 15 Pro
+             */
             name: string;
-            entreprise_raison_sociale__c: string;
-            salesforcecontactid: string;
-            nom_du_propri_taire__c: string;
-            mobilephone: string;
-            hubspot_contact_id: number;
+            /**
+             * @description Product description
+             * @example Latest iPhone model with advanced features
+             */
+            description?: string;
+            /**
+             * @description Product price
+             * @example 999.99
+             */
+            price?: number;
+            /**
+             * @description Currency code
+             * @default XAF
+             * @example XAF
+             */
+            currency: string;
+            /**
+             * @description Product category
+             * @example Electronics
+             */
+            category?: string;
+            /**
+             * @description Product images URLs
+             * @example [
+             *       "https://example.com/image1.jpg",
+             *       "https://example.com/image2.jpg"
+             *     ]
+             */
+            images?: string[];
         };
-        UpdatePasswordDto: {
-            new_password: string;
-            old_password: string;
+        UpdateProductDto: {
+            /**
+             * @description Product name
+             * @example iPhone 15 Pro
+             */
+            name?: string;
+            /**
+             * @description Product description
+             * @example Latest iPhone model with advanced features
+             */
+            description?: string;
+            /**
+             * @description Product price
+             * @example 999.99
+             */
+            price?: number;
+            /**
+             * @description Currency code
+             * @default XAF
+             * @example XAF
+             */
+            currency: string;
+            /**
+             * @description Product category
+             * @example Electronics
+             */
+            category?: string;
+            /**
+             * @description Product images URLs
+             * @example [
+             *       "https://example.com/image1.jpg",
+             *       "https://example.com/image2.jpg"
+             *     ]
+             */
+            images?: string[];
         };
-        LoginUserDto: {
-            email: string;
-            password: string;
+        AddMetadataDto: {
+            /**
+             * @description Metadata key
+             * @example size
+             */
+            key: string;
+            /**
+             * @description Metadata value
+             * @example Large
+             */
+            value: string;
+            /**
+             * @description Whether the metadata is visible to customers
+             * @example true
+             */
+            isVisible: boolean;
         };
-        ValidateUserCodeDto: {
-            token: string;
-            email: string;
-            password: string;
+        UpdateBusinessInfoDto: {
+            /**
+             * @description Business name
+             * @example My Business
+             */
+            name?: string;
+            /**
+             * @description Business description
+             * @example We provide quality products and services
+             */
+            description?: string;
+            /**
+             * @description Business address
+             * @example 123 Main Street
+             */
+            address?: string;
+            /**
+             * @description Business city
+             * @example Douala
+             */
+            city?: string;
+            /**
+             * @description Business country
+             * @example Cameroon
+             */
+            country?: string;
+            /**
+             * @description Business website
+             * @example https://mybusiness.com
+             */
+            website?: string;
+            /**
+             * @description Opening hours in JSON format
+             * @example {
+             *       "monday": "09:00-18:00",
+             *       "tuesday": "09:00-18:00",
+             *       "wednesday": "09:00-18:00",
+             *       "thursday": "09:00-18:00",
+             *       "friday": "09:00-18:00",
+             *       "saturday": "09:00-14:00",
+             *       "sunday": "closed"
+             *     }
+             */
+            openingHours?: Record<string, never>;
+            /**
+             * @description Additional phone numbers
+             * @example [
+             *       "+237699999999",
+             *       "+237600000000"
+             *     ]
+             */
+            phoneNumbers?: string[];
         };
+        CreateDeliveryLocationDto: {
+            /**
+             * @description Country name
+             * @example Cameroon
+             */
+            country: string;
+            /**
+             * @description City name
+             * @example Douala
+             */
+            city: string;
+            /**
+             * @description Location name or zone identifier
+             * @example Downtown
+             */
+            name: string;
+            /**
+             * @description Delivery price for this location
+             * @example 5000
+             */
+            price: number;
+        };
+        UpdateDeliveryLocationDto: {
+            /**
+             * @description Country name
+             * @example Cameroon
+             */
+            country?: string;
+            /**
+             * @description City name
+             * @example Douala
+             */
+            city?: string;
+            /**
+             * @description Location name or zone identifier
+             * @example Downtown
+             */
+            name?: string;
+            /**
+             * @description Delivery price for this location
+             * @example 5000
+             */
+            price?: number;
+        };
+        CreatePaymentMethodDto: {
+            /**
+             * @description Payment method type
+             * @example MOBILE_MONEY
+             * @enum {string}
+             */
+            type: "CASH" | "MOBILE_MONEY";
+            /**
+             * @description Mobile money number (required if type is MOBILE_MONEY)
+             * @example +237699999999
+             */
+            mobileMoneyNumber?: string;
+            /**
+             * @description Mobile money provider name (e.g., MTN, Orange)
+             * @example MTN
+             */
+            mobileMoneyName?: string;
+            /**
+             * @description Whether proof of transfer is required
+             * @example true
+             */
+            requiresProof?: boolean;
+        };
+        UpdatePaymentMethodDto: {
+            /**
+             * @description Payment method type
+             * @example MOBILE_MONEY
+             * @enum {string}
+             */
+            type?: "CASH" | "MOBILE_MONEY";
+            /**
+             * @description Mobile money number (required if type is MOBILE_MONEY)
+             * @example +237699999999
+             */
+            mobileMoneyNumber?: string;
+            /**
+             * @description Mobile money provider name (e.g., MTN, Orange)
+             * @example MTN
+             */
+            mobileMoneyName?: string;
+            /**
+             * @description Whether proof of transfer is required
+             * @example true
+             */
+            requiresProof?: boolean;
+        };
+        CreateConversationDto: {
+            /**
+             * @description WhatsApp chat ID
+             * @example 237612345678@c.us
+             */
+            whatsappChatId: string;
+            /**
+             * @description Contact name
+             * @example John Doe
+             */
+            contactName?: string;
+            /**
+             * @description Contact phone number
+             * @example 237612345678
+             */
+            contactNumber: string;
+        };
+        UpdateConversationDto: {
+            /**
+             * @description Contact name
+             * @example John Doe
+             */
+            contactName?: string;
+            /**
+             * @description Whether the conversation requires manual response
+             * @example false
+             */
+            requiresManualResponse?: boolean;
+        };
+        CreateOrderDto: {
+            /**
+             * @description Conversation ID
+             * @example clxxx123456789
+             */
+            conversationId: string;
+            /**
+             * @description Customer name
+             * @example John Doe
+             */
+            customerName: string;
+            /**
+             * @description Customer phone number
+             * @example 237612345678
+             */
+            customerPhone: string;
+            /**
+             * @description Products (JSON array)
+             * @example [
+             *       {
+             *         "productId": "clxxx123",
+             *         "name": "iPhone 15 Pro",
+             *         "quantity": 1,
+             *         "price": 999.99
+             *       }
+             *     ]
+             */
+            products: Record<string, never>;
+            /**
+             * @description Total amount
+             * @example 999.99
+             */
+            totalAmount: number;
+            /**
+             * @description Delivery location ID
+             * @example clxxx789
+             */
+            deliveryLocationId?: string;
+            /**
+             * @description Payment method ID
+             * @example clxxx456
+             */
+            paymentMethodId?: string;
+            /**
+             * @description Promise date for the order
+             * @example 2025-11-20T10:00:00Z
+             */
+            promiseDate?: string;
+        };
+        UpdateOrderDto: {
+            /**
+             * @description Customer name
+             * @example John Doe
+             */
+            customerName?: string;
+            /**
+             * @description Customer phone number
+             * @example 237612345678
+             */
+            customerPhone?: string;
+            /**
+             * @description Products (JSON array)
+             * @example [
+             *       {
+             *         "productId": "clxxx123",
+             *         "name": "iPhone 15 Pro",
+             *         "quantity": 1,
+             *         "price": 999.99
+             *       }
+             *     ]
+             */
+            products?: Record<string, never>;
+            /**
+             * @description Total amount
+             * @example 999.99
+             */
+            totalAmount?: number;
+            /**
+             * @description Delivery location ID
+             * @example clxxx789
+             */
+            deliveryLocationId?: string;
+            /**
+             * @description Payment method ID
+             * @example clxxx456
+             */
+            paymentMethodId?: string;
+            /**
+             * @description Promise date for the order
+             * @example 2025-11-20T10:00:00Z
+             */
+            promiseDate?: string;
+            /**
+             * @description Order status
+             * @enum {string}
+             */
+            status?: "NEGOTIATION" | "CONFIRMED" | "DELIVERED" | "CANCELLED";
+        };
+        UpdateOrderStatusDto: {
+            /**
+             * @description Order status
+             * @example CONFIRMED
+             * @enum {string}
+             */
+            status: "NEGOTIATION" | "CONFIRMED" | "DELIVERED" | "CANCELLED";
+        };
+        WhatsAppConnectedDto: Record<string, never>;
     };
     responses: never;
     parameters: never;
@@ -515,7 +1163,7 @@ export interface operations {
             };
         };
     };
-    UsersController_me: {
+    WhatsAppAgentController_getMyAgent: {
         parameters: {
             query?: never;
             header?: never;
@@ -524,7 +1172,15 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
+            /** @description Returns the WhatsApp agent for the current user */
             200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description WhatsApp agent not found for this user */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -532,60 +1188,24 @@ export interface operations {
             };
         };
     };
-    UsersController_disableUserFromEmail: {
+    WhatsAppAgentController_provisionAgent: {
         parameters: {
             query?: never;
             header?: never;
-            path: {
-                email: string;
-            };
+            path?: never;
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    UsersController_enableUserFromContact: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CreateUserDto"];
-            };
-        };
-        responses: {
+            /** @description WhatsApp agent successfully provisioned */
             201: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content?: never;
             };
-        };
-    };
-    UsersController_create: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CreateUserDto"];
-            };
-        };
-        responses: {
-            201: {
+            /** @description WhatsApp agent already exists for this user */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -593,108 +1213,31 @@ export interface operations {
             };
         };
     };
-    UsersController_createPartner: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CreatePartnerDto"];
-            };
-        };
-        responses: {
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    UsersController_getHubspotUser: {
-        parameters: {
-            query: {
-                token: string;
-            };
-            header?: never;
-            path: {
-                contactId: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    UsersController_resendFirstEmail: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ForgotPasswordDto"];
-            };
-        };
-        responses: {
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    UsersController_updateUserFromHubspot: {
+    WhatsAppAgentController_updateAgentStatus: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                email: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["SfUserDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    UsersController_adminUpdate: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
+                /** @description WhatsApp agent ID */
                 id: string;
             };
             cookie?: never;
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["AdminUserDto"];
+                "application/json": components["schemas"]["UpdateAgentStatusDto"];
             };
         };
         responses: {
+            /** @description Agent status successfully updated */
             200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description WhatsApp agent not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -702,60 +1245,27 @@ export interface operations {
             };
         };
     };
-    UsersController_update: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UpdateUserDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    UsersController_updatePassword: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UpdatePasswordDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    UsersController_showDetailUser: {
+    WhatsAppAgentController_checkAgentHealth: {
         parameters: {
             query?: never;
             header?: never;
             path: {
+                /** @description WhatsApp agent ID */
                 id: string;
             };
             cookie?: never;
         };
         requestBody?: never;
         responses: {
+            /** @description Returns the health status of the agent */
             200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description WhatsApp agent not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -763,7 +1273,7 @@ export interface operations {
             };
         };
     };
-    UsersController_uploadFile: {
+    AuthController_requestPairingCode: {
         parameters: {
             query?: never;
             header?: never;
@@ -772,14 +1282,111 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "multipart/form-data": {
-                    /** Format: binary */
-                    image?: string;
-                };
+                "application/json": components["schemas"]["RequestPairingDto"];
             };
         };
         responses: {
-            200: {
+            /** @description Pairing code sent successfully */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @example 12345678 */
+                        code?: string;
+                        /** @example Pairing code sent successfully */
+                        message?: string;
+                    };
+                };
+            };
+            /** @description Bad request - User is already paired */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AuthController_verifyPairing: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VerifyPairingDto"];
+            };
+        };
+        responses: {
+            /** @description Pairing verified successfully */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        accessToken?: string;
+                        user?: {
+                            id?: string;
+                            phoneNumber?: string;
+                            status?: string;
+                            whatsappProfile?: Record<string, never>;
+                        };
+                    };
+                };
+            };
+            /** @description User not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AuthController_confirmPairing: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConfirmPairingDto"];
+            };
+        };
+        responses: {
+            /** @description Pairing confirmed successfully */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        accessToken?: string;
+                        user?: {
+                            id?: string;
+                            phoneNumber?: string;
+                            status?: string;
+                            whatsappProfile?: Record<string, never>;
+                        };
+                    };
+                };
+            };
+            /** @description WhatsApp connection not yet confirmed */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid or expired pairing token */
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -796,11 +1403,31 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["LoginUserDto"];
+                "application/json": components["schemas"]["LoginDto"];
             };
         };
         responses: {
+            /** @description OTP sent successfully */
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @example OTP envoyé avec succès */
+                        message?: string;
+                    };
+                };
+            };
+            /** @description User must complete pairing before logging in */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description User not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -808,7 +1435,7 @@ export interface operations {
             };
         };
     };
-    AuthController_forgotPassword: {
+    AuthController_verifyOtp: {
         parameters: {
             query?: never;
             header?: never;
@@ -817,11 +1444,31 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["ForgotPasswordDto"];
+                "application/json": components["schemas"]["VerifyOtpDto"];
             };
         };
         responses: {
+            /** @description OTP verified successfully */
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        accessToken?: string;
+                        user?: {
+                            id?: string;
+                            phoneNumber?: string;
+                            status?: string;
+                            whatsappProfile?: Record<string, never>;
+                            /** Format: date-time */
+                            lastLoginAt?: string;
+                        };
+                    };
+                };
+            };
+            /** @description Invalid or expired OTP */
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -829,70 +1476,7 @@ export interface operations {
             };
         };
     };
-    AuthController_resetPassword: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ValidateUserCodeDto"];
-            };
-        };
-        responses: {
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    AuthController_createPassword: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ValidateUserCodeDto"];
-            };
-        };
-        responses: {
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    AuthController_getTokenStatus: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ForgotPasswordDto"];
-            };
-        };
-        responses: {
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    AuthController_refreshPassword: {
+    AuthController_getMe: {
         parameters: {
             query?: never;
             header?: never;
@@ -901,27 +1485,1404 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
+            /** @description Current user information */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        id?: string;
+                        phoneNumber?: string;
+                        status?: string;
+                        whatsappProfile?: Record<string, never>;
+                    };
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    UserController_getMe: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description User profile retrieved successfully */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content?: never;
             };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description User not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
         };
     };
-    AuthController_getHubspotUser: {
+    UserController_updateMe: {
         parameters: {
-            query: {
-                token: string;
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateUserDto"];
             };
+        };
+        responses: {
+            /** @description User profile updated successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description User not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    UserController_importWhatsAppData: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description WhatsApp data imported successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportWhatsAppDataResponseDto"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description WhatsApp agent not found for this user */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Failed to import WhatsApp data */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    UserController_getStats: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description User statistics retrieved successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description User not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ProductsController_getAllProducts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of products retrieved successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ProductsController_createProduct: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateProductDto"];
+            };
+        };
+        responses: {
+            /** @description Product created successfully */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Bad request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ProductsController_getProduct: {
+        parameters: {
+            query?: never;
             header?: never;
             path: {
-                userId: string;
+                id: string;
             };
             cookie?: never;
         };
         requestBody?: never;
         responses: {
+            /** @description Product retrieved successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Product not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ProductsController_deleteProduct: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Product deleted successfully */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Product not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ProductsController_updateProduct: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateProductDto"];
+            };
+        };
+        responses: {
+            /** @description Product updated successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Bad request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Product not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ProductsController_addMetadata: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddMetadataDto"];
+            };
+        };
+        responses: {
+            /** @description Metadata added successfully */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Bad request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Product not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    SettingsController_getBusinessInfo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Business information retrieved successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Business information not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    SettingsController_updateBusinessInfo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateBusinessInfoDto"];
+            };
+        };
+        responses: {
+            /** @description Business information updated successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description User not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    SettingsController_getDeliveryLocations: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Delivery locations retrieved successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description User not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    SettingsController_createDeliveryLocation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateDeliveryLocationDto"];
+            };
+        };
+        responses: {
+            /** @description Delivery location created successfully */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description User not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    SettingsController_deleteDeliveryLocation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Delivery location deleted successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Delivery location not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    SettingsController_updateDeliveryLocation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateDeliveryLocationDto"];
+            };
+        };
+        responses: {
+            /** @description Delivery location updated successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Delivery location not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    SettingsController_getPaymentMethods: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Payment methods retrieved successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description User not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    SettingsController_createPaymentMethod: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePaymentMethodDto"];
+            };
+        };
+        responses: {
+            /** @description Payment method created successfully */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description User not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    SettingsController_deletePaymentMethod: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Payment method deleted successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Payment method not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    SettingsController_updatePaymentMethod: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdatePaymentMethodDto"];
+            };
+        };
+        responses: {
+            /** @description Payment method updated successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Payment method not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ConversationsController_getAllConversations: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of conversations retrieved successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ConversationsController_createConversation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateConversationDto"];
+            };
+        };
+        responses: {
+            /** @description Conversation created successfully */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Bad request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ConversationsController_getConversation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Conversation ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Conversation retrieved successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conversation not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ConversationsController_updateConversation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Conversation ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateConversationDto"];
+            };
+        };
+        responses: {
+            /** @description Conversation updated successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Bad request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conversation not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ConversationsController_addTag: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Conversation ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Tag added successfully */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Bad request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conversation or tag not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ConversationsController_removeTag: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Conversation ID */
+                id: string;
+                /** @description Tag ID */
+                tagId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Tag removed successfully */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conversation or tag not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ConversationsController_setGroup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Conversation ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Group set successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Bad request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conversation or group not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ConversationsController_getMessages: {
+        parameters: {
+            query?: {
+                /** @description Number of messages to retrieve */
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                /** @description Conversation ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Messages retrieved successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conversation not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    OrdersController_getAllOrders: {
+        parameters: {
+            query?: {
+                /** @description Filter by order status */
+                status?: "NEGOTIATION" | "CONFIRMED" | "DELIVERED" | "CANCELLED";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of orders retrieved successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    OrdersController_createOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateOrderDto"];
+            };
+        };
+        responses: {
+            /** @description Order created successfully */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Bad request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    OrdersController_getOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Order ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Order retrieved successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Order not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    OrdersController_updateOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Order ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateOrderDto"];
+            };
+        };
+        responses: {
+            /** @description Order updated successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Bad request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Order not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    OrdersController_updateOrderStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Order ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateOrderStatusDto"];
+            };
+        };
+        responses: {
+            /** @description Order status updated successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Bad request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Order not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    OrdersController_markAsDelivered: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Order ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Order marked as delivered successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Order not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    WebhooksController_whatsappConnected: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WhatsAppConnectedDto"];
+            };
+        };
+        responses: {
+            /** @description Connexion traitée avec succès */
             200: {
                 headers: {
                     [name: string]: unknown;

@@ -33,7 +33,7 @@
     "qrcode-terminal": "0.12.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
-    "whatsapp-web.js": "1.26.0"
+    "whatsapp-web.js": "github:pedroslopez/whatsapp-web.js#main"
   },
   "devDependencies": {
     "@nestjs/cli": "^11.0.0",

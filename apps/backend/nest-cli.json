@@ -13,11 +13,6 @@
         "include": "generated/**/*",
         "watchAssets": true
       }
-    ],
-    "plugins": [
-      {
-        "name": "nest-responses-generator-plugin"
-      }
     ]
   }
 }

@@ -1,3 +1,4 @@
+import { HttpService } from '@nestjs/axios';
 import {
   Injectable,
   Logger,
@@ -6,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as qrcodeTerminal from 'qrcode-terminal';
+import { firstValueFrom } from 'rxjs';
 import { Client, LocalAuth } from 'whatsapp-web.js';
 
 import { WebhookService } from './webhook.service';
@@ -20,6 +22,7 @@ export class WhatsAppClientService implements OnModuleInit, OnModuleDestroy {
   constructor(
     private readonly configService: ConfigService,
     private readonly webhookService: WebhookService,
+    private readonly httpService: HttpService,
   ) {}
 
   async onModuleInit() {
@@ -42,14 +45,16 @@ export class WhatsAppClientService implements OnModuleInit, OnModuleDestroy {
       authStrategy: new LocalAuth({
         dataPath: sessionPath,
       }),
+      // webVersion: '2.3000.1026863126',
+      // webVersionCache: { type: 'local', path: './.wwebjs_cache' },
       puppeteer: {
+        // executablePath:
+        //   '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
         headless: true,
         args: [
           '--no-sandbox',
           '--disable-setuid-sandbox',
           '--disable-dev-shm-usage',
-          '--disable-accelerated-2d-canvas',
-          '--no-first-run',
           '--no-zygote',
           '--disable-gpu',
         ],
@@ -102,19 +107,32 @@ export class WhatsAppClientService implements OnModuleInit, OnModuleDestroy {
       this.webhookService.sendEvent('qr', args);
     });
 
-    // Ready - traitement spécial pour le flag isReady
-    this.client.on('ready', (...args) => {
-      this.isReady = true;
-      this.qrCode = null;
-      this.logger.log('WhatsApp client is ready!');
-
-      this.webhookService.sendEvent('ready', args);
+    // Authenticated - événement déclenché lors du pairing réussi
+    // Note: client.info n'est PAS encore disponible à ce stade
+    this.client.on('authenticated', () => {
+      const timestamp = new Date().toISOString();
+      this.logger.log(
+        `[${timestamp}] ✅ WhatsApp client authenticated successfully`,
+      );
+      this.logger.log('⏳ Waiting for "ready" event to retrieve user info...');
     });
 
-    // Authenticated
-    this.client.on('authenticated', (...args) => {
-      this.logger.log('WhatsApp client authenticated successfully');
-      this.webhookService.sendEvent('authenticated', args);
+    // Ready - traitement spécial pour le flag isReady
+    // C'est ICI que client.info devient disponible
+    this.client.on('ready', async (...args) => {
+      const timestamp = new Date().toISOString();
+      this.isReady = true;
+      this.qrCode = null;
+      this.logger.log(`[${timestamp}] ✅ WhatsApp client is ready!`, args);
+      this.logger.log(
+        '📞 Attempting to retrieve phone number and notify backend...',
+      );
+
+      this.webhookService.sendEvent('ready', args);
+
+      // Notify backend of successful pairing
+      // client.info est maintenant disponible
+      await this.notifyBackendConnected();
     });
 
     // Auth failure
@@ -326,5 +344,151 @@ export class WhatsAppClientService implements OnModuleInit, OnModuleDestroy {
    */
   getClient(): Client {
     return this.client;
+  }
+
+  /**
+   * Request pairing code for phone number authentication
+   */
+  async requestPairingCode(phoneNumber: string): Promise<string> {
+    if (!this.client) {
+      throw new Error('WhatsApp client is not initialized');
+    }
+
+    try {
+      this.logger.log(
+        `Requesting pairing code for phone number: ${phoneNumber}`,
+      );
+      const code = await this.client.requestPairingCode(
+        phoneNumber.replace('+', ''),
+      );
+      this.logger.log(`Pairing code generated successfully`);
+      return code;
+    } catch (error) {
+      this.logger.error('Error requesting pairing code:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get business profile
+   * Note: Cette méthode n'est pas disponible dans l'API officielle wwebjs
+   * Conservée pour compatibilité mais retourne un objet vide
+   */
+  async getBusinessProfile(): Promise<any> {
+    this.logger.warn(
+      'getBusinessProfile is not available in wwebjs API - returning empty object',
+    );
+    return {};
+  }
+
+  /**
+   * Get catalog (products)
+   */
+  async getCatalog(): Promise<any> {
+    if (!this.client) {
+      throw new Error('WhatsApp client is not initialized');
+    }
+
+    if (!this.isReady) {
+      throw new Error('WhatsApp client is not ready');
+    }
+
+    try {
+      this.logger.log('Fetching catalog...');
+      // Get products catalog using the wid from client info
+      const catalog = await (this.client as any).getProductCatalog(
+        this.client.info.wid._serialized,
+      );
+      this.logger.log('Catalog retrieved successfully');
+      return catalog;
+    } catch (error) {
+      this.logger.error('Error getting catalog:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get labels/tags
+   */
+  async getLabels(): Promise<any> {
+    if (!this.client) {
+      throw new Error('WhatsApp client is not initialized');
+    }
+
+    if (!this.isReady) {
+      throw new Error('WhatsApp client is not ready');
+    }
+
+    try {
+      this.logger.log('Fetching labels...');
+      const labels = await this.client.getLabels();
+      this.logger.log('Labels retrieved successfully');
+      return labels;
+    } catch (error) {
+      this.logger.error('Error getting labels:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Notify backend that WhatsApp is connected
+   */
+  private async notifyBackendConnected(): Promise<void> {
+    try {
+      this.logger.log(
+        'Gathering WhatsApp connection information...',
+        this.client.info,
+      );
+
+      // Get phone number and profile info
+      // wid.user contient le numéro sans le '+', on l'ajoute
+      const rawPhoneNumber = this.client.info?.wid?.user || '';
+      const phoneNumber = rawPhoneNumber ? `+${rawPhoneNumber}` : '';
+      let profile: any = {};
+      const businessInfo: any = {};
+
+      if (!phoneNumber) {
+        this.logger.warn(
+          'No phone number available yet, skipping notification',
+        );
+        return;
+      }
+
+      this.logger.log(`Phone number retrieved: ${phoneNumber}`);
+
+      try {
+        profile = {
+          pushname: this.client.info?.pushname || '',
+          platform: this.client.info?.platform || '',
+        };
+      } catch (error) {
+        this.logger.warn('Could not fetch profile:', error);
+      }
+
+      // Note: getBusinessProfile n'existe pas dans wwebjs API
+      // On garde businessInfo vide pour l'instant
+      this.logger.debug(
+        'Business profile info not available in current wwebjs version',
+      );
+
+      const connectionData = {
+        phoneNumber,
+        profile: {
+          ...profile,
+          ...businessInfo,
+        },
+      };
+
+      // Send custom event "pairing_success" to agent webhooks with all info
+      this.logger.log(
+        `Sending pairing_success event to webhooks for ${phoneNumber}`,
+      );
+      await this.webhookService.sendEvent('pairing_success', connectionData);
+
+      this.logger.log('Pairing success event sent to webhooks');
+    } catch (error: any) {
+      this.logger.error('Failed to notify of connection:', error.message);
+      // Don't throw - this is not critical
+    }
   }
 }

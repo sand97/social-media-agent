@@ -2,15 +2,17 @@ import {
   Body,
   Controller,
   Get,
-  Post,
   HttpException,
   HttpStatus,
+  Post,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
-import { WhatsAppClientService } from './whatsapp-client.service';
-import { WebhookService } from './webhook.service';
+import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+
 import { ExecuteMethodDto } from './dto/execute-method.dto';
+import { RequestPairingCodeDto } from './dto/request-pairing-code.dto';
 import { SetWebhooksDto } from './dto/set-webhooks.dto';
+import { WebhookService } from './webhook.service';
+import { WhatsAppClientService } from './whatsapp-client.service';
 
 @ApiTags('WhatsApp')
 @Controller('whatsapp')
@@ -138,5 +140,142 @@ export class WhatsAppController {
       message: `${dto.urls.length} webhook(s) configured`,
       webhooks: dto.urls,
     };
+  }
+
+  @Post('request-pairing-code')
+  @ApiOperation({
+    summary: 'Request a pairing code for phone number authentication',
+    description:
+      'Generates a pairing code that can be used to authenticate WhatsApp using a phone number instead of QR code',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Pairing code generated successfully',
+    schema: {
+      example: {
+        success: true,
+        code: 'ABCD1234',
+      },
+    },
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Failed to generate pairing code',
+  })
+  async requestPairingCode(@Body() dto: RequestPairingCodeDto) {
+    try {
+      const code = await this.whatsappClientService.requestPairingCode(
+        dto.phoneNumber,
+      );
+
+      return {
+        success: true,
+        code,
+      };
+    } catch (error: any) {
+      throw new HttpException(
+        {
+          success: false,
+          error: error.message,
+        },
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
+
+  @Get('business-profile')
+  @ApiOperation({
+    summary: 'Get business profile information',
+    description: 'Retrieves the WhatsApp Business profile details',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Business profile retrieved successfully',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Failed to retrieve business profile',
+  })
+  async getBusinessProfile() {
+    try {
+      const profile = await this.whatsappClientService.getBusinessProfile();
+
+      return {
+        success: true,
+        profile,
+      };
+    } catch (error: any) {
+      throw new HttpException(
+        {
+          success: false,
+          error: error.message,
+        },
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
+
+  @Get('catalog')
+  @ApiOperation({
+    summary: 'Get product catalog',
+    description: 'Retrieves the WhatsApp Business product catalog',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Catalog retrieved successfully',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Failed to retrieve catalog',
+  })
+  async getCatalog() {
+    try {
+      const catalog = await this.whatsappClientService.getCatalog();
+
+      return {
+        success: true,
+        catalog,
+      };
+    } catch (error: any) {
+      throw new HttpException(
+        {
+          success: false,
+          error: error.message,
+        },
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
+
+  @Get('labels')
+  @ApiOperation({
+    summary: 'Get chat labels/tags',
+    description: 'Retrieves all labels/tags configured in WhatsApp',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Labels retrieved successfully',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Failed to retrieve labels',
+  })
+  async getLabels() {
+    try {
+      const labels = await this.whatsappClientService.getLabels();
+
+      return {
+        success: true,
+        labels,
+      };
+    } catch (error: any) {
+      throw new HttpException(
+        {
+          success: false,
+          error: error.message,
+        },
+        HttpStatus.BAD_REQUEST,
+      );
+    }
   }
 }

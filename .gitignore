@@ -24,3 +24,5 @@ yarn-debug.log*
 /apps/frontend/src/generated/
 /apps/whatsapp-agent/src/generated/
 /apps/whatsapp-connector/src/generated/
+/apps/whatsapp-connector/data/
+/apps/whatsapp-connector/.wwebjs_cache/

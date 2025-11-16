@@ -1,3 +1,10 @@
+import '@app/app.css'
+import { AuthProvider } from '@app/contexts/AuthContext'
+import { theme } from '@app/core/theme'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { ConfigProvider, App as AntdApp } from 'antd'
+import frFR from 'antd/locale/fr_FR'
+import { useState } from 'react'
 import {
   isRouteErrorResponse,
   Links,
@@ -8,12 +15,6 @@ import {
 } from 'react-router'
 
 import type { Route } from './+types/root'
-
-import '@app/app.css'
-import { ConfigProvider, App as AntdApp } from 'antd'
-import { theme } from '@app/core/theme'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { useState } from 'react'
 
 export const links: Route.LinksFunction = () => [
   { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
@@ -41,10 +42,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
       </head>
       <body>
         <QueryClientProvider client={queryClient}>
-          <ConfigProvider theme={theme}>
-            <AntdApp>
-            {children}
-            </AntdApp>
+          <ConfigProvider theme={theme} locale={frFR}>
+            <AntdApp>{children}</AntdApp>
           </ConfigProvider>
         </QueryClientProvider>
         <ScrollRestoration />
@@ -55,7 +54,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
-  return <Outlet />
+  return (
+    <AuthProvider>
+      <Outlet />
+    </AuthProvider>
+  )
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
