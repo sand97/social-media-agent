@@ -370,67 +370,6 @@ export class WhatsAppClientService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
-   * Get business profile
-   * Note: Cette méthode n'est pas disponible dans l'API officielle wwebjs
-   * Conservée pour compatibilité mais retourne un objet vide
-   */
-  async getBusinessProfile(): Promise<any> {
-    this.logger.warn(
-      'getBusinessProfile is not available in wwebjs API - returning empty object',
-    );
-    return {};
-  }
-
-  /**
-   * Get catalog (products)
-   */
-  async getCatalog(): Promise<any> {
-    if (!this.client) {
-      throw new Error('WhatsApp client is not initialized');
-    }
-
-    if (!this.isReady) {
-      throw new Error('WhatsApp client is not ready');
-    }
-
-    try {
-      this.logger.log('Fetching catalog...');
-      // Get products catalog using the wid from client info
-      const catalog = await (this.client as any).getProductCatalog(
-        this.client.info.wid._serialized,
-      );
-      this.logger.log('Catalog retrieved successfully');
-      return catalog;
-    } catch (error) {
-      this.logger.error('Error getting catalog:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Get labels/tags
-   */
-  async getLabels(): Promise<any> {
-    if (!this.client) {
-      throw new Error('WhatsApp client is not initialized');
-    }
-
-    if (!this.isReady) {
-      throw new Error('WhatsApp client is not ready');
-    }
-
-    try {
-      this.logger.log('Fetching labels...');
-      const labels = await this.client.getLabels();
-      this.logger.log('Labels retrieved successfully');
-      return labels;
-    } catch (error) {
-      this.logger.error('Error getting labels:', error);
-      throw error;
-    }
-  }
-
-  /**
    * Notify backend that WhatsApp is connected
    */
   private async notifyBackendConnected(): Promise<void> {
