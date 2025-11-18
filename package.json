@@ -4,19 +4,19 @@
   "type": "module",
   "scripts": {
     "dev": "concurrently \"pnpm dev:backend\" \"pnpm dev:frontend\"",
-    "dev:all": "concurrently -n \"backend,frontend,connector,agent\" -c \"bgBlue,bgMagenta,bgGreen,bgYellow\" \"pnpm dev:backend\" \"pnpm dev:frontend\" \"pnpm dev:whatsapp-connector\" \"pnpm dev:whatsapp-agent\"",
+    "dev:all": "concurrently -n \"backend,frontend,agent\" -c \"bgBlue,bgMagenta,bgYellow\" \"pnpm dev:backend\" \"pnpm dev:frontend\" \"pnpm dev:whatsapp-agent\"",
     "dev:backend": "pnpm --filter backend start:dev",
     "dev:frontend": "pnpm --filter frontend dev",
-    "dev:whatsapp-connector": "pnpm --filter whatsapp-connector start:dev",
+
     "dev:whatsapp-agent": "pnpm --filter whatsapp-agent start:dev",
-    "dev:whatsapp": "concurrently \"pnpm dev:whatsapp-connector\" \"pnpm dev:whatsapp-agent\"",
+
     "build": "pnpm -r build",
     "build:backend": "pnpm --filter backend build",
     "build:frontend": "pnpm --filter frontend build",
-    "build:whatsapp-connector": "pnpm --filter whatsapp-connector build",
+
     "build:whatsapp-agent": "pnpm --filter whatsapp-agent build",
     "start": "pnpm --filter backend start:prod",
-    "start:whatsapp-connector": "pnpm --filter whatsapp-connector start:prod",
+
     "start:whatsapp-agent": "pnpm --filter whatsapp-agent start:prod",
     "lint": "eslint . --max-warnings 15",
     "lint:fix": "eslint . --fix",

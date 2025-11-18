@@ -4,14 +4,17 @@
   "sourceRoot": "src",
   "compilerOptions": {
     "deleteOutDir": true,
+    "tsConfigPath": "tsconfig.build.json",
     "assets": [
       {
         "include": "i18n/**/*",
-        "watchAssets": true
+        "watchAssets": true,
+        "outDir": "dist/apps/backend/src"
       },
       {
         "include": "generated/**/*",
-        "watchAssets": true
+        "watchAssets": true,
+        "outDir": "dist/apps/backend/src"
       }
     ]
   }

@@ -16,6 +16,8 @@
     "baseUrl": "./",
     "paths": {
       "@apps/common": ["../../packages/common/dist/src"],
+      "@packages/wppconnect-client": ["../../packages/wppconnect-client/src/index"],
+      "@packages/wppconnect-client/*": ["../../packages/wppconnect-client/src/*"],
       "@app/*": ["./src/*"]
     },
     "incremental": true,

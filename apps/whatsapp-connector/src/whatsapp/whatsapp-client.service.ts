@@ -1,3 +1,6 @@
+/* eslint-disable no-undef */
+import * as fs from 'fs';
+
 import { HttpService } from '@nestjs/axios';
 import {
   Injectable,
@@ -7,8 +10,9 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as qrcodeTerminal from 'qrcode-terminal';
-import { firstValueFrom } from 'rxjs';
 import { Client, LocalAuth } from 'whatsapp-web.js';
+
+import { CatalogService } from '../catalog/catalog.service';
 
 import { WebhookService } from './webhook.service';
 
@@ -23,6 +27,7 @@ export class WhatsAppClientService implements OnModuleInit, OnModuleDestroy {
     private readonly configService: ConfigService,
     private readonly webhookService: WebhookService,
     private readonly httpService: HttpService,
+    private readonly catalogService: CatalogService,
   ) {}
 
   async onModuleInit() {
@@ -56,8 +61,13 @@ export class WhatsAppClientService implements OnModuleInit, OnModuleDestroy {
           '--disable-setuid-sandbox',
           '--disable-dev-shm-usage',
           '--no-zygote',
+          '--disable-web-security',
+          '--disable-features=IsolateOrigins,site-per-process',
+          '--disable-site-isolation-trials',
           '--disable-gpu',
         ],
+        // @ts-ignore
+        bypassCSP: true,
       },
     });
 
@@ -128,11 +138,69 @@ export class WhatsAppClientService implements OnModuleInit, OnModuleDestroy {
         '📞 Attempting to retrieve phone number and notify backend...',
       );
 
-      this.webhookService.sendEvent('ready', args);
+      const page = this.client.pupPage; // Getter pour la Page Puppeteer (pas besoin d'await ici)
+      this.logger.log('Page puppeteer after ready', page);
+      if (!page) {
+        throw new Error('Puppeteer Page Not Found');
+      }
+      try {
+        // Bypass CSP by reading the script content and injecting it directly
+        const wppScriptPath = require.resolve('@wppconnect/wa-js');
+        const wppScript = fs.readFileSync(wppScriptPath, 'utf8');
 
-      // Notify backend of successful pairing
-      // client.info est maintenant disponible
-      await this.notifyBackendConnected();
+        this.logger.log('WPP script loaded from file, injecting...');
+
+        // Inject the script content directly to bypass CSP
+        await page.evaluate(wppScript);
+
+        this.logger.log('WPP is injected');
+
+        // Wait WA-JS load with timeout
+
+        await page.waitForFunction(() => window.WPP?.isReady, {
+          timeout: 15000,
+        });
+        this.logger.log('WPP is ready');
+
+        // Evaluating code: See https://playwright.dev/docs/evaluating/
+        const isAuthenticated = await page.evaluate(() =>
+          window.WPP.conn.isAuthenticated(),
+        );
+        const id = await page.evaluate(
+          () => window.WPP.conn?.getMyUserId()?._serialized || '',
+        );
+        this.logger.log('isAuthenticated', isAuthenticated);
+
+        const businessInformations = await page.evaluate(
+          async () =>
+            (
+              await window.WPP.contact.getBusinessProfile(
+                window.WPP.conn?.getMyUserId()?._serialized || '',
+              )
+            ).attributes,
+        );
+
+        this.logger.log('businessInformations', businessInformations);
+
+        // Récupération du catalogue et téléchargement des images via CatalogService
+        const catalogWithImages =
+          await this.catalogService.fetchCatalogWithImages(page);
+
+        // Sauvegarder les images avec le système de cache
+        const clientId =
+          this.client.info?.wid?._serialized || this.client.info?.wid?.user;
+
+        await this.catalogService.saveImages(
+          catalogWithImages.images,
+          clientId,
+        );
+
+        // Notify backend of successful pairing
+        await this.notifyBackendConnected(id, businessInformations);
+      } catch (error) {
+        this.logger.error('Error injecting WPP script:', error);
+        this.logger.error('Error details:', error.stack);
+      }
     });
 
     // Auth failure
@@ -147,141 +215,141 @@ export class WhatsAppClientService implements OnModuleInit, OnModuleDestroy {
       this.logger.warn('WhatsApp client disconnected:', args);
       this.webhookService.sendEvent('disconnected', args);
     });
-
-    // Change state
-    this.client.on('change_state', (...args) => {
-      this.logger.log('State changed:', args);
-      this.webhookService.sendEvent('change_state', args);
-    });
-
-    // Messages
-    this.client.on('message', (...args) => {
-      const [message] = args;
-      this.logger.debug(`Message received from ${message?.from || 'unknown'}`);
-      this.webhookService.sendEvent('message', args);
-    });
-
-    this.client.on('message_create', (...args) => {
-      const [message] = args;
-      this.logger.debug(
-        `Message created: ${message?.id?._serialized || 'unknown'}`,
-      );
-      this.webhookService.sendEvent('message_create', args);
-    });
-
-    this.client.on('message_ack', (...args) => {
-      const [message, ack] = args;
-      this.logger.debug(
-        `Message ACK: ${message?.id?._serialized || 'unknown'} - ${ack}`,
-      );
-      this.webhookService.sendEvent('message_ack', args);
-    });
-
-    this.client.on('message_edit', (...args) => {
-      const [message] = args;
-      this.logger.debug(
-        `Message edited: ${message?.id?._serialized || 'unknown'}`,
-      );
-      this.webhookService.sendEvent('message_edit', args);
-    });
-
-    this.client.on('message_revoke_me', (...args) => {
-      const [message] = args;
-      this.logger.debug(
-        `Message revoked for me: ${message?.id?._serialized || 'unknown'}`,
-      );
-      this.webhookService.sendEvent('message_revoke_me', args);
-    });
-
-    this.client.on('message_revoke_everyone', (...args) => {
-      const [message] = args;
-      this.logger.debug(
-        `Message revoked for everyone: ${message?.id?._serialized || 'unknown'}`,
-      );
-      this.webhookService.sendEvent('message_revoke_everyone', args);
-    });
-
-    this.client.on('message_reaction', (...args) => {
-      const [reaction] = args;
-      this.logger.debug(
-        `Message reaction: ${reaction?.id?._serialized || 'unknown'}`,
-      );
-      this.webhookService.sendEvent('message_reaction', args);
-    });
-
-    this.client.on('media_uploaded', (...args) => {
-      const [message] = args;
-      this.logger.debug(
-        `Media uploaded: ${message?.id?._serialized || 'unknown'}`,
-      );
-      this.webhookService.sendEvent('media_uploaded', args);
-    });
-
-    // Groups
-    this.client.on('group_join', (...args) => {
-      this.logger.debug('User joined group');
-      this.webhookService.sendEvent('group_join', args);
-    });
-
-    this.client.on('group_leave', (...args) => {
-      this.logger.debug('User left group');
-      this.webhookService.sendEvent('group_leave', args);
-    });
-
-    this.client.on('group_update', (...args) => {
-      this.logger.debug('Group updated');
-      this.webhookService.sendEvent('group_update', args);
-    });
-
-    this.client.on('group_admin_changed', (...args) => {
-      this.logger.debug('Group admin changed');
-      this.webhookService.sendEvent('group_admin_changed', args);
-    });
-
-    this.client.on('group_membership_request', (...args) => {
-      this.logger.debug('Group membership request');
-      this.webhookService.sendEvent('group_membership_request', args);
-    });
-
-    // Chats
-    this.client.on('chat_archived', (...args) => {
-      const [chat] = args;
-      this.logger.debug(`Chat archived: ${chat?.id?._serialized || 'unknown'}`);
-      this.webhookService.sendEvent('chat_archived', args);
-    });
-
-    this.client.on('chat_removed', (...args) => {
-      const [chat] = args;
-      this.logger.debug(`Chat removed: ${chat?.id?._serialized || 'unknown'}`);
-      this.webhookService.sendEvent('chat_removed', args);
-    });
-
-    // Contacts
-    this.client.on('contact_changed', (...args) => {
-      const [contact] = args;
-      this.logger.debug(
-        `Contact changed: ${contact?.id?._serialized || 'unknown'}`,
-      );
-      this.webhookService.sendEvent('contact_changed', args);
-    });
-
-    // Calls
-    this.client.on('incoming_call', (...args) => {
-      this.logger.debug('Incoming call');
-      this.webhookService.sendEvent('incoming_call', args);
-    });
-
-    // Vote update (pour les polls)
-    this.client.on('vote_update', (...args) => {
-      this.logger.debug('Vote update');
-      this.webhookService.sendEvent('vote_update', args);
-    });
-
-    // Code (pour l'authentification par code)
-    this.client.on('code', (...args) => {
-      this.logger.debug('Authentication code received');
-      this.webhookService.sendEvent('code', args);
-    });
+    //
+    // // Change state
+    // this.client.on('change_state', (...args) => {
+    //   this.logger.log('State changed:', args);
+    //   this.webhookService.sendEvent('change_state', args);
+    // });
+    //
+    // // Messages
+    // this.client.on('message', (...args) => {
+    //   const [message] = args;
+    //   this.logger.debug(`Message received from ${message?.from || 'unknown'}`);
+    //   this.webhookService.sendEvent('message', args);
+    // });
+    //
+    // this.client.on('message_create', (...args) => {
+    //   const [message] = args;
+    //   this.logger.debug(
+    //     `Message created: ${message?.id?._serialized || 'unknown'}`,
+    //   );
+    //   this.webhookService.sendEvent('message_create', args);
+    // });
+    //
+    // this.client.on('message_ack', (...args) => {
+    //   const [message, ack] = args;
+    //   this.logger.debug(
+    //     `Message ACK: ${message?.id?._serialized || 'unknown'} - ${ack}`,
+    //   );
+    //   this.webhookService.sendEvent('message_ack', args);
+    // });
+    //
+    // this.client.on('message_edit', (...args) => {
+    //   const [message] = args;
+    //   this.logger.debug(
+    //     `Message edited: ${message?.id?._serialized || 'unknown'}`,
+    //   );
+    //   this.webhookService.sendEvent('message_edit', args);
+    // });
+    //
+    // this.client.on('message_revoke_me', (...args) => {
+    //   const [message] = args;
+    //   this.logger.debug(
+    //     `Message revoked for me: ${message?.id?._serialized || 'unknown'}`,
+    //   );
+    //   this.webhookService.sendEvent('message_revoke_me', args);
+    // });
+    //
+    // this.client.on('message_revoke_everyone', (...args) => {
+    //   const [message] = args;
+    //   this.logger.debug(
+    //     `Message revoked for everyone: ${message?.id?._serialized || 'unknown'}`,
+    //   );
+    //   this.webhookService.sendEvent('message_revoke_everyone', args);
+    // });
+    //
+    // this.client.on('message_reaction', (...args) => {
+    //   const [reaction] = args;
+    //   this.logger.debug(
+    //     `Message reaction: ${reaction?.id?._serialized || 'unknown'}`,
+    //   );
+    //   this.webhookService.sendEvent('message_reaction', args);
+    // });
+    //
+    // this.client.on('media_uploaded', (...args) => {
+    //   const [message] = args;
+    //   this.logger.debug(
+    //     `Media uploaded: ${message?.id?._serialized || 'unknown'}`,
+    //   );
+    //   this.webhookService.sendEvent('media_uploaded', args);
+    // });
+    //
+    // // Groups
+    // this.client.on('group_join', (...args) => {
+    //   this.logger.debug('User joined group');
+    //   this.webhookService.sendEvent('group_join', args);
+    // });
+    //
+    // this.client.on('group_leave', (...args) => {
+    //   this.logger.debug('User left group');
+    //   this.webhookService.sendEvent('group_leave', args);
+    // });
+    //
+    // this.client.on('group_update', (...args) => {
+    //   this.logger.debug('Group updated');
+    //   this.webhookService.sendEvent('group_update', args);
+    // });
+    //
+    // this.client.on('group_admin_changed', (...args) => {
+    //   this.logger.debug('Group admin changed');
+    //   this.webhookService.sendEvent('group_admin_changed', args);
+    // });
+    //
+    // this.client.on('group_membership_request', (...args) => {
+    //   this.logger.debug('Group membership request');
+    //   this.webhookService.sendEvent('group_membership_request', args);
+    // });
+    //
+    // // Chats
+    // this.client.on('chat_archived', (...args) => {
+    //   const [chat] = args;
+    //   this.logger.debug(`Chat archived: ${chat?.id?._serialized || 'unknown'}`);
+    //   this.webhookService.sendEvent('chat_archived', args);
+    // });
+    //
+    // this.client.on('chat_removed', (...args) => {
+    //   const [chat] = args;
+    //   this.logger.debug(`Chat removed: ${chat?.id?._serialized || 'unknown'}`);
+    //   this.webhookService.sendEvent('chat_removed', args);
+    // });
+    //
+    // // Contacts
+    // this.client.on('contact_changed', (...args) => {
+    //   const [contact] = args;
+    //   this.logger.debug(
+    //     `Contact changed: ${contact?.id?._serialized || 'unknown'}`,
+    //   );
+    //   this.webhookService.sendEvent('contact_changed', args);
+    // });
+    //
+    // // Calls
+    // this.client.on('incoming_call', (...args) => {
+    //   this.logger.debug('Incoming call');
+    //   this.webhookService.sendEvent('incoming_call', args);
+    // });
+    //
+    // // Vote update (pour les polls)
+    // this.client.on('vote_update', (...args) => {
+    //   this.logger.debug('Vote update');
+    //   this.webhookService.sendEvent('vote_update', args);
+    // });
+    //
+    // // Code (pour l'authentification par code)
+    // this.client.on('code', (...args) => {
+    //   this.logger.debug('Authentication code received');
+    //   this.webhookService.sendEvent('code', args);
+    // });
 
     this.logger.log(`Listening to ${events.length} WhatsApp events`);
   }
@@ -372,7 +440,10 @@ export class WhatsAppClientService implements OnModuleInit, OnModuleDestroy {
   /**
    * Notify backend that WhatsApp is connected
    */
-  private async notifyBackendConnected(): Promise<void> {
+  private async notifyBackendConnected(
+    id: string,
+    businessInfo: any,
+  ): Promise<void> {
     try {
       this.logger.log(
         'Gathering WhatsApp connection information...',
@@ -384,7 +455,6 @@ export class WhatsAppClientService implements OnModuleInit, OnModuleDestroy {
       const rawPhoneNumber = this.client.info?.wid?.user || '';
       const phoneNumber = rawPhoneNumber ? `+${rawPhoneNumber}` : '';
       let profile: any = {};
-      const businessInfo: any = {};
 
       if (!phoneNumber) {
         this.logger.warn(
@@ -404,18 +474,11 @@ export class WhatsAppClientService implements OnModuleInit, OnModuleDestroy {
         this.logger.warn('Could not fetch profile:', error);
       }
 
-      // Note: getBusinessProfile n'existe pas dans wwebjs API
-      // On garde businessInfo vide pour l'instant
-      this.logger.debug(
-        'Business profile info not available in current wwebjs version',
-      );
-
       const connectionData = {
         phoneNumber,
-        profile: {
-          ...profile,
-          ...businessInfo,
-        },
+        profile: profile,
+        id,
+        businessInfo,
       };
 
       // Send custom event "pairing_success" to agent webhooks with all info

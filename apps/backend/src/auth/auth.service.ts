@@ -87,11 +87,9 @@ export class AuthService {
       this.logger.log(`Pairing code request on: ${connectorUrl}`);
 
       // Request pairing code from connector
-      const result = await lastValueFrom(
-        this.connectorClientService.requestPairingCode(
-          connectorUrl,
-          phoneNumber,
-        ),
+      const result = await this.connectorClientService.requestPairingCode(
+        connectorUrl,
+        user.id,
       );
 
       this.logger.log(
@@ -285,8 +283,11 @@ export class AuthService {
 
       // Send OTP via WhatsApp
       const message = `Votre code de connexion est: ${otpCode}\n\nCe code expire dans 5 minutes.`;
-      await lastValueFrom(
-        this.connectorClientService.sendMessage(agentUrl, phoneNumber, message),
+      await this.connectorClientService.sendMessage(
+        agentUrl,
+        user.id,
+        phoneNumber,
+        message,
       );
 
       this.logger.log(`OTP sent successfully to ${phoneNumber}`);

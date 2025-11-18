@@ -307,63 +307,6 @@
           "WhatsApp"
         ]
       }
-    },
-    "/whatsapp/business-profile": {
-      "get": {
-        "operationId": "WhatsAppController_getBusinessProfile",
-        "summary": "Get business profile information",
-        "description": "Retrieves the WhatsApp Business profile details",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "Business profile retrieved successfully"
-          },
-          "400": {
-            "description": "Failed to retrieve business profile"
-          }
-        },
-        "tags": [
-          "WhatsApp"
-        ]
-      }
-    },
-    "/whatsapp/catalog": {
-      "get": {
-        "operationId": "WhatsAppController_getCatalog",
-        "summary": "Get product catalog",
-        "description": "Retrieves the WhatsApp Business product catalog",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "Catalog retrieved successfully"
-          },
-          "400": {
-            "description": "Failed to retrieve catalog"
-          }
-        },
-        "tags": [
-          "WhatsApp"
-        ]
-      }
-    },
-    "/whatsapp/labels": {
-      "get": {
-        "operationId": "WhatsAppController_getLabels",
-        "summary": "Get chat labels/tags",
-        "description": "Retrieves all labels/tags configured in WhatsApp",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "Labels retrieved successfully"
-          },
-          "400": {
-            "description": "Failed to retrieve labels"
-          }
-        },
-        "tags": [
-          "WhatsApp"
-        ]
-      }
     }
   },
   "info": {

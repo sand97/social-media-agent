@@ -8,9 +8,9 @@
   "scripts": {
     "build": "nest build",
     "start": "nest start",
-    "start:dev": "nest start --watch",
-    "start:debug": "nest start --debug --watch",
-    "start:prod": "node dist/main",
+    "start:dev": "nest start --watch --entryFile apps/whatsapp-agent/src/main",
+    "start:debug": "nest start --debug --watch --entryFile apps/whatsapp-agent/src/main",
+    "start:prod": "node dist/apps/whatsapp-agent/src/main",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
@@ -20,6 +20,7 @@
   },
   "dependencies": {
     "@apps/common": "workspace:*",
+    "@packages/wppconnect-client": "workspace:*",
     "@langchain/core": "^1.0.0",
     "@langchain/google-genai": "^0.2.0",
     "@langchain/openai": "^1.1.0",

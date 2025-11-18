@@ -1,8 +1,10 @@
-import { Module } from '@nestjs/common';
 import { HttpModule } from '@nestjs/axios';
+import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { WhatsAppClientService } from './whatsapp-client.service';
+
+import { CatalogModule } from '../catalog/catalog.module';
 import { WebhookService } from './webhook.service';
+import { WhatsAppClientService } from './whatsapp-client.service';
 import { WhatsAppController } from './whatsapp.controller';
 
 @Module({
@@ -12,6 +14,7 @@ import { WhatsAppController } from './whatsapp.controller';
       maxRedirects: 5,
     }),
     ConfigModule,
+    CatalogModule,
   ],
   controllers: [WhatsAppController],
   providers: [WhatsAppClientService, WebhookService],

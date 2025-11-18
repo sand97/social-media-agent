@@ -77,20 +77,24 @@ export class UserService {
     try {
       // Get agent URL for user
       const agentUrl = await this.whatsappAgentService.getAgentUrl(userId);
+      const user = await this.getById(userId);
+      if (!user) {
+        throw new NotFoundException('User not found');
+      }
 
       // Get business profile
-      const businessProfileData = await firstValueFrom(
-        this.connectorClient.getBusinessProfile(agentUrl),
+      const businessProfileData = await this.connectorClient.getBusinessProfile(
+        agentUrl,
+        user.id,
       );
 
       // Get catalog
-      const catalogData = await firstValueFrom(
-        this.connectorClient.getCatalog(agentUrl),
-      );
+      const catalogData = await this.connectorClient.getCatalog(agentUrl, user.id);
 
       // Get contacts
-      const contactsData = await firstValueFrom(
-        this.connectorClient.getContacts(agentUrl),
+      const contactsData = await this.connectorClient.getContacts(
+        agentUrl,
+        user.id,
       );
 
       // Update/create BusinessInfo record

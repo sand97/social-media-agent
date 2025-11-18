@@ -15,10 +15,61 @@ services:
     depends_on:
       database:
         condition: service_healthy
+      wppconnect-server:
+        condition: service_started
+      whatsapp-agent:
+        condition: service_started
     volumes:
       - .:/app # Bind-mount monorepo into container
       - /app/node_modules # Anonymous volume for root node_modules
       - /app/apps/backend/node_modules # Anonymous volume for backend node_modules
+      - /app/packages/common/node_modules # Anonymous volume for common node_modules
+    networks:
+      - webnet
+
+  # WPPConnect Server (replaces whatsapp-connector)
+  wppconnect-server:
+    container_name: apps-wppconnect-server
+    build:
+      context: .gemini/tmp/wppconnect-server-src # Build from the cloned source
+      dockerfile: Dockerfile # Dockerfile is now directly in the context
+    image: wppconnect-server-custom:latest # Tag the custom image # Use the official WPPConnect Server image
+    restart: unless-stopped
+    ports:
+      - "3001:3001" # Expose WPPConnect Server API
+    env_file:
+      - ./.env.wppconnect-server # Use a new .env for WPPConnect Server
+    environment:
+      WPPCONNECT_WEBHOOK_URL: http://whatsapp-agent:3002/webhook/message # Webhook to whatsapp-agent
+      WPPCONNECT_SECRET_KEY: your-wppconnect-secret-key # IMPORTANT: Change this in production
+      WPPCONNECT_SESSION_PATH: /app/data/sessions
+    volumes:
+      - wppconnect_session_data:/app/data/sessions # Persist session data
+    networks:
+      - webnet
+
+  # WhatsApp Agent Service
+  whatsapp-agent:
+    container_name: apps-whatsapp-agent
+    build:
+      context: . # Build from monorepo root
+      dockerfile: apps/whatsapp-agent/Dockerfile
+      target: development # Use development stage
+    restart: unless-stopped
+    ports:
+      - "3002:3002"
+    env_file:
+      - ./apps/whatsapp-agent/.env
+    environment:
+      CONNECTOR_URL: http://wppconnect-server:3001 # Agent talks to WPPConnect Server
+      BACKEND_URL: http://backend:3000 # Agent talks to backend
+    depends_on:
+      wppconnect-server:
+        condition: service_started
+    volumes:
+      - .:/app # Bind-mount monorepo into container
+      - /app/node_modules # Anonymous volume for root node_modules
+      - /app/apps/whatsapp-agent/node_modules # Anonymous volume for agent node_modules
       - /app/packages/common/node_modules # Anonymous volume for common node_modules
     networks:
       - webnet
@@ -67,3 +118,4 @@ networks:
 volumes:
   database_data:
   redis_data:
+  wppconnect_session_data: # New volume for WPPConnect Server session data
