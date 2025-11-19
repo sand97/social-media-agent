@@ -2,16 +2,21 @@
 // If you're using CommonJS (CJS) syntax, use `require("./instrument.ts");`
 // import "@app/instrument.ts";
 
-import { ValidationPipe } from '@nestjs/common';
-import { NestFactory } from '@nestjs/core';
-import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
-
-import { AppModule } from '@app/app.module';
 import { mkdirSync, writeFileSync } from 'fs';
 import { join } from 'path';
 
+import { AppModule } from '@app/app.module';
+import { ValidationPipe } from '@nestjs/common';
+import { NestFactory } from '@nestjs/core';
+import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import * as express from 'express';
+
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
+  // Augmenter la limite de taille des payloads pour les uploads d'images en base64
+  app.use(express.json({ limit: '10mb' }));
+  app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
   // Enable CORS
   app.enableCors({
@@ -39,16 +44,15 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api', app, document);
 
-    // Generate swagger.json file
-    const outputDir = join(__dirname, '..', 'swagger-output');
-    mkdirSync(outputDir, { recursive: true });
-    writeFileSync(
-      join(outputDir, 'swagger.json'),
-      JSON.stringify(document, null, 2)
-    );
-    
-    console.log('✅ Swagger JSON generated at swagger-output/swagger.json');
-    
+  // Generate swagger.json file
+  const outputDir = join(__dirname, '..', 'swagger-output');
+  mkdirSync(outputDir, { recursive: true });
+  writeFileSync(
+    join(outputDir, 'swagger.json'),
+    JSON.stringify(document, null, 2),
+  );
+
+  console.log('✅ Swagger JSON generated at swagger-output/swagger.json');
 
   const port = process.env.PORT || 3000;
   await app.listen(port);

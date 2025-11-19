@@ -9,6 +9,7 @@ import {
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 
 import { ExecuteMethodDto } from './dto/execute-method.dto';
+import { ExecutePageScriptDto } from './dto/execute-page-script.dto';
 import { RequestPairingCodeDto } from './dto/request-pairing-code.dto';
 import { SetWebhooksDto } from './dto/set-webhooks.dto';
 import { WebhookService } from './webhook.service';
@@ -53,6 +54,47 @@ export class WhatsAppController {
         {
           success: false,
           method: dto.method,
+          error: error.message,
+        },
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
+
+  @Post('execute-script')
+  @ApiOperation({
+    summary: 'Exécuter du code JavaScript dans la page WhatsApp Web',
+    description:
+      "Permet d'exécuter du code JavaScript arbitraire dans le contexte de la page WhatsApp Web (accès à window.WPP, etc.)",
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Script exécuté avec succès',
+    schema: {
+      example: {
+        success: true,
+        result: { collections: [], products: [] },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 400,
+    description: "Client non prêt ou erreur d'exécution",
+  })
+  async executePageScript(@Body() dto: ExecutePageScriptDto) {
+    try {
+      const result = await this.whatsappClientService.executePageScript(
+        dto.script,
+      );
+
+      return {
+        success: true,
+        result,
+      };
+    } catch (error: any) {
+      throw new HttpException(
+        {
+          success: false,
           error: error.message,
         },
         HttpStatus.BAD_REQUEST,

@@ -1,17 +1,13 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import {
-  OpenAPI,
-  OpenAPIConfig,
-  request as __request,
-  ApiRequestOptions,
-} from '@packages/wppconnect-client';
+import axios, { AxiosInstance } from 'axios';
 
 @Injectable()
 export class ConnectorClientService {
   private readonly logger = new Logger(ConnectorClientService.name);
   private readonly connectorUrl: string;
   public readonly sessionName: string;
+  private axiosInstance: AxiosInstance;
 
   constructor(private readonly configService: ConfigService) {
     this.connectorUrl = this.configService.get<string>(
@@ -22,161 +18,109 @@ export class ConnectorClientService {
       'WHATSAPP_SESSION_NAME',
       'whatsapp-agent-session',
     );
+
+    this.axiosInstance = axios.create({
+      baseURL: this.connectorUrl,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      timeout: 30000, // 30 seconds timeout
+    });
+
     this.logger.log(`Connector URL configured: ${this.connectorUrl}`);
     this.logger.log(`Session Name: ${this.sessionName}`);
   }
 
-  private getRequestConfig(): OpenAPIConfig {
-    const secretKey = this.configService.get<string>('WPPCONNECT_SECRET_KEY');
-    return {
-      ...OpenAPI,
-      BASE: this.connectorUrl,
-      HEADERS: secretKey
-        ? {
-            Authorization: `Bearer ${secretKey}`,
-          }
-        : undefined,
-    };
-  }
-
-  private async request<T>(options: ApiRequestOptions): Promise<T> {
-    const config = this.getRequestConfig();
-    return __request(config, options);
-  }
-
   /**
-   * Envoie un message WhatsApp
+   * Send a WhatsApp message
    */
   async sendMessage(chatId: string, content: string): Promise<any> {
-    return this.request({
-      method: 'POST',
-      url: '/api/{session}/send-message',
-      path: {
-        session: this.sessionName,
-      },
-      body: {
-        phone: chatId,
-        message: content,
-      },
+    this.logger.debug(`[CONNECTOR] Sending message to ${chatId}`);
+
+    const response = await this.axiosInstance.post('/whatsapp/send-message', {
+      sessionName: this.sessionName,
+      to: chatId,
+      message: content,
     });
+
+    return response.data;
   }
 
   /**
-   * Récupère un chat par ID
+   * Get a chat by ID
    */
   async getChatById(chatId: string): Promise<any> {
-    return this.request({
-      method: 'GET',
-      url: '/api/{session}/chat-by-id/{phone}',
-      path: {
-        session: this.sessionName,
-        phone: chatId,
+    this.logger.debug(`[CONNECTOR] Getting chat: ${chatId}`);
+
+    const response = await this.axiosInstance.get(`/whatsapp/chat/${chatId}`, {
+      params: {
+        sessionName: this.sessionName,
       },
     });
+
+    return response.data;
   }
 
   /**
-   * Récupère un contact par ID
+   * Get a contact by ID
    */
   async getContactById(contactId: string): Promise<any> {
-    return this.request({
-      method: 'GET',
-      url: '/api/{session}/contact/{phone}',
-      path: {
-        session: this.sessionName,
-        phone: contactId,
+    this.logger.debug(`[CONNECTOR] Getting contact: ${contactId}`);
+
+    const response = await this.axiosInstance.get(
+      `/whatsapp/contact/${contactId}`,
+      {
+        params: {
+          sessionName: this.sessionName,
+        },
       },
-    });
+    );
+
+    return response.data;
   }
 
   /**
-   * Récupère tous les chats
+   * Get all chats
    */
   async getChats(): Promise<any[]> {
-    return this.request({
-      method: 'POST',
-      url: '/api/{session}/list-chats',
-      path: {
-        session: this.sessionName,
+    this.logger.debug(`[CONNECTOR] Getting all chats`);
+
+    const response = await this.axiosInstance.get('/whatsapp/chats', {
+      params: {
+        sessionName: this.sessionName,
       },
     });
+
+    return response.data;
   }
 
   /**
-   * Récupère tous les contacts
+   * Get all contacts
    */
   async getContacts(): Promise<any[]> {
-    return this.request({
-      method: 'GET',
-      url: '/api/{session}/all-contacts',
-      path: {
-        session: this.sessionName,
+    this.logger.debug(`[CONNECTOR] Getting all contacts`);
+
+    const response = await this.axiosInstance.get('/whatsapp/contacts', {
+      params: {
+        sessionName: this.sessionName,
       },
     });
+
+    return response.data;
   }
 
   /**
-   * Marque un message comme lu
-   */
-  async markChatAsRead(chatId: string): Promise<any> {
-    return this.request({
-      method: 'POST',
-      url: '/api/{session}/send-seen',
-      path: {
-        session: this.sessionName,
-      },
-      body: {
-        phone: chatId,
-      },
-    });
-  }
-
-  /**
-   * Archive un chat
-   */
-  async archiveChat(chatId: string): Promise<any> {
-    return this.request({
-      method: 'POST',
-      url: '/api/{session}/archive-chat',
-      path: {
-        session: this.sessionName,
-      },
-      body: {
-        phone: chatId,
-        value: true,
-      },
-    });
-  }
-
-  /**
-   * Mute un chat
-   */
-  async muteChat(chatId: string, unmuteDate?: Date): Promise<any> {
-    // The new API does not support unmuteDate, so we ignore it.
-    return this.request({
-      method: 'POST',
-      url: '/api/{session}/send-mute',
-      path: {
-        session: this.sessionName,
-      },
-      body: {
-        phone: chatId,
-        time: -1,
-        type: 'permanently',
-      },
-    });
-  }
-
-  /**
-   * Récupère le statut du connector
+   * Get connector status
    */
   async getStatus(): Promise<any> {
-    return this.request({
-      method: 'GET',
-      url: '/api/{session}/check-connection-session',
-      path: {
-        session: this.sessionName,
+    this.logger.debug(`[CONNECTOR] Getting connector status`);
+
+    const response = await this.axiosInstance.get('/whatsapp/status', {
+      params: {
+        sessionName: this.sessionName,
       },
     });
+
+    return response.data;
   }
 }

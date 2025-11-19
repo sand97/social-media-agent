@@ -5,8 +5,7 @@ import { AuthService } from '../auth/auth.service';
 class WhatsAppConnectedDto {
   phoneNumber: string;
   profile: any;
-  businessInfo: any;
-  timestamp: string;
+  id: string;
 }
 
 @ApiTags('webhooks')
@@ -31,11 +30,12 @@ export class WebhooksController {
 
     try {
       // Appeler le service d'auth pour compléter le pairing
+      // Note: The AuthService will automatically trigger user data synchronization
+      // (profile, business info, catalog) in the background
       const result = await this.authService.verifyPairingSuccess(
         data.phoneNumber,
         {
           profile: data.profile,
-          businessInfo: data.businessInfo,
         },
       );
 
@@ -60,4 +60,5 @@ export class WebhooksController {
       };
     }
   }
+
 }

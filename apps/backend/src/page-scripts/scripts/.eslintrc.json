@@ -1,0 +1,14 @@
+{
+  "env": {
+    "browser": true,
+    "es2020": true
+  },
+  "globals": {
+    "FormData": "readonly",
+    "fetch": "readonly"
+  },
+  "rules": {
+    "no-undef": "off",
+    "@typescript-eslint/ban-ts-comment": "off"
+  }
+}

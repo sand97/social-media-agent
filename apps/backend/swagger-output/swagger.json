@@ -166,6 +166,106 @@
         }
       }
     },
+    "/catalog/upload-image": {
+      "post": {
+        "operationId": "CatalogController_uploadImage",
+        "summary": "Upload une image de produit depuis le connector",
+        "description": "Endpoint appelé par le script exécuté dans le connector pour uploader les images des produits. Le clientId est extrait du token JWT pour des raisons de sécurité. Accepte les données en base64 (JSON) depuis nodeFetch.",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Image uploadée avec succès",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "success": true,
+                    "url": "https://files-flemme.bedones.com/whatsapp-agent/237697020290/catalog/images/849641504281228/25095720553426064-0.jpg"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Erreur lors de l'upload"
+          },
+          "401": {
+            "description": "Token invalide ou expiré"
+          }
+        },
+        "tags": [
+          "Catalog"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/catalog/upload-avatar": {
+      "post": {
+        "operationId": "CatalogController_uploadAvatar",
+        "summary": "Upload l'avatar du compte WhatsApp",
+        "description": "Endpoint appelé par le script exécuté dans le connector pour uploader l'avatar du compte. Le clientId est extrait du token JWT. Accepte les données en base64 (JSON) depuis nodeFetch.",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Avatar uploadé avec succès"
+          }
+        },
+        "tags": [
+          "Catalog"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/catalog/save-client-info": {
+      "post": {
+        "operationId": "CatalogController_saveClientInfo",
+        "summary": "Sauvegarde les informations du client WhatsApp",
+        "description": "Endpoint appelé par le script pour sauvegarder les informations du compte WhatsApp Business.",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Informations sauvegardées avec succès"
+          }
+        },
+        "tags": [
+          "Catalog"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/catalog/save-catalog": {
+      "post": {
+        "operationId": "CatalogController_saveCatalog",
+        "summary": "Sauvegarde le catalogue (collections et produits)",
+        "description": "Endpoint appelé par le script pour sauvegarder le catalogue complet avec les collections et produits.",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Catalogue sauvegardé avec succès"
+          }
+        },
+        "tags": [
+          "Catalog"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
     "/whatsapp-agents/me": {
       "get": {
         "operationId": "WhatsAppAgentController_getMyAgent",

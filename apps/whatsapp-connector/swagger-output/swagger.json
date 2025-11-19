@@ -195,6 +195,48 @@
         ]
       }
     },
+    "/whatsapp/execute-script": {
+      "post": {
+        "operationId": "WhatsAppController_executePageScript",
+        "summary": "Exécuter du code JavaScript dans la page WhatsApp Web",
+        "description": "Permet d'exécuter du code JavaScript arbitraire dans le contexte de la page WhatsApp Web (accès à window.WPP, etc.)",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExecutePageScriptDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Script exécuté avec succès",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "success": true,
+                    "result": {
+                      "collections": [],
+                      "products": []
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Client non prêt ou erreur d'exécution"
+          }
+        },
+        "tags": [
+          "WhatsApp"
+        ]
+      }
+    },
     "/whatsapp/status": {
       "get": {
         "operationId": "WhatsAppController_getStatus",
@@ -341,6 +383,19 @@
         },
         "required": [
           "method"
+        ]
+      },
+      "ExecutePageScriptDto": {
+        "type": "object",
+        "properties": {
+          "script": {
+            "type": "string",
+            "description": "JavaScript code to execute in the WhatsApp Web page context",
+            "example": "\n      const collections = await window.WPP.catalog.getCollections(\n        window.WPP.conn?.getMyUserId()?._serialized || '',\n        50,\n        100\n      );\n      return collections;\n    "
+          }
+        },
+        "required": [
+          "script"
         ]
       },
       "SetWebhooksDto": {

@@ -18,6 +18,9 @@ import { WhatsAppAgentModule } from './whatsapp-agent/whatsapp-agent.module';
 import { ConnectorClientModule } from './connector-client/connector-client.module';
 import { WebhooksModule } from './webhooks/webhooks.module';
 import { CommonModule } from './common/common.module';
+import { CatalogModule } from './catalog/catalog.module';
+import { PageScriptModule } from './page-scripts/page-script.module';
+import { MinioModule } from './minio/minio.module';
 
 @Module({
   imports: [
@@ -45,6 +48,9 @@ import { CommonModule } from './common/common.module';
     PrismaModule,
     HealthModule,
     CommonModule,
+    MinioModule,
+    PageScriptModule,
+    CatalogModule,
     ConnectorClientModule,
     WhatsAppAgentModule,
     AuthModule,

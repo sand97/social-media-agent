@@ -1,0 +1,22 @@
+{
+  "images": [
+    {
+      "url": "https://media.frns1-1.fna.whatsapp.net/v/t45.5328-4/584397878_1169800887967740_1945701563120842421_n.jpg?ccb=1-7&_nc_sid=657aed&...",
+      "fileName": "237012345678-25095720553426064-0.jpeg",
+      "filePath": "/Users/bruce/Documents/project/whatsapp-agent/temp/images/237012345678-25095720553426064-0.jpeg",
+      "productId": "25095720553426064",
+      "imageIndex": 0,
+      "downloadedAt": "2025-11-17T20:00:00.000Z",
+      "size": 145632
+    },
+    {
+      "url": "https://media.frns1-1.fna.whatsapp.net/v/t45.5328-4/583294879_1894899274455370_7227478381412889632_n.jpg?ccb=1-7&_nc_sid=657aed&...",
+      "fileName": "237012345678-25095720553426064-1.jpeg",
+      "filePath": "/Users/bruce/Documents/project/whatsapp-agent/temp/images/237012345678-25095720553426064-1.jpeg",
+      "productId": "25095720553426064",
+      "imageIndex": 1,
+      "downloadedAt": "2025-11-17T20:00:05.000Z",
+      "size": 152478
+    }
+  ]
+}

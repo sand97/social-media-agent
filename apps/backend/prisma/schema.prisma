@@ -122,6 +122,7 @@ model User {
   // Relations
   whatsappAgent     WhatsAppAgent?
   businessInfo      BusinessInfo?
+  collections       Collection[]
   products          Product[]
   tags              Tag[]
   groups            Group[]
@@ -165,9 +166,16 @@ model WhatsAppAgent {
 }
 
 model BusinessInfo {
-  id     String @id @unique @default(cuid())
-  userId String @unique
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id      String @id @unique @default(cuid())
+  user_id String @unique
+  user    User   @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  // Informations WhatsApp Business
+  is_business  Boolean @default(false)
+  whatsapp_id  String? // ID WhatsApp serialized (ex: 237657888690@c.us)
+  tag          String? // Tag WhatsApp Business
+  profile_name String? // Nom du profil (pseudo)
+  avatar_url   String? // URL de l'avatar dans MinIO
 
   // Informations de base
   name        String?
@@ -175,69 +183,142 @@ model BusinessInfo {
   address     String?
   city        String?
   country     String?
-  website     String?
+  website     String? // URL du site web
+  email       String? // Email du business
+
+  // Catégories WhatsApp Business (JSON)
+  categories Json? // [{ id: "164243073639257", localized_display_name: "Hotel" }]
 
   // Horaires d'ouverture (JSON)
-  openingHours Json? // { monday: "09:00-18:00", tuesday: "09:00-18:00", ... }
+  business_hours Json? // { config: { mon: { mode: "open_24h" }, ... }, timezone: "Europe/Paris" }
+
+  // Options de profil (JSON)
+  profile_options Json? // { commerceExperience: "catalog", cartEnabled: true }
+
+  // Coordonnées géographiques
+  latitude  Float?
+  longitude Float?
 
   // Numéros de téléphone supplémentaires
-  phoneNumbers String[] // Array de numéros
+  phone_numbers String[] @default([]) // Array de numéros
 
   // Dates
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 
-  @@index([userId])
+  @@index([user_id])
+  @@index([whatsapp_id])
+}
+
+model Collection {
+  id                     String  @id @unique @default(cuid())
+  user_id                String
+  user                   User    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  whatsapp_collection_id String? // ID de la collection dans WhatsApp
+
+  // Informations de base
+  name        String
+  description String?
+
+  // Relations
+  products Product[]
+
+  // Dates
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@index([user_id])
+  @@index([whatsapp_collection_id])
 }
 
 model Product {
-  id                String  @id @unique @default(cuid())
-  userId            String
-  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  whatsappProductId String? // ID du produit dans WhatsApp Business
+  id                  String      @id @unique @default(cuid())
+  user_id             String
+  user                User        @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  whatsapp_product_id String? // ID du produit dans WhatsApp Business
+  collection_id       String?
+  collection          Collection? @relation(fields: [collection_id], references: [id], onDelete: SetNull)
 
   // Informations de base
   name        String
   description String?
   price       Float?
-  currency    String? @default("XAF")
+  currency    String?
   category    String?
+  retailer_id String? // Retailer ID depuis WhatsApp
 
-  // Images (array de URLs)
-  images String[] // Array d'URLs d'images
+  // Stock et disponibilité
+  availability  String? // "in stock", "out of stock"
+  max_available Int? // Quantité max disponible
+  is_hidden     Boolean @default(false)
+  is_sanctioned Boolean @default(false)
+  checkmark     Boolean @default(false)
 
-  // Métadonnées
+  // URLs
+  url String? // URL du produit
+
+  // Statut de revue WhatsApp (JSON)
+  capability_to_review_status Json?   @default("[]") // [{ key: "WHATSAPP", value: "APPROVED" }]
+  whatsapp_product_can_appeal Boolean @default(false) // Produit peut faire appel
+
+  // Hashes d'images WhatsApp
+  image_hashes_for_whatsapp String[] @default([]) // Array de hashes d'images WhatsApp
+
+  // Vidéos (JSON)
+  videos Json? // Array de vidéos du produit
+
+  // Relations
+  images   ProductImage[]
   metadata ProductMetadata[]
 
   // Suggestions de l'IA (JSON)
-  aiSuggestions Json? // { spellingCorrections: [], metadataSuggestions: [], descriptionImprovements: [] }
+  ai_suggestions Json? // { spellingCorrections: [], metadataSuggestions: [], descriptionImprovements: [] }
 
   // Dates
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 
-  @@index([userId])
-  @@index([whatsappProductId])
+  @@index([user_id])
+  @@index([collection_id])
+  @@index([whatsapp_product_id])
+}
+
+model ProductImage {
+  id         String  @id @unique @default(cuid())
+  product_id String
+  product    Product @relation(fields: [product_id], references: [id], onDelete: Cascade)
+
+  // Informations de l'image
+  url          String // URL dans MinIO
+  original_url String? // URL originale WhatsApp
+  image_type   String  @default("main") // "main" ou "additional"
+  image_index  Int     @default(0) // Index de l'image
+
+  // Dates
+  created_at DateTime @default(now())
+
+  @@index([product_id])
+  @@index([image_type])
 }
 
 model ProductMetadata {
-  id        String  @id @unique @default(cuid())
-  productId String
-  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  id         String  @id @unique @default(cuid())
+  product_id String
+  product    Product @relation(fields: [product_id], references: [id], onDelete: Cascade)
 
   // Métadonnée
   key   String // Ex: "taille", "couleur", "stockage"
   value String // Ex: "M", "Rouge", "256GB"
 
   // Visibilité
-  isVisible     Boolean @default(true) // Afficher au client ou non
-  suggestedByAI Boolean @default(false) // Suggéré par l'IA
+  is_visible      Boolean @default(true) // Afficher au client ou non
+  suggested_by_ai Boolean @default(false) // Suggéré par l'IA
 
   // Dates
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 
-  @@index([productId])
+  @@index([product_id])
 }
 
 model Tag {

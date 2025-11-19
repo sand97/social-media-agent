@@ -1,0 +1,53 @@
+services:
+  # WPPConnect Server (replaces whatsapp-connector)
+  wppconnect-server:
+    container_name: prod-wppconnect-server
+    build:
+      context: apps/whatsapp-agent-client # Build from the new client directory
+      dockerfile: Dockerfile # Dockerfile is now directly in the context
+    image: wppconnect-server-custom:latest # Tag the custom image # Use the official WPPConnect Server image
+    restart: unless-stopped
+    ports:
+      - "3001:3001" # Expose WPPConnect Server API
+    env_file:
+      - ./.env.wppconnect-server # Production .env for WPPConnect Server
+    environment:
+      WPPCONNECT_WEBHOOK_URL: http://whatsapp-agent:3002/webhook/message # Webhook to whatsapp-agent
+      WPPCONNECT_SECRET_KEY: THISISMYSECURETOKEN # IMPORTANT: Change this in production
+      WPPCONNECT_SESSION_PATH: /app/data/sessions
+    volumes:
+      - wppconnect_session_data:/app/data/sessions # Persist session data
+    networks:
+      - agentnet
+
+  # WhatsApp Agent Service
+#  whatsapp-agent:
+#    container_name: prod-whatsapp-agent
+#    build:
+#      context: . # Build from monorepo root
+#      dockerfile: apps/whatsapp-agent/Dockerfile
+#      target: production # Use production stage
+#    restart: unless-stopped
+#    ports:
+#      - "3002:3002"
+#    env_file:
+#      - ./apps/whatsapp-agent/.env.prod # Production .env for whatsapp-agent
+#    environment:
+#      CONNECTOR_URL: http://wppconnect-server:3001 # Agent talks to WPPConnect Server
+#      BACKEND_URL: http://your-backend-ip:3000 # IMPORTANT: Update with your backend's public IP/domain
+#    depends_on:
+#      wppconnect-server:
+#        condition: service_started
+#    volumes:
+#      - .:/app # Bind-mount monorepo into container
+#      - /app/node_modules # Anonymous volume for root node_modules
+#      - /app/apps/whatsapp-agent/node_modules # Anonymous volume for agent node_modules
+#      - /app/packages/common/node_modules # Anonymous volume for common node_modules
+#    networks:
+#      - agentnet
+
+networks:
+  agentnet:
+
+volumes:
+  wppconnect_session_data: # Volume for WPPConnect Server session data

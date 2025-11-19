@@ -27,7 +27,7 @@ export class SettingsService {
    */
   async getBusinessInfo(userId: string): Promise<BusinessInfo | null> {
     return this.prisma.businessInfo.findUnique({
-      where: { userId },
+      where: { user_id: userId },
     });
   }
 
@@ -49,9 +49,11 @@ export class SettingsService {
 
     // Upsert business info (create if doesn't exist, update if it does)
     return this.prisma.businessInfo.upsert({
-      where: { userId },
+      where: { user_id: userId },
       create: {
-        userId,
+        user: {
+          connect: { id: userId },
+        },
         ...data,
       },
       update: data,

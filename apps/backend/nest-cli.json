@@ -8,13 +8,11 @@
     "assets": [
       {
         "include": "i18n/**/*",
-        "watchAssets": true,
-        "outDir": "dist/apps/backend/src"
+        "watchAssets": true
       },
       {
         "include": "generated/**/*",
-        "watchAssets": true,
-        "outDir": "dist/apps/backend/src"
+        "watchAssets": true
       }
     ]
   }

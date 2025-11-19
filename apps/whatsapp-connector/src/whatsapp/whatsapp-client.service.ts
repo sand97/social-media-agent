@@ -12,8 +12,6 @@ import { ConfigService } from '@nestjs/config';
 import * as qrcodeTerminal from 'qrcode-terminal';
 import { Client, LocalAuth } from 'whatsapp-web.js';
 
-import { CatalogService } from '../catalog/catalog.service';
-
 import { WebhookService } from './webhook.service';
 
 @Injectable()
@@ -27,7 +25,6 @@ export class WhatsAppClientService implements OnModuleInit, OnModuleDestroy {
     private readonly configService: ConfigService,
     private readonly webhookService: WebhookService,
     private readonly httpService: HttpService,
-    private readonly catalogService: CatalogService,
   ) {}
 
   async onModuleInit() {
@@ -55,14 +52,15 @@ export class WhatsAppClientService implements OnModuleInit, OnModuleDestroy {
       puppeteer: {
         // executablePath:
         //   '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
-        headless: true,
+        headless: false,
         args: [
           '--no-sandbox',
           '--disable-setuid-sandbox',
           '--disable-dev-shm-usage',
           '--no-zygote',
           '--disable-web-security',
-          '--disable-features=IsolateOrigins,site-per-process',
+          // Désactiver CSP, CORS, et isolation pour permettre les fetch depuis les scripts
+          '--disable-features=IsolateOrigins,site-per-process,ContentSecurityPolicy',
           '--disable-site-isolation-trials',
           '--disable-gpu',
         ],
@@ -162,6 +160,10 @@ export class WhatsAppClientService implements OnModuleInit, OnModuleDestroy {
         });
         this.logger.log('WPP is ready');
 
+        // Exposer nodeFetch pour contourner la CSP
+        await this.exposeNodeFetchToPage(page);
+        this.logger.log('nodeFetch exposed to browser context');
+
         // Evaluating code: See https://playwright.dev/docs/evaluating/
         const isAuthenticated = await page.evaluate(() =>
           window.WPP.conn.isAuthenticated(),
@@ -171,32 +173,8 @@ export class WhatsAppClientService implements OnModuleInit, OnModuleDestroy {
         );
         this.logger.log('isAuthenticated', isAuthenticated);
 
-        const businessInformations = await page.evaluate(
-          async () =>
-            (
-              await window.WPP.contact.getBusinessProfile(
-                window.WPP.conn?.getMyUserId()?._serialized || '',
-              )
-            ).attributes,
-        );
-
-        this.logger.log('businessInformations', businessInformations);
-
-        // Récupération du catalogue et téléchargement des images via CatalogService
-        const catalogWithImages =
-          await this.catalogService.fetchCatalogWithImages(page);
-
-        // Sauvegarder les images avec le système de cache
-        const clientId =
-          this.client.info?.wid?._serialized || this.client.info?.wid?.user;
-
-        await this.catalogService.saveImages(
-          catalogWithImages.images,
-          clientId,
-        );
-
         // Notify backend of successful pairing
-        await this.notifyBackendConnected(id, businessInformations);
+        await this.notifyBackendConnected(id);
       } catch (error) {
         this.logger.error('Error injecting WPP script:', error);
         this.logger.error('Error details:', error.stack);
@@ -378,6 +356,34 @@ export class WhatsAppClientService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
+   * Execute JavaScript code in the WhatsApp Web page context
+   */
+  async executePageScript(script: string): Promise<any> {
+    if (!this.client) {
+      throw new Error('WhatsApp client is not initialized');
+    }
+
+    if (!this.isReady) {
+      throw new Error('WhatsApp client is not ready yet');
+    }
+
+    const page = this.client.pupPage;
+    if (!page) {
+      throw new Error('Puppeteer page is not available');
+    }
+
+    this.logger.debug('Executing page script in browser context');
+
+    try {
+      // Execute the script in the page context
+      return await page.evaluate(script);
+    } catch (error) {
+      this.logger.error('Error executing page script:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Retourne l'état actuel du client
    */
   getStatus() {
@@ -393,6 +399,78 @@ export class WhatsAppClientService implements OnModuleInit, OnModuleDestroy {
    */
   getQrCode() {
     return this.qrCode;
+  }
+
+  /**
+   * Expose une fonction fetch côté Node.js au contexte du navigateur
+   * Cela permet de contourner la CSP qui bloque fetch depuis le navigateur
+   */
+  private async exposeNodeFetchToPage(page: any) {
+    // Exposer la fonction de base
+    await page.exposeFunction(
+      '__nodeFetch',
+      async (url: string, options: any = {}) => {
+        this.logger.debug(`[nodeFetch] ${options.method || 'GET'} ${url}`);
+
+        try {
+          // Convertir les options fetch en options axios
+          const axiosConfig: any = {
+            url,
+            method: options.method || 'GET',
+            headers: options.headers || {},
+          };
+
+          // Gérer le body
+          if (options.body) {
+            if (typeof options.body === 'string') {
+              axiosConfig.data = JSON.parse(options.body);
+            } else {
+              axiosConfig.data = options.body;
+            }
+          }
+
+          // Faire la requête avec axios (côté Node.js, pas de CSP!)
+          const response = await this.httpService.axiosRef.request(axiosConfig);
+
+          // Retourner une réponse simple (pas de fonctions, elles ne peuvent pas être sérialisées)
+          return {
+            ok: response.status >= 200 && response.status < 300,
+            status: response.status,
+            statusText: response.statusText,
+            headers: response.headers,
+            data: response.data,
+          };
+        } catch (error: any) {
+          this.logger.error(
+            `[nodeFetch] Error: ${error.message}`,
+            error.stack,
+          );
+
+          // Retourner une erreur
+          return {
+            ok: false,
+            status: error.response?.status || 500,
+            statusText: error.response?.statusText || 'Internal Server Error',
+            headers: error.response?.headers || {},
+            data: error.response?.data || { error: error.message },
+          };
+        }
+      },
+    );
+
+    // Injecter un wrapper dans le navigateur qui simule l'API fetch
+    await page.evaluate(() => {
+      // @ts-ignore - Ces propriétés sont ajoutées dynamiquement
+      window.nodeFetch = async (url: string, options: any) => {
+        // @ts-ignore
+        const response = await window.__nodeFetch(url, options);
+        // Ajouter la méthode json() qui retourne les données
+        return {
+          ...response,
+          json: async () => response.data,
+        };
+      };
+    });
   }
 
   /**
@@ -440,10 +518,7 @@ export class WhatsAppClientService implements OnModuleInit, OnModuleDestroy {
   /**
    * Notify backend that WhatsApp is connected
    */
-  private async notifyBackendConnected(
-    id: string,
-    businessInfo: any,
-  ): Promise<void> {
+  private async notifyBackendConnected(id: string): Promise<void> {
     try {
       this.logger.log(
         'Gathering WhatsApp connection information...',
@@ -478,7 +553,6 @@ export class WhatsAppClientService implements OnModuleInit, OnModuleDestroy {
         phoneNumber,
         profile: profile,
         id,
-        businessInfo,
       };
 
       // Send custom event "pairing_success" to agent webhooks with all info

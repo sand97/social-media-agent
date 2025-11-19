@@ -21,11 +21,13 @@ export class ProductsService {
    */
   async getAllForUser(userId: string) {
     return this.prisma.product.findMany({
-      where: { userId },
+      where: { user_id: userId },
       include: {
         metadata: true,
+        images: true,
+        collection: true,
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { created_at: 'desc' },
     });
   }
 
@@ -37,6 +39,8 @@ export class ProductsService {
       where: { id: productId },
       include: {
         metadata: true,
+        images: true,
+        collection: true,
       },
     });
 
@@ -44,7 +48,7 @@ export class ProductsService {
       throw new NotFoundException('Product not found');
     }
 
-    if (product.userId !== userId) {
+    if (product.user_id !== userId) {
       throw new ForbiddenException(
         'You do not have permission to access this product',
       );
@@ -63,16 +67,18 @@ export class ProductsService {
 
     return this.prisma.product.create({
       data: {
-        userId,
+        user: {
+          connect: { id: userId },
+        },
         name: data.name,
         description: data.description || null,
         price: data.price || null,
         currency: data.currency || 'XAF',
         category: data.category || null,
-        images: data.images || [],
       },
       include: {
         metadata: true,
+        images: true,
       },
     });
   }
@@ -94,26 +100,26 @@ export class ProductsService {
       throw new NotFoundException('Product not found');
     }
 
-    if (product.userId !== userId) {
+    if (product.user_id !== userId) {
       throw new ForbiddenException(
         'You do not have permission to update this product',
       );
     }
 
     // Build update data (only include provided fields)
-    const updateData: any = {};
+    const updateData: Record<string, unknown> = {};
     if (data.name !== undefined) updateData.name = data.name;
     if (data.description !== undefined) updateData.description = data.description;
     if (data.price !== undefined) updateData.price = data.price;
     if (data.currency !== undefined) updateData.currency = data.currency;
     if (data.category !== undefined) updateData.category = data.category;
-    if (data.images !== undefined) updateData.images = data.images;
 
     return this.prisma.product.update({
       where: { id: productId },
       data: updateData,
       include: {
         metadata: true,
+        images: true,
       },
     });
   }
@@ -131,7 +137,7 @@ export class ProductsService {
       throw new NotFoundException('Product not found');
     }
 
-    if (product.userId !== userId) {
+    if (product.user_id !== userId) {
       throw new ForbiddenException(
         'You do not have permission to delete this product',
       );
@@ -161,7 +167,7 @@ export class ProductsService {
       throw new NotFoundException('Product not found');
     }
 
-    if (product.userId !== userId) {
+    if (product.user_id !== userId) {
       throw new ForbiddenException(
         'You do not have permission to add metadata to this product',
       );
@@ -173,10 +179,12 @@ export class ProductsService {
 
     return this.prisma.productMetadata.create({
       data: {
-        productId,
+        product: {
+          connect: { id: productId },
+        },
         key: key.trim(),
         value: value.trim(),
-        isVisible,
+        is_visible: isVisible,
       },
     });
   }
@@ -187,7 +195,7 @@ export class ProductsService {
   async updateAiSuggestions(
     productId: string,
     userId: string,
-    suggestions: any,
+    suggestions: unknown,
   ): Promise<Product> {
     // Verify product ownership
     const product = await this.prisma.product.findUnique({
@@ -198,7 +206,7 @@ export class ProductsService {
       throw new NotFoundException('Product not found');
     }
 
-    if (product.userId !== userId) {
+    if (product.user_id !== userId) {
       throw new ForbiddenException(
         'You do not have permission to update suggestions for this product',
       );
@@ -207,10 +215,12 @@ export class ProductsService {
     return this.prisma.product.update({
       where: { id: productId },
       data: {
-        aiSuggestions: suggestions || {},
+        ai_suggestions: suggestions || {},
       },
       include: {
         metadata: true,
+        images: true,
+        collection: true,
       },
     });
   }
@@ -234,7 +244,7 @@ export class ProductsService {
       throw new NotFoundException('Metadata not found');
     }
 
-    if (metadata.product.userId !== userId) {
+    if (metadata.product.user_id !== userId) {
       throw new ForbiddenException(
         'You do not have permission to delete this metadata',
       );

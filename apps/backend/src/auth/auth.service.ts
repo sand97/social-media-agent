@@ -1,4 +1,5 @@
 import { CryptoService } from '@app/common/crypto.service';
+import { UserSyncService } from '@app/common/services/user-sync.service';
 import { ConnectorClientService } from '@app/connector-client';
 import { UserStatus, ConnectionStatus } from '@app/generated/client';
 import { PrismaService } from '@app/prisma/prisma.service';
@@ -27,6 +28,7 @@ export class AuthService {
     private readonly configService: ConfigService,
     private readonly whatsappAgentService: WhatsAppAgentService,
     private readonly connectorClientService: ConnectorClientService,
+    private readonly userSyncService: UserSyncService,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {}
 
@@ -154,6 +156,17 @@ export class AuthService {
       const accessToken = this.generateJwtToken(user.id);
 
       this.logger.log(`Pairing verified successfully for user: ${user.id}`);
+
+      // Synchronize user data (profile, business, catalog) in the background
+      // We don't await this to avoid blocking the response
+      this.userSyncService
+        .synchronizeUserData(phoneNumber)
+        .catch((error) => {
+          this.logger.error(
+            `Background sync failed for user ${user.id}: ${error.message}`,
+            error.stack,
+          );
+        });
 
       return {
         accessToken,

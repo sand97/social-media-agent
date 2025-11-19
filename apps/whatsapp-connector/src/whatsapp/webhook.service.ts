@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
+import * as crypto from 'crypto';
 
 @Injectable()
 export class WebhookService {
@@ -74,16 +75,39 @@ export class WebhookService {
   }
 
   /**
+   * Génère une signature HMAC-SHA256 pour le payload
+   */
+  private generateSignature(payload: any): string | null {
+    const connectorSecret =
+      this.configService.get<string>('CONNECTOR_SECRET');
+
+    if (!connectorSecret) {
+      return null;
+    }
+
+    const body = JSON.stringify(payload);
+    return crypto.createHmac('sha256', connectorSecret).update(body).digest('hex');
+  }
+
+  /**
    * Envoie un payload à un webhook spécifique
    */
   private async sendToWebhook(url: string, payload: any): Promise<void> {
     try {
+      const headers: any = {
+        'Content-Type': 'application/json',
+        'User-Agent': 'WhatsApp-Connector/1.0',
+      };
+
+      // Ajouter la signature si un secret est configuré
+      const signature = this.generateSignature(payload);
+      if (signature) {
+        headers['X-Connector-Signature'] = signature;
+      }
+
       const response = await firstValueFrom(
         this.httpService.post(url, payload, {
-          headers: {
-            'Content-Type': 'application/json',
-            'User-Agent': 'WhatsApp-Connector/1.0',
-          },
+          headers,
           timeout: 5000, // 5 secondes de timeout
         }),
       );
