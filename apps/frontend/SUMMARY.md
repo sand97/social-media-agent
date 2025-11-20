@@ -84,11 +84,11 @@
 
 ## Routes Summary
 
-| Route | Purpose | API Calls |
-|-------|---------|-----------|
-| `/auth/login` | Request pairing code | POST `/auth/request-pairing` |
-| `/auth/pairing-code` | Display code & poll | GET `/auth/me` (polling) |
-| `/auth/verify-otp` | OTP login | POST `/auth/login`, POST `/auth/verify-otp` |
+| Route                | Purpose              | API Calls                                   |
+| -------------------- | -------------------- | ------------------------------------------- |
+| `/auth/login`        | Request pairing code | POST `/auth/request-pairing`                |
+| `/auth/pairing-code` | Display code & poll  | GET `/auth/me` (polling)                    |
+| `/auth/verify-otp`   | OTP login            | POST `/auth/login`, POST `/auth/verify-otp` |
 
 ## Key Features
 
@@ -103,6 +103,7 @@
 ## User Flows
 
 ### New User (Pairing)
+
 ```
 /auth/login
   → Enter phone number
@@ -119,6 +120,7 @@
 ```
 
 ### Returning User (OTP)
+
 ```
 /auth/verify-otp
   → Step 1: Enter phone number
@@ -138,12 +140,14 @@
 To use this authentication system:
 
 1. **Set environment variable:**
+
    ```bash
    cp .env.example .env
    # Edit VITE_API_URL if needed
    ```
 
 2. **Run the development server:**
+
    ```bash
    pnpm dev
    ```
@@ -163,9 +167,11 @@ To use this authentication system:
 ## API Integration
 
 All API calls use the auto-generated TypeScript types from:
+
 - `/app/lib/api/v1.d.ts` (from Swagger)
 
 The API client automatically:
+
 - Adds Authorization headers
 - Handles 401 redirects
 - Stores/retrieves JWT tokens

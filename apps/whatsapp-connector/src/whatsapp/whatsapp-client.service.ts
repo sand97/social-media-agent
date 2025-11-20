@@ -441,10 +441,7 @@ export class WhatsAppClientService implements OnModuleInit, OnModuleDestroy {
             data: response.data,
           };
         } catch (error: any) {
-          this.logger.error(
-            `[nodeFetch] Error: ${error.message}`,
-            error.stack,
-          );
+          this.logger.error(`[nodeFetch] Error: ${error.message}`, error.stack);
 
           // Retourner une erreur
           return {

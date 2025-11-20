@@ -1,10 +1,12 @@
 # Authentication Implementation
 
-This document describes the authentication system implemented for the WhatsApp Manager Agent frontend.
+This document describes the authentication system implemented for the WhatsApp Manager Agent
+frontend.
 
 ## Overview
 
 The authentication system supports two flows:
+
 1. **New users**: Pairing flow with WhatsApp
 2. **Returning users**: OTP verification flow
 
@@ -13,19 +15,23 @@ The authentication system supports two flows:
 ### Files Created
 
 #### API & Client
+
 - `/app/lib/api/client.ts` - Axios client with authentication interceptors
 - `/app/lib/api/v1.d.ts` - Auto-generated TypeScript types from Swagger (existing)
 
 #### Context & Hooks
+
 - `/app/contexts/AuthContext.tsx` - React context for authentication state
 - `/app/hooks/useAuth.ts` - Hook to access auth context
 
 #### Pages (Routes)
+
 - `/app/routes/auth.login.tsx` - Login page (request pairing code)
 - `/app/routes/auth.pairing-code.tsx` - Display pairing code and wait for WhatsApp connection
 - `/app/routes/auth.verify-otp.tsx` - OTP verification for returning users
 
 #### Styles
+
 - `/app/styles/phone-input.css` - Custom styles for phone number input
 
 ## Authentication Flows
@@ -65,9 +71,11 @@ The authentication system supports two flows:
 ## API Endpoints
 
 ### POST `/auth/request-pairing`
+
 Request a pairing code for new users.
 
 **Request:**
+
 ```json
 {
   "phoneNumber": "+33612345678"
@@ -75,6 +83,7 @@ Request a pairing code for new users.
 ```
 
 **Response:**
+
 ```json
 {
   "code": "12345678",
@@ -83,9 +92,11 @@ Request a pairing code for new users.
 ```
 
 ### GET `/auth/me`
+
 Get current authenticated user (requires Bearer token).
 
 **Response (200):**
+
 ```json
 {
   "id": "user-id",
@@ -95,13 +106,14 @@ Get current authenticated user (requires Bearer token).
 }
 ```
 
-**Response (401):**
-User not authenticated yet.
+**Response (401):** User not authenticated yet.
 
 ### POST `/auth/login`
+
 Send OTP to user's WhatsApp for login.
 
 **Request:**
+
 ```json
 {
   "phoneNumber": "+33612345678"
@@ -109,6 +121,7 @@ Send OTP to user's WhatsApp for login.
 ```
 
 **Response:**
+
 ```json
 {
   "message": "OTP envoyé avec succès"
@@ -116,9 +129,11 @@ Send OTP to user's WhatsApp for login.
 ```
 
 ### POST `/auth/verify-otp`
+
 Verify OTP and complete login.
 
 **Request:**
+
 ```json
 {
   "phoneNumber": "+33612345678",
@@ -127,6 +142,7 @@ Verify OTP and complete login.
 ```
 
 **Response:**
+
 ```json
 {
   "accessToken": "jwt-token-here",

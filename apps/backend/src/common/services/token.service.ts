@@ -33,7 +33,9 @@ export class TokenService {
       expiresIn: '1h', // Token valide pendant 1 heure
     });
 
-    this.logger.debug(`🔑 Generated catalog upload token for client: ${clientId}`);
+    this.logger.debug(
+      `🔑 Generated catalog upload token for client: ${clientId}`,
+    );
 
     return token;
   }

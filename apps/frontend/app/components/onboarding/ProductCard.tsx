@@ -1,5 +1,6 @@
 import { Card, Button, Checkbox, Image, Tag } from 'antd'
 import { useState } from 'react'
+
 import { AIAnalysisPanel } from './AIAnalysisPanel'
 
 interface Product {
@@ -25,7 +26,11 @@ export interface AISuggestion {
   reason: string
 }
 
-export function ProductCard({ product, onApprove, onAnalyze }: ProductCardProps) {
+export function ProductCard({
+  product,
+  onApprove,
+  onAnalyze,
+}: ProductCardProps) {
   const [analyzing, setAnalyzing] = useState(false)
   const [suggestions, setSuggestions] = useState<AISuggestion[]>([])
   const [showAnalysis, setShowAnalysis] = useState(false)
@@ -37,7 +42,7 @@ export function ProductCard({ product, onApprove, onAnalyze }: ProductCardProps)
       setSuggestions(result)
       setShowAnalysis(true)
     } catch (error) {
-      console.error('Erreur lors de l\'analyse:', error)
+      console.error("Erreur lors de l'analyse:", error)
     } finally {
       setAnalyzing(false)
     }
@@ -51,64 +56,68 @@ export function ProductCard({ product, onApprove, onAnalyze }: ProductCardProps)
   }
 
   return (
-    <Card className="mb-4 hover:shadow-md transition-shadow">
-      <div className="flex gap-4">
+    <Card className='mb-4 hover:shadow-md transition-shadow'>
+      <div className='flex gap-4'>
         {/* Product Image */}
-        <div className="flex-shrink-0">
+        <div className='flex-shrink-0'>
           {product.image ? (
             <Image
               src={product.image}
               alt={product.name}
               width={120}
               height={120}
-              className="rounded-lg object-cover"
+              className='rounded-lg object-cover'
               fallback="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Crect fill='%23f0f0f0' width='120' height='120'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' fill='%23999' font-size='14'%3EPas d'image%3C/text%3E%3C/svg%3E"
             />
           ) : (
-            <div className="w-[120px] h-[120px] bg-gray-100 rounded-lg flex items-center justify-center text-gray-400">
+            <div className='w-[120px] h-[120px] bg-gray-100 rounded-lg flex items-center justify-center text-gray-400'>
               Pas d'image
             </div>
           )}
         </div>
 
         {/* Product Info */}
-        <div className="flex-1">
-          <div className="flex items-start justify-between mb-2">
+        <div className='flex-1'>
+          <div className='flex items-start justify-between mb-2'>
             <div>
-              <h3 className="text-lg font-semibold text-gray-900">{product.name}</h3>
-              <p className="text-sm text-gray-600 mt-1">{product.description}</p>
+              <h3 className='text-lg font-semibold text-gray-900'>
+                {product.name}
+              </h3>
+              <p className='text-sm text-gray-600 mt-1'>
+                {product.description}
+              </p>
             </div>
-            <Tag color="green" className="text-base font-semibold px-3 py-1">
+            <Tag color='green' className='text-base font-semibold px-3 py-1'>
               {product.price.toLocaleString('fr-FR')} FCFA
             </Tag>
           </div>
 
           {/* Actions */}
-          <div className="flex items-center gap-3 mt-4">
+          <div className='flex items-center gap-3 mt-4'>
             <Button
-              type="primary"
+              type='primary'
               loading={analyzing}
               onClick={handleAnalyze}
               disabled={showAnalysis}
             >
-              {showAnalysis ? 'Analysé' : 'Analyser avec l\'IA'}
+              {showAnalysis ? 'Analysé' : "Analyser avec l'IA"}
             </Button>
 
             <Checkbox
               checked={product.approved}
-              onChange={(e) => onApprove(product.id, e.target.checked)}
+              onChange={e => onApprove(product.id, e.target.checked)}
             >
-              <span className="font-medium">Approuvé</span>
+              <span className='font-medium'>Approuvé</span>
             </Checkbox>
           </div>
 
           {/* AI Analysis Panel */}
           {showAnalysis && (
-            <div className="mt-4">
+            <div className='mt-4'>
               <AIAnalysisPanel
                 suggestions={suggestions}
                 onApply={handleApplySuggestion}
-                onDismiss={(suggestion) =>
+                onDismiss={suggestion =>
                   setSuggestions(prev => prev.filter(s => s !== suggestion))
                 }
               />

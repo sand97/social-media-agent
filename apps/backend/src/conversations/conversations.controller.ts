@@ -20,10 +20,12 @@ import {
   ApiParam,
   ApiQuery,
 } from '@nestjs/swagger';
+
+import { JwtAuthGuard } from '../guards/jwt-auth.guard';
+
 import { ConversationsService } from './conversations.service';
 import { CreateConversationDto } from './dto/create-conversation.dto';
 import { UpdateConversationDto } from './dto/update-conversation.dto';
-import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 
 @ApiTags('conversations')
 @Controller('conversations')

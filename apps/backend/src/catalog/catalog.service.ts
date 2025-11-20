@@ -261,6 +261,99 @@ export class CatalogService {
   }
 
   /**
+   * Supprime des images (de Minio et de la BD)
+   */
+  async deleteImages(
+    imageIds: string[],
+  ): Promise<{ success: boolean; deletedCount: number; error?: string }> {
+    this.logger.log(
+      `[START] Deleting ${imageIds.length} images from Minio and DB`,
+    );
+
+    if (!imageIds || imageIds.length === 0) {
+      return { success: true, deletedCount: 0 };
+    }
+
+    try {
+      // Récupérer les images depuis la BD pour obtenir leurs URLs
+      this.logger.debug(`[DELETE-IMAGES] Fetching images from DB...`);
+      const images = await this.prisma.productImage.findMany({
+        where: {
+          id: {
+            in: imageIds,
+          },
+        },
+        select: {
+          id: true,
+          url: true,
+        },
+      });
+
+      this.logger.debug(
+        `[DELETE-IMAGES] Found ${images.length} images to delete`,
+      );
+
+      // Supprimer les fichiers de Minio
+      let deletedFromMinio = 0;
+      for (const image of images) {
+        try {
+          // Extraire l'objectKey de l'URL
+          // URL format: https://files-flemme.bedones.com/whatsapp-agent/237697020290/catalog/images/...
+          // On veut extraire: 237697020290/catalog/images/...
+          const url = new URL(image.url);
+          const pathParts = url.pathname.split('/');
+          // Retirer le premier "/" et le bucket name
+          const objectKey = pathParts.slice(2).join('/'); // Skip "", "whatsapp-agent"
+
+          this.logger.debug(
+            `[DELETE-IMAGES] Deleting from Minio: ${objectKey}`,
+          );
+          const deleted = await this.minioService.deleteFile(objectKey);
+          if (deleted) {
+            deletedFromMinio++;
+          }
+        } catch (error: unknown) {
+          this.logger.error(
+            `❌ [ERROR] Failed to delete image ${image.id} from Minio:`,
+            error,
+          );
+          // Continue même si la suppression Minio échoue
+        }
+      }
+
+      this.logger.log(
+        `✅ Deleted ${deletedFromMinio}/${images.length} images from Minio`,
+      );
+
+      // Supprimer les entrées de la BD
+      this.logger.debug(`[DELETE-IMAGES] Deleting from DB...`);
+      const deleteResult = await this.prisma.productImage.deleteMany({
+        where: {
+          id: {
+            in: imageIds,
+          },
+        },
+      });
+
+      this.logger.log(
+        `✅ [END] Deleted ${deleteResult.count} images from DB (${deletedFromMinio} from Minio)`,
+      );
+
+      return {
+        success: true,
+        deletedCount: deleteResult.count,
+      };
+    } catch (error: unknown) {
+      this.logger.error(`❌ [ERROR] Failed to delete images:`, error);
+      return {
+        success: false,
+        deletedCount: 0,
+        error: (error as Error)?.message,
+      };
+    }
+  }
+
+  /**
    * Sauvegarde le catalogue complet (collections et produits) en base de données
    */
   async saveCatalog(

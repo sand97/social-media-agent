@@ -15,6 +15,7 @@ Module d'analyse de produits utilisant l'IA pour améliorer la qualité des donn
 Analyse un produit et retourne des suggestions d'amélioration.
 
 **Request Body:**
+
 ```json
 {
   "name": "T-shirt en coton bio",
@@ -24,6 +25,7 @@ Analyse un produit et retourne des suggestions d'amélioration.
 ```
 
 **Response:**
+
 ```json
 {
   "spellingCorrections": [
@@ -63,6 +65,7 @@ Analyse un produit et retourne des suggestions d'amélioration.
 Le module utilise le `LangChainAgentService` qui nécessite l'une des configurations suivantes :
 
 ### Option 1 : Grok (xAI)
+
 ```env
 GROK_API_KEY=your-grok-api-key
 GROK_MODEL=grok-beta
@@ -70,6 +73,7 @@ GROK_API_BASE=https://api.x.ai/v1
 ```
 
 ### Option 2 : Gemini (Google)
+
 ```env
 GEMINI_API_KEY=your-gemini-api-key
 GEMINI_MODEL=gemini-2.0-flash-exp
@@ -84,13 +88,15 @@ import { ProductsAnalysisService } from './products/products-analysis.service';
 
 @Injectable()
 export class YourService {
-  constructor(private readonly productsAnalysisService: ProductsAnalysisService) {}
+  constructor(
+    private readonly productsAnalysisService: ProductsAnalysisService,
+  ) {}
 
   async analyzeProduct() {
     const result = await this.productsAnalysisService.analyzeProduct({
       name: 'Mon produit',
       description: 'Description du produit',
-      category: 'Catégorie'
+      category: 'Catégorie',
     });
 
     console.log(result.spellingCorrections);
@@ -134,6 +140,7 @@ products/
 ## Catégories supportées
 
 Le module adapte ses suggestions selon la catégorie :
+
 - **Vêtements** : taille, couleur, matière, style, coupe
 - **Électronique** : marque, modèle, garantie, caractéristiques techniques
 - **Alimentation** : ingrédients, allergènes, conservation, origine

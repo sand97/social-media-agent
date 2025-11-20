@@ -15,5 +15,8 @@ export default [
   route('onboarding/import', 'routes/onboarding.import.tsx'),
   route('onboarding/review-products', 'routes/onboarding.review-products.tsx'),
   route('onboarding/business-info', 'routes/onboarding.business-info.tsx'),
-  route('onboarding/advanced-options', 'routes/onboarding.advanced-options.tsx'),
+  route(
+    'onboarding/advanced-options',
+    'routes/onboarding.advanced-options.tsx'
+  ),
 ] satisfies RouteConfig

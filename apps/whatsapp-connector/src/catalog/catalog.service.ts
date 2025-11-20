@@ -63,9 +63,13 @@ export class CatalogService {
             catalog = Array.isArray(myCatalog.productCollection)
               ? myCatalog.productCollection
               : Array.from(myCatalog.productCollection);
-            console.log(`✅ getMyCatalog() - ${catalog.length} produits récupérés`);
+            console.log(
+              `✅ getMyCatalog() - ${catalog.length} produits récupérés`,
+            );
           } else {
-            console.log('⚠️  getMyCatalog() ne contient pas de productCollection');
+            console.log(
+              '⚠️  getMyCatalog() ne contient pas de productCollection',
+            );
           }
         } catch (error) {
           console.log('❌ Erreur avec getMyCatalog():', error.message);
@@ -77,7 +81,9 @@ export class CatalogService {
             console.log('🔄 Fallback sur getProducts()...');
             const userId = window.WPP.conn?.getMyUserId()?._serialized || '';
             catalog = await window.WPP.catalog.getProducts(userId, 999);
-            console.log(`✅ getProducts() - ${catalog?.length || 0} produits récupérés`);
+            console.log(
+              `✅ getProducts() - ${catalog?.length || 0} produits récupérés`,
+            );
           } catch (error) {
             console.log('❌ Erreur avec getProducts():', error.message);
           }

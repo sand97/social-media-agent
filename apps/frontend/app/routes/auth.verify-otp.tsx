@@ -1,9 +1,9 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router'
-import { App, Button, Card, Form, Typography, Input } from 'antd'
-import PhoneInput from 'antd-phone-input'
 import { useAuth } from '@app/hooks/useAuth'
 import apiClient from '@app/lib/api/client'
+import { App, Button, Card, Form, Typography, Input } from 'antd'
+import PhoneInput from 'antd-phone-input'
+import { useState } from 'react'
+import { useNavigate } from 'react-router'
 
 const { Title, Text, Paragraph } = Typography
 
@@ -39,7 +39,10 @@ interface OtpFormValues {
 export function meta() {
   return [
     { title: 'Vérification OTP - WhatsApp Agent' },
-    { name: 'description', content: 'Vérifiez votre code OTP pour vous connecter' },
+    {
+      name: 'description',
+      content: 'Vérifiez votre code OTP pour vous connecter',
+    },
   ]
 }
 
@@ -91,7 +94,7 @@ export default function VerifyOtpPage() {
         message: 'Erreur',
         description:
           error.response?.data?.message ||
-          'Une erreur est survenue lors de l\'envoi du code OTP',
+          "Une erreur est survenue lors de l'envoi du code OTP",
       })
     } finally {
       setIsRequestingOtp(false)
@@ -132,8 +135,7 @@ export default function VerifyOtpPage() {
       notification.error({
         message: 'Erreur',
         description:
-          error.response?.data?.message ||
-          'Code OTP invalide ou expiré',
+          error.response?.data?.message || 'Code OTP invalide ou expiré',
       })
     } finally {
       setIsVerifying(false)
@@ -143,13 +145,13 @@ export default function VerifyOtpPage() {
   const isValidPhoneNumber = phoneValue?.phoneNumber && phoneValue?.countryCode
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-blue-50 p-4">
-      <Card className="max-w-md w-full shadow-xl">
-        <div className="text-center mb-8">
-          <Title level={2} className="mb-2">
+    <div className='min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-blue-50 p-4'>
+      <Card className='max-w-md w-full shadow-xl'>
+        <div className='text-center mb-8'>
+          <Title level={2} className='mb-2'>
             Connexion
           </Title>
-          <Text type="secondary">
+          <Text type='secondary'>
             {otpSent
               ? 'Entrez le code OTP reçu sur WhatsApp'
               : 'Connectez-vous avec votre numéro de téléphone'}
@@ -158,27 +160,24 @@ export default function VerifyOtpPage() {
 
         {!otpSent ? (
           // Step 1: Request OTP
-          <Form form={phoneForm} layout="vertical" onFinish={handleRequestOtp}>
+          <Form form={phoneForm} layout='vertical' onFinish={handleRequestOtp}>
             <Form.Item
-              name="phone"
-              label="Numéro de téléphone"
+              name='phone'
+              label='Numéro de téléphone'
               required
-              help="Sélectionnez votre pays et entrez votre numéro"
+              help='Sélectionnez votre pays et entrez votre numéro'
             >
-              <PhoneInput
-                enableSearch
-                size="large"
-              />
+              <PhoneInput enableSearch size='large' />
             </Form.Item>
 
-            <Form.Item className="mb-4">
+            <Form.Item className='mb-4'>
               <Button
-                type="primary"
-                htmlType="submit"
-                size="large"
+                type='primary'
+                htmlType='submit'
+                size='large'
                 loading={isRequestingOtp}
                 disabled={!isValidPhoneNumber}
-                className="w-full"
+                className='w-full'
               >
                 Recevoir le code OTP
               </Button>
@@ -187,21 +186,17 @@ export default function VerifyOtpPage() {
         ) : (
           // Step 2: Verify OTP
           <div>
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-              <Paragraph className="mb-0 text-sm">
+            <div className='bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6'>
+              <Paragraph className='mb-0 text-sm'>
                 Un code à 6 chiffres a été envoyé au numéro{' '}
                 <strong>{fullPhoneNumber}</strong>
               </Paragraph>
             </div>
 
-            <Form
-              form={otpForm}
-              layout="vertical"
-              onFinish={handleVerifyOtp}
-            >
+            <Form form={otpForm} layout='vertical' onFinish={handleVerifyOtp}>
               <Form.Item
-                name="code"
-                label="Code OTP"
+                name='code'
+                label='Code OTP'
                 rules={[
                   {
                     required: true,
@@ -215,31 +210,31 @@ export default function VerifyOtpPage() {
               >
                 <Input.OTP
                   length={6}
-                  size="large"
-                  formatter={(str) => str.toUpperCase()}
+                  size='large'
+                  formatter={str => str.toUpperCase()}
                 />
               </Form.Item>
 
-              <Form.Item className="mb-4">
+              <Form.Item className='mb-4'>
                 <Button
-                  type="primary"
-                  htmlType="submit"
-                  size="large"
+                  type='primary'
+                  htmlType='submit'
+                  size='large'
                   loading={isVerifying}
-                  className="w-full"
+                  className='w-full'
                 >
                   Se connecter
                 </Button>
               </Form.Item>
 
-              <div className="text-center">
+              <div className='text-center'>
                 <Button
-                  type="link"
+                  type='link'
                   onClick={() => {
                     setOtpSent(false)
                     otpForm.resetFields()
                   }}
-                  className="text-sm"
+                  className='text-sm'
                 >
                   Changer de numéro
                 </Button>
@@ -248,14 +243,14 @@ export default function VerifyOtpPage() {
           </div>
         )}
 
-        <div className="text-center mt-6 pt-6 border-t border-gray-200">
-          <Text type="secondary" className="block mb-2">
+        <div className='text-center mt-6 pt-6 border-t border-gray-200'>
+          <Text type='secondary' className='block mb-2'>
             Première connexion?
           </Text>
           <Button
-            type="link"
+            type='link'
             onClick={() => navigate('/auth/login')}
-            className="font-medium"
+            className='font-medium'
           >
             Demander un code de pairing
           </Button>

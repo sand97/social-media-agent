@@ -1,3 +1,4 @@
+import { ApiProperty } from '@nestjs/swagger';
 import {
   IsString,
   IsOptional,
@@ -5,7 +6,6 @@ import {
   IsObject,
   IsUrl,
 } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
 
 export class UpdateBusinessInfoDto {
   @ApiProperty({

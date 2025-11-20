@@ -1,5 +1,7 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router'
+import { PlusOutlined, DeleteOutlined } from '@ant-design/icons'
+import { OnboardingLayout } from '@app/components/onboarding/OnboardingLayout'
+import { useOnboarding } from '@app/hooks/useOnboarding'
+import apiClient from '@app/lib/api/client'
 import {
   Form,
   Input,
@@ -12,10 +14,8 @@ import {
   Divider,
   message,
 } from 'antd'
-import { PlusOutlined, DeleteOutlined } from '@ant-design/icons'
-import { OnboardingLayout } from '@app/components/onboarding/OnboardingLayout'
-import { useOnboarding } from '@app/hooks/useOnboarding'
-import apiClient from '@app/lib/api/client'
+import { useState } from 'react'
+import { useNavigate } from 'react-router'
 
 interface DeliveryLocation {
   country: string
@@ -36,7 +36,7 @@ interface PaymentMethod {
 
 const countries = [
   { label: 'Cameroun', value: 'CM' },
-  { label: 'Côte d\'Ivoire', value: 'CI' },
+  { label: "Côte d'Ivoire", value: 'CI' },
   { label: 'Sénégal', value: 'SN' },
   { label: 'Mali', value: 'ML' },
   { label: 'Burkina Faso', value: 'BF' },
@@ -47,18 +47,23 @@ const countries = [
 export function meta() {
   return [
     { title: 'Informations boutique - WhatsApp Agent' },
-    { name: 'description', content: 'Configurez les informations de votre boutique' },
+    {
+      name: 'description',
+      content: 'Configurez les informations de votre boutique',
+    },
   ]
 }
 
 export default function OnboardingBusinessInfo() {
   const navigate = useNavigate()
-  const { currentStep, currentStepNumber } = useOnboarding('/onboarding/business-info')
+  const { currentStep, currentStepNumber } = useOnboarding(
+    '/onboarding/business-info'
+  )
   const [form] = Form.useForm()
   const [loading, setLoading] = useState(false)
-  const [deliveryLocations, setDeliveryLocations] = useState<DeliveryLocation[]>([
-    { country: '', city: '', zoneName: '', price: 0 },
-  ])
+  const [deliveryLocations, setDeliveryLocations] = useState<
+    DeliveryLocation[]
+  >([{ country: '', city: '', zoneName: '', price: 0 }])
 
   const handleAddLocation = () => {
     setDeliveryLocations([
@@ -73,7 +78,11 @@ export default function OnboardingBusinessInfo() {
     }
   }
 
-  const handleLocationChange = (index: number, field: keyof DeliveryLocation, value: any) => {
+  const handleLocationChange = (
+    index: number,
+    field: keyof DeliveryLocation,
+    value: any
+  ) => {
     const updated = [...deliveryLocations]
     updated[index] = { ...updated[index], [field]: value }
     setDeliveryLocations(updated)
@@ -110,7 +119,7 @@ export default function OnboardingBusinessInfo() {
       console.error('Erreur lors de la sauvegarde:', error)
       message.error(
         error.response?.data?.message ||
-        'Erreur lors de la sauvegarde des informations'
+          'Erreur lors de la sauvegarde des informations'
       )
     } finally {
       setLoading(false)
@@ -122,10 +131,13 @@ export default function OnboardingBusinessInfo() {
   }
 
   return (
-    <OnboardingLayout currentStep={currentStepNumber} title={currentStep?.title || ''}>
+    <OnboardingLayout
+      currentStep={currentStepNumber}
+      title={currentStep?.title || ''}
+    >
       <Form
         form={form}
-        layout="vertical"
+        layout='vertical'
         onFinish={handleSubmit}
         initialValues={{
           cash: true,
@@ -134,47 +146,51 @@ export default function OnboardingBusinessInfo() {
         }}
       >
         {/* Business Location */}
-        <Card title="Localisation de la boutique" className="mb-6">
+        <Card title='Localisation de la boutique' className='mb-6'>
           <Form.Item
-            label="Pays"
-            name="country"
-            rules={[{ required: true, message: 'Veuillez sélectionner un pays' }]}
+            label='Pays'
+            name='country'
+            rules={[
+              { required: true, message: 'Veuillez sélectionner un pays' },
+            ]}
           >
             <Select
-              size="large"
-              placeholder="Sélectionnez votre pays"
+              size='large'
+              placeholder='Sélectionnez votre pays'
               options={countries}
             />
           </Form.Item>
 
           <Form.Item
-            label="Ville"
-            name="city"
+            label='Ville'
+            name='city'
             rules={[{ required: true, message: 'Veuillez entrer votre ville' }]}
           >
-            <Input size="large" placeholder="Ex: Douala" />
+            <Input size='large' placeholder='Ex: Douala' />
           </Form.Item>
 
           <Form.Item
-            label="Adresse"
-            name="address"
-            rules={[{ required: true, message: 'Veuillez entrer votre adresse' }]}
+            label='Adresse'
+            name='address'
+            rules={[
+              { required: true, message: 'Veuillez entrer votre adresse' },
+            ]}
           >
             <Input.TextArea
-              size="large"
+              size='large'
               rows={3}
-              placeholder="Ex: Quartier Akwa, Rue de la Joie"
+              placeholder='Ex: Quartier Akwa, Rue de la Joie'
             />
           </Form.Item>
         </Card>
 
         {/* Delivery Locations */}
         <Card
-          title="Emplacements de livraison"
-          className="mb-6"
+          title='Emplacements de livraison'
+          className='mb-6'
           extra={
             <Button
-              type="dashed"
+              type='dashed'
               icon={<PlusOutlined />}
               onClick={handleAddLocation}
             >
@@ -182,18 +198,18 @@ export default function OnboardingBusinessInfo() {
             </Button>
           }
         >
-          <div className="space-y-4">
+          <div className='space-y-4'>
             {deliveryLocations.map((location, index) => (
               <Card
                 key={index}
-                size="small"
-                className="bg-gray-50"
+                size='small'
+                className='bg-gray-50'
                 extra={
                   deliveryLocations.length > 1 && (
                     <Button
-                      type="text"
+                      type='text'
                       danger
-                      size="small"
+                      size='small'
                       icon={<DeleteOutlined />}
                       onClick={() => handleRemoveLocation(index)}
                     >
@@ -202,53 +218,63 @@ export default function OnboardingBusinessInfo() {
                   )
                 }
               >
-                <div className="grid grid-cols-2 gap-4">
+                <div className='grid grid-cols-2 gap-4'>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className='block text-sm font-medium text-gray-700 mb-1'>
                       Pays
                     </label>
                     <Select
                       value={location.country}
-                      onChange={(value) => handleLocationChange(index, 'country', value)}
-                      placeholder="Sélectionnez"
+                      onChange={value =>
+                        handleLocationChange(index, 'country', value)
+                      }
+                      placeholder='Sélectionnez'
                       options={countries}
-                      className="w-full"
+                      className='w-full'
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className='block text-sm font-medium text-gray-700 mb-1'>
                       Ville
                     </label>
                     <Input
                       value={location.city}
-                      onChange={(e) => handleLocationChange(index, 'city', e.target.value)}
-                      placeholder="Ex: Yaoundé"
+                      onChange={e =>
+                        handleLocationChange(index, 'city', e.target.value)
+                      }
+                      placeholder='Ex: Yaoundé'
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className='block text-sm font-medium text-gray-700 mb-1'>
                       Nom de la zone
                     </label>
                     <Input
                       value={location.zoneName}
-                      onChange={(e) => handleLocationChange(index, 'zoneName', e.target.value)}
-                      placeholder="Ex: Centre-ville"
+                      onChange={e =>
+                        handleLocationChange(index, 'zoneName', e.target.value)
+                      }
+                      placeholder='Ex: Centre-ville'
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className='block text-sm font-medium text-gray-700 mb-1'>
                       Prix (FCFA)
                     </label>
                     <InputNumber
                       value={location.price}
-                      onChange={(value) => handleLocationChange(index, 'price', value || 0)}
-                      placeholder="0"
+                      onChange={value =>
+                        handleLocationChange(index, 'price', value || 0)
+                      }
+                      placeholder='0'
                       min={0}
-                      className="w-full"
-                      formatter={(value) => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ' ')}
+                      className='w-full'
+                      formatter={value =>
+                        `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ' ')
+                      }
                     />
                   </div>
                 </div>
@@ -258,28 +284,33 @@ export default function OnboardingBusinessInfo() {
         </Card>
 
         {/* Payment Methods */}
-        <Card title="Moyens de paiement" className="mb-6">
-          <Form.Item name="cash" valuePropName="checked">
+        <Card title='Moyens de paiement' className='mb-6'>
+          <Form.Item name='cash' valuePropName='checked'>
             <Checkbox>
-              <span className="font-medium">Espèces (Cash)</span>
+              <span className='font-medium'>Espèces (Cash)</span>
             </Checkbox>
           </Form.Item>
 
           <Divider />
 
-          <Form.Item name="mobileMoneyEnabled" valuePropName="checked">
+          <Form.Item name='mobileMoneyEnabled' valuePropName='checked'>
             <Checkbox>
-              <span className="font-medium">Mobile Money</span>
+              <span className='font-medium'>Mobile Money</span>
             </Checkbox>
           </Form.Item>
 
-          <Form.Item noStyle shouldUpdate={(prev, curr) => prev.mobileMoneyEnabled !== curr.mobileMoneyEnabled}>
+          <Form.Item
+            noStyle
+            shouldUpdate={(prev, curr) =>
+              prev.mobileMoneyEnabled !== curr.mobileMoneyEnabled
+            }
+          >
             {({ getFieldValue }) =>
               getFieldValue('mobileMoneyEnabled') && (
-                <div className="ml-6 space-y-4 mt-4 p-4 bg-gray-50 rounded-lg">
+                <div className='ml-6 space-y-4 mt-4 p-4 bg-gray-50 rounded-lg'>
                   <Form.Item
-                    label="Numéro Mobile Money"
-                    name="mobileMoneyNumber"
+                    label='Numéro Mobile Money'
+                    name='mobileMoneyNumber'
                     rules={[
                       {
                         required: getFieldValue('mobileMoneyEnabled'),
@@ -287,12 +318,12 @@ export default function OnboardingBusinessInfo() {
                       },
                     ]}
                   >
-                    <Input size="large" placeholder="Ex: +237 6XX XXX XXX" />
+                    <Input size='large' placeholder='Ex: +237 6XX XXX XXX' />
                   </Form.Item>
 
                   <Form.Item
-                    label="Nom du compte"
-                    name="mobileMoneyName"
+                    label='Nom du compte'
+                    name='mobileMoneyName'
                     rules={[
                       {
                         required: getFieldValue('mobileMoneyEnabled'),
@@ -300,10 +331,13 @@ export default function OnboardingBusinessInfo() {
                       },
                     ]}
                   >
-                    <Input size="large" placeholder="Ex: Jean Dupont" />
+                    <Input size='large' placeholder='Ex: Jean Dupont' />
                   </Form.Item>
 
-                  <Form.Item name="mobileMoneyRequireProof" valuePropName="checked">
+                  <Form.Item
+                    name='mobileMoneyRequireProof'
+                    valuePropName='checked'
+                  >
                     <Checkbox>
                       Demander une preuve de paiement aux clients
                     </Checkbox>
@@ -315,12 +349,17 @@ export default function OnboardingBusinessInfo() {
         </Card>
 
         {/* Action Buttons */}
-        <div className="flex items-center justify-between pt-6 border-t">
-          <Button size="large" onClick={handlePrevious}>
+        <div className='flex items-center justify-between pt-6 border-t'>
+          <Button size='large' onClick={handlePrevious}>
             Précédent
           </Button>
 
-          <Button type="primary" size="large" htmlType="submit" loading={loading}>
+          <Button
+            type='primary'
+            size='large'
+            htmlType='submit'
+            loading={loading}
+          >
             Continuer
           </Button>
         </div>

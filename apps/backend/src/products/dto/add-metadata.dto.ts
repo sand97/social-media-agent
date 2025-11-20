@@ -1,5 +1,5 @@
-import { IsString, IsBoolean } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { IsString, IsBoolean } from 'class-validator';
 
 export class AddMetadataDto {
   @ApiProperty({

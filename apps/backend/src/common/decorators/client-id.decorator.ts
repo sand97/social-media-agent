@@ -12,7 +12,9 @@ export const ClientId = createParamDecorator(
     const clientId = request.clientId;
 
     if (!clientId) {
-      throw new Error('ClientId not found in request. Did you forget to apply the guard?');
+      throw new Error(
+        'ClientId not found in request. Did you forget to apply the guard?',
+      );
     }
 
     return clientId;

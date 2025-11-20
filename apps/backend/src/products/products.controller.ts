@@ -17,11 +17,13 @@ import {
   ApiResponse,
   ApiBearerAuth,
 } from '@nestjs/swagger';
-import { ProductsService } from './products.service';
+
+import { JwtAuthGuard } from '../guards/jwt-auth.guard';
+
+import { AddMetadataDto } from './dto/add-metadata.dto';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
-import { AddMetadataDto } from './dto/add-metadata.dto';
-import { JwtAuthGuard } from '../guards/jwt-auth.guard';
+import { ProductsService } from './products.service';
 
 @ApiTags('products')
 @Controller('products')

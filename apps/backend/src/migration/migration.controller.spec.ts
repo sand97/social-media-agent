@@ -1,5 +1,5 @@
-import { Test, TestingModule } from '@nestjs/testing';
 import { MigrationController } from '@app/migration/migration.controller';
+import { Test, TestingModule } from '@nestjs/testing';
 
 describe('MigrationController', () => {
   let controller: MigrationController;

@@ -1,3 +1,4 @@
+import { OrderStatus } from '@app/generated/client';
 import {
   Controller,
   Get,
@@ -19,12 +20,13 @@ import {
   ApiParam,
   ApiQuery,
 } from '@nestjs/swagger';
-import { OrdersService } from './orders.service';
-import { CreateOrderDto } from './dto/create-order.dto';
-import { UpdateOrderDto } from './dto/update-order.dto';
-import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
+
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
-import { OrderStatus } from '@app/generated/client';
+
+import { CreateOrderDto } from './dto/create-order.dto';
+import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
+import { UpdateOrderDto } from './dto/update-order.dto';
+import { OrdersService } from './orders.service';
 
 @ApiTags('orders')
 @Controller('orders')
@@ -46,7 +48,10 @@ export class OrdersController {
     description: 'List of orders retrieved successfully',
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async getAllOrders(@Query('status') status: OrderStatus, @Request() req: any) {
+  async getAllOrders(
+    @Query('status') status: OrderStatus,
+    @Request() req: any,
+  ) {
     return this.ordersService.getAllForUser(req.user.userId, status);
   }
 

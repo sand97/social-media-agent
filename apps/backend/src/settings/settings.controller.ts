@@ -15,13 +15,15 @@ import {
   ApiResponse,
   ApiBearerAuth,
 } from '@nestjs/swagger';
-import { SettingsService } from './settings.service';
+
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
-import { UpdateBusinessInfoDto } from './dto/update-business-info.dto';
+
 import { CreateDeliveryLocationDto } from './dto/create-delivery-location.dto';
-import { UpdateDeliveryLocationDto } from './dto/update-delivery-location.dto';
 import { CreatePaymentMethodDto } from './dto/create-payment-method.dto';
+import { UpdateBusinessInfoDto } from './dto/update-business-info.dto';
+import { UpdateDeliveryLocationDto } from './dto/update-delivery-location.dto';
 import { UpdatePaymentMethodDto } from './dto/update-payment-method.dto';
+import { SettingsService } from './settings.service';
 
 @ApiTags('settings')
 @Controller('settings')
@@ -125,14 +127,8 @@ export class SettingsController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Forbidden' })
   @ApiResponse({ status: 404, description: 'Delivery location not found' })
-  async deleteDeliveryLocation(
-    @Request() req: any,
-    @Param('id') id: string,
-  ) {
-    return this.settingsService.deleteDeliveryLocation(
-      id,
-      req.user.userId,
-    );
+  async deleteDeliveryLocation(@Request() req: any, @Param('id') id: string) {
+    return this.settingsService.deleteDeliveryLocation(id, req.user.userId);
   }
 
   // ==================== PAYMENT METHODS ====================
@@ -198,13 +194,7 @@ export class SettingsController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Forbidden' })
   @ApiResponse({ status: 404, description: 'Payment method not found' })
-  async deletePaymentMethod(
-    @Request() req: any,
-    @Param('id') id: string,
-  ) {
-    return this.settingsService.deletePaymentMethod(
-      id,
-      req.user.userId,
-    );
+  async deletePaymentMethod(@Request() req: any, @Param('id') id: string) {
+    return this.settingsService.deletePaymentMethod(id, req.user.userId);
   }
 }

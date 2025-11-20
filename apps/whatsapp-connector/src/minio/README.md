@@ -33,10 +33,12 @@ MINIO_BUCKET=whatsapp-agent        # Nom du bucket (par défaut: whatsapp-agent)
 ## 🎯 Fonctionnalités
 
 ### 1. **Gestion du bucket**
+
 - Création automatique du bucket au démarrage si inexistant
 - Vérification de l'existence du bucket
 
 ### 2. **ensureFolderExist(folderPath)**
+
 Vérifie et crée un "dossier" (préfixe) dans le bucket.
 
 **Note importante**: Dans S3/Minio, les dossiers n'existent pas réellement - ce sont juste des préfixes dans les clés d'objets. Cette fonction est un no-op intentionnel car les préfixes sont créés automatiquement lors de l'upload d'objets avec des clés contenant des "/".
@@ -48,15 +50,18 @@ await minioService.ensureFolderExist('237012345678/catalog/images');
 ```
 
 ### 3. **Upload de fichiers**
+
 - Upload depuis le système de fichiers local
 - Détection automatique du Content-Type
 - Support de tous les formats d'images
 
 ### 4. **Upload JSON**
+
 - Upload direct d'objets JavaScript/JSON
 - Sérialisation automatique avec indentation
 
 ### 5. **Autres fonctionnalités**
+
 - Téléchargement de fichiers
 - Liste des objets avec préfixe
 - Suppression de fichiers
@@ -73,13 +78,20 @@ import { MinioService } from '../minio/minio.service';
 export class YourService {
   constructor(private readonly minioService: MinioService) {}
 
-  async uploadCatalogImage(clientId: string, localFilePath: string, fileName: string) {
+  async uploadCatalogImage(
+    clientId: string,
+    localFilePath: string,
+    fileName: string,
+  ) {
     // Créer la structure de dossiers
     await this.minioService.ensureFolderExist(`${clientId}/catalog/images`);
 
     // Upload du fichier
     const objectKey = `${clientId}/catalog/images/${fileName}`;
-    const success = await this.minioService.uploadFile(localFilePath, objectKey);
+    const success = await this.minioService.uploadFile(
+      localFilePath,
+      objectKey,
+    );
 
     if (success) {
       console.log('✅ Image uploadée!');
@@ -129,6 +141,7 @@ whatsapp-agent/
 ```
 
 **Exemple concret:**
+
 ```
 whatsapp-agent/
 └── 237012345678/
@@ -143,6 +156,7 @@ whatsapp-agent/
 ## 🔧 Méthodes principales
 
 ### `ensureFolderExist(folderPath: string)`
+
 Vérifie et crée un préfixe (dossier virtuel) dans le bucket.
 
 **Note**: C'est un no-op intentionnel - les préfixes sont créés automatiquement.
@@ -152,17 +166,19 @@ await minioService.ensureFolderExist('237012345678/catalog/images');
 ```
 
 ### `uploadFile(localFilePath: string, objectKey: string, contentType?: string)`
+
 Upload un fichier depuis le disque local.
 
 ```typescript
 await minioService.uploadFile(
   '/path/to/local/image.jpg',
   '237012345678/catalog/images/image.jpg',
-  'image/jpeg'
+  'image/jpeg',
 );
 ```
 
 ### `uploadJson(objectKey: string, data: any)`
+
 Upload un objet JSON.
 
 ```typescript
@@ -172,6 +188,7 @@ await minioService.uploadJson('237012345678/catalog/infos.json', {
 ```
 
 ### `fileExists(key: string)`
+
 Vérifie si un fichier existe.
 
 ```typescript
@@ -179,16 +196,18 @@ const exists = await minioService.fileExists('237012345678/catalog/infos.json');
 ```
 
 ### `downloadFile(objectKey: string, localFilePath: string)`
+
 Télécharge un fichier depuis Minio.
 
 ```typescript
 await minioService.downloadFile(
   '237012345678/catalog/infos.json',
-  '/local/path/infos.json'
+  '/local/path/infos.json',
 );
 ```
 
 ### `listObjects(prefix: string)`
+
 Liste tous les objets avec un préfixe donné.
 
 ```typescript
@@ -197,6 +216,7 @@ const images = await minioService.listObjects('237012345678/catalog/images/');
 ```
 
 ### `deleteFile(objectKey: string)`
+
 Supprime un fichier.
 
 ```typescript
@@ -204,12 +224,13 @@ await minioService.deleteFile('237012345678/catalog/images/old.jpg');
 ```
 
 ### `getPresignedUrl(objectKey: string, expirySeconds?: number)`
+
 Génère une URL pré-signée pour télécharger un fichier (valide pendant X secondes).
 
 ```typescript
 const url = await minioService.getPresignedUrl(
   '237012345678/catalog/images/img.jpg',
-  3600  // URL valide 1 heure
+  3600, // URL valide 1 heure
 );
 ```
 
@@ -245,14 +266,14 @@ Le service génère des logs détaillés:
 
 Le service détecte automatiquement le type MIME basé sur l'extension:
 
-| Extension | Content-Type |
-|-----------|--------------|
-| `.jpg`, `.jpeg` | `image/jpeg` |
-| `.png` | `image/png` |
-| `.gif` | `image/gif` |
-| `.json` | `application/json` |
-| `.txt` | `text/plain` |
-| Autres | `application/octet-stream` |
+| Extension       | Content-Type               |
+| --------------- | -------------------------- |
+| `.jpg`, `.jpeg` | `image/jpeg`               |
+| `.png`          | `image/png`                |
+| `.gif`          | `image/gif`                |
+| `.json`         | `application/json`         |
+| `.txt`          | `text/plain`               |
+| Autres          | `application/octet-stream` |
 
 ## 🚀 Test local avec Docker
 

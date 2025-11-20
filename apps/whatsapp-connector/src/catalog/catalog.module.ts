@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 
 import { MinioModule } from '../minio/minio.module';
+
 import { CatalogService } from './catalog.service';
 
 @Module({

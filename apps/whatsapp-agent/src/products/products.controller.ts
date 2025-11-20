@@ -1,8 +1,9 @@
 import { Body, Controller, Post, Logger } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
-import { ProductsAnalysisService } from './products-analysis.service';
-import { AnalyzeProductDto } from './dto/analyze-product.dto';
+
 import { AnalysisResultDto } from './dto/analysis-result.dto';
+import { AnalyzeProductDto } from './dto/analyze-product.dto';
+import { ProductsAnalysisService } from './products-analysis.service';
 
 @ApiTags('products')
 @Controller('products')
@@ -17,7 +18,7 @@ export class ProductsController {
   @ApiOperation({
     summary: 'Analyser un produit avec IA',
     description:
-      'Analyse un produit pour détecter les erreurs d\'orthographe, suggérer des métadonnées et améliorer la description',
+      "Analyse un produit pour détecter les erreurs d'orthographe, suggérer des métadonnées et améliorer la description",
   })
   @ApiResponse({
     status: 200,
@@ -30,7 +31,7 @@ export class ProductsController {
   })
   @ApiResponse({
     status: 500,
-    description: 'Erreur lors de l\'analyse',
+    description: "Erreur lors de l'analyse",
   })
   async analyzeProduct(
     @Body() analyzeProductDto: AnalyzeProductDto,

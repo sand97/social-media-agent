@@ -90,6 +90,7 @@ Les placeholders suivants sont remplacés automatiquement :
 ## 🎯 Types disponibles
 
 Le fichier `global.d.ts` définit les types pour :
+
 - `window.WPP.*` : API WPPConnect
 - `fetch`, `FormData`, etc. : APIs du navigateur
 
@@ -126,6 +127,7 @@ Pour tester un script :
 4. Collez et exécutez le code
 
 Exemple :
+
 ```javascript
 // Remplacer les variables
 const BACKEND_URL = 'http://localhost:3000';

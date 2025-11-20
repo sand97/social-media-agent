@@ -1,3 +1,4 @@
+import { Order, OrderStatus } from '@app/generated/client';
 import {
   Injectable,
   NotFoundException,
@@ -5,10 +6,11 @@ import {
   Logger,
   BadRequestException,
 } from '@nestjs/common';
+
 import { PrismaService } from '../prisma/prisma.service';
+
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
-import { Order, OrderStatus } from '@app/generated/client';
 
 @Injectable()
 export class OrdersService {
@@ -220,13 +222,16 @@ export class OrdersService {
     if (data.customerPhone !== undefined)
       updateData.customerPhone = data.customerPhone;
     if (data.products !== undefined) updateData.products = data.products;
-    if (data.totalAmount !== undefined) updateData.totalAmount = data.totalAmount;
+    if (data.totalAmount !== undefined)
+      updateData.totalAmount = data.totalAmount;
     if (data.deliveryLocationId !== undefined)
       updateData.deliveryLocationId = data.deliveryLocationId;
     if (data.paymentMethodId !== undefined)
       updateData.paymentMethodId = data.paymentMethodId;
     if (data.promiseDate !== undefined)
-      updateData.promiseDate = data.promiseDate ? new Date(data.promiseDate) : null;
+      updateData.promiseDate = data.promiseDate
+        ? new Date(data.promiseDate)
+        : null;
     if (data.status !== undefined) updateData.status = data.status;
 
     return this.prisma.order.update({

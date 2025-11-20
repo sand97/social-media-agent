@@ -97,9 +97,11 @@ WhatsApp Connector → [Webhook] → WhatsApp Agent
 ### 2. Événements traités
 
 L'agent écoute tous les événements du connector mais ne traite que :
+
 - `message` : Messages entrants (ignore messages personnels et groupes par défaut)
 
 Les autres événements sont loggés mais ignorés :
+
 - `qr`, `ready`, `authenticated`, `disconnected`, etc.
 
 ### 3. Tools WhatsApp disponibles
@@ -107,6 +109,7 @@ Les autres événements sont loggés mais ignorés :
 L'agent a accès aux tools suivants :
 
 **send_whatsapp_message**
+
 ```json
 {
   "chatId": "1234567890@c.us",
@@ -115,6 +118,7 @@ L'agent a accès aux tools suivants :
 ```
 
 **get_chat_info**
+
 ```json
 {
   "chatId": "1234567890@c.us"
@@ -122,6 +126,7 @@ L'agent a accès aux tools suivants :
 ```
 
 **get_contact_info**
+
 ```json
 {
   "contactId": "1234567890@c.us"
@@ -147,6 +152,7 @@ AGENT_SYSTEM_PROMPT="You are a professional customer support assistant for ACME 
 Reçoit les événements WhatsApp du connector.
 
 **Body:**
+
 ```json
 {
   "event": "message",
@@ -164,6 +170,7 @@ Reçoit les événements WhatsApp du connector.
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -252,6 +259,7 @@ Les logs sont disponibles dans la console :
 ### L'agent répond à tous les messages
 
 Par défaut, l'agent ignore :
+
 - Les messages envoyés par lui-même (`fromMe: true`)
 - Les messages de groupe (`@g.us`)
 

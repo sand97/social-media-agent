@@ -1,3 +1,5 @@
+import * as crypto from 'crypto';
+
 import {
   Injectable,
   CanActivate,
@@ -7,7 +9,6 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Request } from 'express';
-import * as crypto from 'crypto';
 
 /**
  * Guard pour vérifier la signature des webhooks venant du connector
@@ -22,8 +23,7 @@ export class ConnectorSignatureGuard implements CanActivate {
 
   canActivate(context: ExecutionContext): boolean {
     const request = context.switchToHttp().getRequest<Request>();
-    const connectorSecret =
-      this.configService.get<string>('CONNECTOR_SECRET');
+    const connectorSecret = this.configService.get<string>('CONNECTOR_SECRET');
 
     // Si pas de secret configuré, on autorise (développement)
     if (!connectorSecret) {

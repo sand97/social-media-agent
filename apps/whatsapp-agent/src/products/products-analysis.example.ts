@@ -5,11 +5,13 @@
  * depuis d'autres parties de l'application.
  */
 
-import { ProductsAnalysisService } from './products-analysis.service';
 import { AnalysisResultDto } from './dto/analysis-result.dto';
+import { ProductsAnalysisService } from './products-analysis.service';
 
 export class ProductsAnalysisExample {
-  constructor(private readonly productsAnalysisService: ProductsAnalysisService) {}
+  constructor(
+    private readonly productsAnalysisService: ProductsAnalysisService,
+  ) {}
 
   /**
    * Exemple 1 : Analyse d'un vêtement
@@ -17,7 +19,8 @@ export class ProductsAnalysisExample {
   async analyzeClothing(): Promise<AnalysisResultDto> {
     return await this.productsAnalysisService.analyzeProduct({
       name: 'T-shirt en coton bio',
-      description: 'Un t-shirt confortabel en coton biologique, parfait pour l\'été',
+      description:
+        "Un t-shirt confortabel en coton biologique, parfait pour l'été",
       category: 'Vêtements',
     });
   }

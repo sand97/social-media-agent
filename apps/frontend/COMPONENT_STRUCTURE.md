@@ -96,6 +96,7 @@ root.tsx (Layout)
 ## State Management Flow
 
 ### Initial Load
+
 ```
 1. App mounts
    └→ AuthProvider initializes
@@ -109,6 +110,7 @@ root.tsx (Layout)
 ```
 
 ### New User Flow
+
 ```
 1. User visits /auth/login
    └→ Enter phone number
@@ -124,6 +126,7 @@ root.tsx (Layout)
 ```
 
 ### Returning User Flow
+
 ```
 1. User visits /auth/verify-otp
    └→ Step 1: Enter phone number
@@ -138,6 +141,7 @@ root.tsx (Layout)
 ```
 
 ### Logout Flow
+
 ```
 1. User calls logout()
    └→ Clear token from localStorage
@@ -183,6 +187,7 @@ root.tsx (Layout)
 ## Component Props & State
 
 ### auth.login.tsx
+
 ```typescript
 State:
   - phoneNumber: string
@@ -196,6 +201,7 @@ API Calls:
 ```
 
 ### auth.pairing-code.tsx
+
 ```typescript
 State:
   - isPolling: boolean
@@ -212,6 +218,7 @@ API Calls:
 ```
 
 ### auth.verify-otp.tsx
+
 ```typescript
 State:
   - phoneNumber: string

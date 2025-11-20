@@ -1,6 +1,12 @@
-import { IsString, IsNumber, IsOptional, IsDateString, IsEnum } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
 import { OrderStatus } from '@app/generated/client';
+import { ApiProperty } from '@nestjs/swagger';
+import {
+  IsString,
+  IsNumber,
+  IsOptional,
+  IsDateString,
+  IsEnum,
+} from 'class-validator';
 
 export class UpdateOrderDto {
   @ApiProperty({

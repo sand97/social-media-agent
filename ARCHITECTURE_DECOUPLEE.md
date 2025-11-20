@@ -2,7 +2,9 @@
 
 ## 🎯 Objectif
 
-Séparer les responsabilités entre le **WhatsApp Connector** (client pur) et le **Backend** (orchestrateur) pour :
+Séparer les responsabilités entre le **WhatsApp Connector** (client pur) et le **Backend**
+(orchestrateur) pour :
+
 - ✅ Minimiser les redéploiements du connector (sensible car connecté à WhatsApp)
 - ✅ Centraliser la logique métier dans le backend
 - ✅ Permettre l'évolution des fonctionnalités sans toucher au connector
@@ -12,22 +14,27 @@ Séparer les responsabilités entre le **WhatsApp Connector** (client pur) et le
 ## 📐 Architecture
 
 ### **Connector** (whatsapp-connector)
+
 **Rôle** : Client pur WhatsApp Web
 
 #### Responsabilités :
+
 - Se connecter à WhatsApp Web via `whatsapp-web.js`
 - Envoyer des événements via webhooks (`ready`, `qr`, `message`, etc.)
 - Exposer un endpoint pour **exécuter du code** dans la page WhatsApp Web
 - ❌ **NE FAIT PLUS** : Logique métier, téléchargement/upload d'images, traitement de données
 
 #### Endpoints exposés :
+
 ```
 POST /whatsapp/execute-script
 Body: { script: string }
 ```
+
 Exécute du JavaScript dans le contexte de la page WhatsApp Web (accès à `window.WPP`).
 
 #### Configuration :
+
 ```env
 CONNECTOR_SECRET=your-secret      # Pour signer les webhooks
 WEBHOOK_URLS=http://backend/...   # URLs à notifier
@@ -36,9 +43,11 @@ WEBHOOK_URLS=http://backend/...   # URLs à notifier
 ---
 
 ### **Backend** (apps/backend)
+
 **Rôle** : Orchestrateur et gestionnaire de logique métier
 
 #### Responsabilités :
+
 - Recevoir les webhooks du connector
 - Générer et envoyer des scripts à exécuter au connector
 - Recevoir et traiter les données (images, catalogues, etc.)
@@ -146,15 +155,18 @@ CONNECTOR_SECRET=your-shared-secret   # Même que backend
 Le connector signe tous les webhooks avec HMAC-SHA256 :
 
 **Connector** :
-```typescript
-const signature = crypto.createHmac('sha256', CONNECTOR_SECRET)
-  .update(JSON.stringify(payload))
-  .digest('hex');
 
-headers['X-Connector-Signature'] = signature;
+```typescript
+const signature = crypto
+  .createHmac('sha256', CONNECTOR_SECRET)
+  .update(JSON.stringify(payload))
+  .digest('hex')
+
+headers['X-Connector-Signature'] = signature
 ```
 
 **Backend** :
+
 ```typescript
 @UseGuards(ConnectorSignatureGuard)  // Vérifie la signature
 async whatsappConnected(@Body() data) { ... }
@@ -168,21 +180,21 @@ async whatsappConnected(@Body() data) { ... }
 
 ```javascript
 // Exécuté dans le contexte de la page WhatsApp Web
-const collections = await window.WPP.catalog.getCollections(userId, 50, 100);
+const collections = await window.WPP.catalog.getCollections(userId, 50, 100)
 
 for (const product of products) {
-  const blob = await fetch(imageUrl).then(r => r.blob());
+  const blob = await fetch(imageUrl).then(r => r.blob())
 
-  const formData = new FormData();
-  formData.append('image', blob);
-  formData.append('productId', product.id);
+  const formData = new FormData()
+  formData.append('image', blob)
+  formData.append('productId', product.id)
 
   // Upload vers backend
   await fetch('{{BACKEND_URL}}/catalog/upload-image', {
     method: 'POST',
-    headers: { 'Authorization': 'Bearer {{TOKEN}}' },
-    body: formData
-  });
+    headers: { Authorization: 'Bearer {{TOKEN}}' },
+    body: formData,
+  })
 }
 ```
 
@@ -206,12 +218,14 @@ for (const product of products) {
 ### Workflow de déploiement :
 
 **Pour une nouvelle fonctionnalité** :
+
 1. ✅ Créer un nouveau script dans `apps/backend/src/page-scripts/`
 2. ✅ Ajouter l'endpoint de traitement dans le backend
 3. ✅ Déclencher le script depuis un webhook
 4. ❌ **Pas besoin** de toucher au connector
 
 **Le connector ne change que si** :
+
 - Mise à jour de `whatsapp-web.js`
 - Nouveau type d'événement à écouter
 - Problème de stabilité/reconnexion
@@ -223,12 +237,14 @@ for (const product of products) {
 ### Logs à surveiller
 
 **Connector** :
+
 ```
 ✅ WhatsApp client is ready!
 🔍 Executing page script in browser context
 ```
 
 **Backend** :
+
 ```
 🚀 Executing catalog script for client: 237697020290@c.us
 ✅ Image uploadée: 25095720553426064-0 (main)

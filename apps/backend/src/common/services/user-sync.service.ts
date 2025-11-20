@@ -1,7 +1,10 @@
+import { ConnectorClientService } from '@app/connector-client';
+import { PageScriptService } from '@app/page-scripts';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { ConnectorClientService } from '../../connector-client/connector-client.service';
-import { PageScriptService } from '../../page-scripts/page-script.service';
+
+import { PrismaService } from '../../prisma/prisma.service';
+
 import { TokenService } from './token.service';
 
 /**
@@ -17,6 +20,7 @@ export class UserSyncService {
     private readonly connectorClientService: ConnectorClientService,
     private readonly configService: ConfigService,
     private readonly tokenService: TokenService,
+    private readonly prisma: PrismaService,
   ) {}
 
   /**
@@ -27,9 +31,7 @@ export class UserSyncService {
    * @returns Promise<void>
    */
   async synchronizeUserData(phoneNumber: string): Promise<void> {
-    this.logger.log(
-      `🔄 [START] User data synchronization for: ${phoneNumber}`,
-    );
+    this.logger.log(`🔄 [START] User data synchronization for: ${phoneNumber}`);
 
     try {
       // Step 1: Execute client info script (profile, business info, avatar)
@@ -58,14 +60,13 @@ export class UserSyncService {
    * @returns Promise<void>
    */
   private async syncClientInfo(clientId: string): Promise<void> {
-    this.logger.log(
-      `🚀 [START] Executing client info script for: ${clientId}`,
-    );
+    this.logger.log(`🚀 [START] Executing client info script for: ${clientId}`);
 
     try {
       // Generate a JWT token signed with the clientId
       this.logger.debug(`[CLIENT-INFO] Generating upload token...`);
-      const uploadToken = this.tokenService.generateCatalogUploadToken(clientId);
+      const uploadToken =
+        this.tokenService.generateCatalogUploadToken(clientId);
       this.logger.debug(`[CLIENT-INFO] Token generated successfully`);
 
       // Generate the script with variables
@@ -117,8 +118,56 @@ export class UserSyncService {
     try {
       // Generate a JWT token signed with the clientId
       this.logger.debug(`[CATALOG] Generating upload token...`);
-      const uploadToken = this.tokenService.generateCatalogUploadToken(clientId);
+      const uploadToken =
+        this.tokenService.generateCatalogUploadToken(clientId);
       this.logger.debug(`[CATALOG] Token generated successfully`);
+
+      // Récupérer les images existantes pour cet utilisateur
+      this.logger.debug(`[CATALOG] Fetching existing images...`);
+      const cleanedClientId = '+'
+        .concat(clientId.replace(/@[a-z.]+$/i, ''))
+        .replace('++', '+');
+
+      const user = await this.prisma.user.findUnique({
+        where: { phoneNumber: cleanedClientId },
+        select: { id: true },
+      });
+
+      let initialOriginalsUrls: Array<{
+        id: string;
+        original_url: string;
+        url: string;
+      }> = [];
+
+      if (user) {
+        const existingImages = await this.prisma.productImage.findMany({
+          where: {
+            product: {
+              user_id: user.id,
+            },
+          },
+          select: {
+            id: true,
+            original_url: true,
+            url: true,
+          },
+        });
+
+        // Filtrer pour ne garder que les images avec original_url
+        initialOriginalsUrls = existingImages
+          .filter((img) => img.original_url)
+          .map((img) => ({
+            id: img.id,
+            original_url: img.original_url!,
+            url: img.url,
+          }));
+
+        this.logger.debug(
+          `[CATALOG] Found ${initialOriginalsUrls.length} existing images`,
+        );
+      } else {
+        this.logger.debug(`[CATALOG] User not found, assuming first sync`);
+      }
 
       // Generate the script with variables
       this.logger.debug(`[CATALOG] Generating page script...`);
@@ -127,6 +176,7 @@ export class UserSyncService {
           this.configService.get<string>('BACKEND_URL') ||
           'http://localhost:3000',
         TOKEN: uploadToken,
+        INITIAL_ORIGINALS_URLS: JSON.stringify(initialOriginalsUrls),
       });
       this.logger.debug(`[CATALOG] Script generated successfully`);
 

@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router'
-import { Progress, Spin, Alert, Button } from 'antd'
 import { OnboardingLayout } from '@app/components/onboarding/OnboardingLayout'
 import { useOnboarding } from '@app/hooks/useOnboarding'
 import apiClient from '@app/lib/api/client'
+import { Progress, Spin, Alert, Button } from 'antd'
+import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router'
 
 const importSteps = [
   'Connexion à WhatsApp...',
@@ -15,7 +15,10 @@ const importSteps = [
 export function meta() {
   return [
     { title: 'Import des données - WhatsApp Agent' },
-    { name: 'description', content: 'Importation de vos données WhatsApp Business' },
+    {
+      name: 'description',
+      content: 'Importation de vos données WhatsApp Business',
+    },
   ]
 }
 
@@ -46,7 +49,7 @@ export default function OnboardingImport() {
     } catch (err: any) {
       setError(
         err.response?.data?.message ||
-        'Une erreur est survenue lors de l\'importation. Veuillez réessayer.'
+          "Une erreur est survenue lors de l'importation. Veuillez réessayer."
       )
       setIsImporting(false)
     }
@@ -61,24 +64,27 @@ export default function OnboardingImport() {
   const progressPercent = ((currentImportStep + 1) / importSteps.length) * 100
 
   return (
-    <OnboardingLayout currentStep={currentStepNumber} title={currentStep?.title || ''}>
-      <div className="max-w-2xl mx-auto">
+    <OnboardingLayout
+      currentStep={currentStepNumber}
+      title={currentStep?.title || ''}
+    >
+      <div className='max-w-2xl mx-auto'>
         {error ? (
-          <div className="space-y-6">
+          <div className='space-y-6'>
             <Alert
               message="Erreur d'importation"
               description={error}
-              type="error"
+              type='error'
               showIcon
             />
-            <div className="flex justify-center">
-              <Button type="primary" size="large" onClick={startImport}>
+            <div className='flex justify-center'>
+              <Button type='primary' size='large' onClick={startImport}>
                 Réessayer
               </Button>
             </div>
           </div>
         ) : (
-          <div className="space-y-8">
+          <div className='space-y-8'>
             {/* Progress Bar */}
             <Progress
               percent={Math.round(progressPercent)}
@@ -90,19 +96,19 @@ export default function OnboardingImport() {
             />
 
             {/* Current Step */}
-            <div className="flex flex-col items-center justify-center py-12">
-              <Spin size="large" />
-              <p className="mt-6 text-lg text-gray-700 font-medium">
+            <div className='flex flex-col items-center justify-center py-12'>
+              <Spin size='large' />
+              <p className='mt-6 text-lg text-gray-700 font-medium'>
                 {importSteps[currentImportStep]}
               </p>
             </div>
 
             {/* Steps List */}
-            <div className="bg-gray-50 rounded-lg p-6">
-              <h3 className="text-sm font-semibold text-gray-900 mb-4">
+            <div className='bg-gray-50 rounded-lg p-6'>
+              <h3 className='text-sm font-semibold text-gray-900 mb-4'>
                 Étapes d'importation:
               </h3>
-              <ul className="space-y-2">
+              <ul className='space-y-2'>
                 {importSteps.map((step, index) => (
                   <li
                     key={index}
@@ -110,18 +116,18 @@ export default function OnboardingImport() {
                       index < currentImportStep
                         ? 'text-green-600'
                         : index === currentImportStep
-                        ? 'text-blue-600 font-medium'
-                        : 'text-gray-400'
+                          ? 'text-blue-600 font-medium'
+                          : 'text-gray-400'
                     }`}
                   >
                     {index < currentImportStep ? (
-                      <span className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center text-white text-xs">
+                      <span className='w-5 h-5 rounded-full bg-green-500 flex items-center justify-center text-white text-xs'>
                         ✓
                       </span>
                     ) : index === currentImportStep ? (
-                      <span className="w-5 h-5 rounded-full border-2 border-blue-500 animate-pulse" />
+                      <span className='w-5 h-5 rounded-full border-2 border-blue-500 animate-pulse' />
                     ) : (
-                      <span className="w-5 h-5 rounded-full border-2 border-gray-300" />
+                      <span className='w-5 h-5 rounded-full border-2 border-gray-300' />
                     )}
                     {step}
                   </li>
@@ -130,9 +136,9 @@ export default function OnboardingImport() {
             </div>
 
             <Alert
-              message="Ne fermez pas cette page"
+              message='Ne fermez pas cette page'
               description="L'importation de vos données est en cours. Cela peut prendre quelques instants."
-              type="info"
+              type='info'
               showIcon
             />
           </div>

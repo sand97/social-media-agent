@@ -1,6 +1,7 @@
+import { HealthModule } from '@app/health/health.module';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { HealthModule } from '@app/health/health.module';
+
 import { WhatsAppModule } from './whatsapp/whatsapp.module';
 
 @Module({

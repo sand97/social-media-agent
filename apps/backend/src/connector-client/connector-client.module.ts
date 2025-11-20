@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+
 import { ConnectorClientService } from './connector-client.service';
 
 @Module({
@@ -8,4 +9,3 @@ import { ConnectorClientService } from './connector-client.service';
   exports: [ConnectorClientService],
 })
 export class ConnectorClientModule {}
-

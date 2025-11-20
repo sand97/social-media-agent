@@ -11,7 +11,7 @@ export class AnalyzeProductDto {
 
   @ApiPropertyOptional({
     description: 'Description du produit',
-    example: 'Un t-shirt confortable en coton biologique, parfait pour l\'été',
+    example: "Un t-shirt confortable en coton biologique, parfait pour l'été",
   })
   @IsOptional()
   @IsString()

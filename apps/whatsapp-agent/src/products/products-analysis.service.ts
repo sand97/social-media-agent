@@ -1,5 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
+
 import { LangChainAgentService } from '../langchain/langchain-agent.service';
+
 import {
   AnalysisResultDto,
   SpellingCorrection,
@@ -45,7 +47,7 @@ export class ProductsAnalysisService {
   }): string {
     const categoryContext = product.category
       ? `La catégorie du produit est : ${product.category}`
-      : 'La catégorie du produit n\'est pas spécifiée';
+      : "La catégorie du produit n'est pas spécifiée";
 
     const descriptionContext = product.description
       ? `Description : ${product.description}`
@@ -141,7 +143,7 @@ ${categoryContext}
         spellingCorrections: [],
         metadataSuggestions: [],
         descriptionImprovements: [
-          'Erreur lors de l\'analyse. Veuillez réessayer.',
+          "Erreur lors de l'analyse. Veuillez réessayer.",
         ],
       };
     }

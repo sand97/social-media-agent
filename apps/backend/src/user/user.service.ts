@@ -1,14 +1,16 @@
+import { User } from '@app/generated/client';
 import {
   Injectable,
   NotFoundException,
   Logger,
   InternalServerErrorException,
 } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
+
 import { UserSyncService } from '../common/services/user-sync.service';
-import { UpdateUserDto } from './dto/update-user.dto';
+import { PrismaService } from '../prisma/prisma.service';
+
 import { ImportWhatsAppDataResponseDto } from './dto/import-whatsapp-data-response.dto';
-import { User } from '@app/generated/client';
+import { UpdateUserDto } from './dto/update-user.dto';
 
 @Injectable()
 export class UserService {
@@ -45,10 +47,7 @@ export class UserService {
   /**
    * Update user profile
    */
-  async updateProfile(
-    userId: string,
-    data: UpdateUserDto,
-  ): Promise<User> {
+  async updateProfile(userId: string, data: UpdateUserDto): Promise<User> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
     });
@@ -79,9 +78,7 @@ export class UserService {
       }
 
       if (!user.phoneNumber) {
-        throw new InternalServerErrorException(
-          'User phone number not found',
-        );
+        throw new InternalServerErrorException('User phone number not found');
       }
 
       // Trigger synchronization using UserSyncService
@@ -97,9 +94,7 @@ export class UserService {
         where: { user_id: userId },
       });
 
-      this.logger.log(
-        `Successfully synchronized data for user ${userId}`,
-      );
+      this.logger.log(`Successfully synchronized data for user ${userId}`);
 
       return {
         businessInfo,
@@ -184,5 +179,4 @@ export class UserService {
       conversationsCount,
     };
   }
-
 }

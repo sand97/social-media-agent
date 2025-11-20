@@ -8,7 +8,8 @@ const prisma = new PrismaClient();
 function encryptPassword(password: string): string {
   const algorithm = 'aes-256-ctr';
   // La clé doit faire exactement 32 bytes pour aes-256
-  const secretKeyRaw = process.env.ENCRYPTION_KEY || 'dev-secret-key-32-characters!!';
+  const secretKeyRaw =
+    process.env.ENCRYPTION_KEY || 'dev-secret-key-32-characters!!';
   const secretKey = crypto.createHash('sha256').update(secretKeyRaw).digest(); // 32 bytes
   const iv = crypto.randomBytes(16);
 
@@ -55,7 +56,9 @@ async function main() {
       },
     },
   });
-  console.log(`✅ WhatsApp Agent created: ${whatsappAgent.ipAddress}:${whatsappAgent.port} (connector: ${whatsappAgent.connectorPort})`);
+  console.log(
+    `✅ WhatsApp Agent created: ${whatsappAgent.ipAddress}:${whatsappAgent.port} (connector: ${whatsappAgent.connectorPort})`,
+  );
   console.log('✨ Seeding completed successfully!');
   console.log(`  WhatsApp Agent: localhost:3002`);
 }

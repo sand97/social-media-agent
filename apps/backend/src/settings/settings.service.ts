@@ -1,20 +1,22 @@
 import {
+  BusinessInfo,
+  DeliveryLocation,
+  PaymentMethod,
+} from '@app/generated/client';
+import {
   Injectable,
   Logger,
   NotFoundException,
   ForbiddenException,
 } from '@nestjs/common';
+
 import { PrismaService } from '../prisma/prisma.service';
-import { UpdateBusinessInfoDto } from './dto/update-business-info.dto';
+
 import { CreateDeliveryLocationDto } from './dto/create-delivery-location.dto';
-import { UpdateDeliveryLocationDto } from './dto/update-delivery-location.dto';
 import { CreatePaymentMethodDto } from './dto/create-payment-method.dto';
+import { UpdateBusinessInfoDto } from './dto/update-business-info.dto';
+import { UpdateDeliveryLocationDto } from './dto/update-delivery-location.dto';
 import { UpdatePaymentMethodDto } from './dto/update-payment-method.dto';
-import {
-  BusinessInfo,
-  DeliveryLocation,
-  PaymentMethod,
-} from '@app/generated/client';
 
 @Injectable()
 export class SettingsService {

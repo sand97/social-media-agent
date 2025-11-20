@@ -17,16 +17,19 @@ catalog/
 ## 🎯 Fonctionnalités
 
 ### 1. **Récupération du catalogue**
+
 - Extraction des produits via `WPP.catalog.getProducts()`
 - Téléchargement automatique de toutes les images (principale + additionnelles)
 - Gestion des images WhatsApp CDN avec headers appropriés
 
 ### 2. **Système de cache intelligent**
+
 - Cache JSON persistant dans `temp/infos.json`
 - Évite les téléchargements redondants
 - Vérification de l'existence des fichiers sur le disque
 
 ### 3. **Nettoyage automatique**
+
 - Méthode pour supprimer les images anciennes
 - Configurable (par défaut: 30 jours)
 
@@ -43,7 +46,8 @@ export class YourService {
 
   async handleCatalog(page: any) {
     // Récupérer le catalogue et les images
-    const { catalog, images } = await this.catalogService.fetchCatalogWithImages(page);
+    const { catalog, images } =
+      await this.catalogService.fetchCatalogWithImages(page);
 
     // Sauvegarder les images avec cache
     const clientId = '237012345678';
@@ -75,6 +79,7 @@ export class YourModule {}
 ## 📊 Structure des données
 
 ### Catalogue
+
 ```typescript
 {
   catalog: [
@@ -98,6 +103,7 @@ export class YourModule {}
 ```
 
 ### Cache (`temp/infos.json`)
+
 ```json
 {
   "images": [
@@ -117,12 +123,15 @@ export class YourModule {}
 ## 🔧 Méthodes principales
 
 ### `fetchCatalogWithImages(page: any)`
+
 Récupère le catalogue depuis WhatsApp Web et télécharge toutes les images.
 
 **Paramètres:**
+
 - `page`: Instance de Page Puppeteer
 
 **Retour:**
+
 ```typescript
 {
   catalog: any[];
@@ -131,25 +140,30 @@ Récupère le catalogue depuis WhatsApp Web et télécharge toutes les images.
 ```
 
 ### `saveImages(images: DownloadedImage[], clientId: string)`
+
 Sauvegarde les images avec système de cache.
 
 **Paramètres:**
+
 - `images`: Tableau d'images téléchargées
 - `clientId`: ID du client (numéro de téléphone)
 
 **Retour:**
+
 ```typescript
 {
-  downloaded: number;  // Nouvelles images sauvegardées
-  cached: number;      // Images déjà en cache
-  errors: number;      // Nombre d'erreurs
+  downloaded: number; // Nouvelles images sauvegardées
+  cached: number; // Images déjà en cache
+  errors: number; // Nombre d'erreurs
 }
 ```
 
 ### `cleanOldCachedImages(daysOld: number = 30)`
+
 Supprime les images plus anciennes que X jours.
 
 **Paramètres:**
+
 - `daysOld`: Nombre de jours (par défaut: 30)
 
 **Retour:** `number` - Nombre d'images supprimées
@@ -160,11 +174,13 @@ Supprime les images plus anciennes que X jours.
 - `temp/infos.json` - Fichier cache JSON
 
 **Format des noms de fichiers:**
+
 ```
 [client-id]-[product-id]-[image-index].[extension]
 ```
 
 **Exemple:**
+
 ```
 237012345678-25095720553426064-0.jpeg  ← Image principale
 237012345678-25095720553426064-1.jpeg  ← Première additionnelle

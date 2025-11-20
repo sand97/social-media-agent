@@ -1,10 +1,13 @@
-import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router'
-import { Button, Space, Empty, Spin, message } from 'antd'
 import { OnboardingLayout } from '@app/components/onboarding/OnboardingLayout'
-import { ProductCard, type AISuggestion } from '@app/components/onboarding/ProductCard'
+import {
+  ProductCard,
+  type AISuggestion,
+} from '@app/components/onboarding/ProductCard'
 import { useOnboarding } from '@app/hooks/useOnboarding'
 import apiClient from '@app/lib/api/client'
+import { Button, Space, Empty, Spin, message } from 'antd'
+import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router'
 
 interface Product {
   id: string
@@ -18,13 +21,18 @@ interface Product {
 export function meta() {
   return [
     { title: 'Vérification des produits - WhatsApp Agent' },
-    { name: 'description', content: 'Vérifiez et analysez vos produits avec l\'IA' },
+    {
+      name: 'description',
+      content: "Vérifiez et analysez vos produits avec l'IA",
+    },
   ]
 }
 
 export default function OnboardingReviewProducts() {
   const navigate = useNavigate()
-  const { currentStep, currentStepNumber } = useOnboarding('/onboarding/review-products')
+  const { currentStep, currentStepNumber } = useOnboarding(
+    '/onboarding/review-products'
+  )
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [analyzingAll, setAnalyzingAll] = useState(false)
@@ -86,7 +94,7 @@ export default function OnboardingReviewProducts() {
       const response = await apiClient.post(`/ai/analyze-product/${productId}`)
       return response.data.suggestions
     } catch (error) {
-      console.error('Erreur lors de l\'analyse:', error)
+      console.error("Erreur lors de l'analyse:", error)
       // Mock suggestions for development
       return [
         {
@@ -100,7 +108,8 @@ export default function OnboardingReviewProducts() {
           type: 'improvement',
           field: 'Description',
           current: 'T-shirt en coton de qualité supérieure',
-          suggested: 'T-shirt en coton 100% bio de qualité supérieure, coupe moderne et confortable',
+          suggested:
+            'T-shirt en coton 100% bio de qualité supérieure, coupe moderne et confortable',
           reason: 'Description plus détaillée et attrayante pour les clients',
         },
         {
@@ -123,7 +132,7 @@ export default function OnboardingReviewProducts() {
       }
       message.success('Tous les produits ont été analysés')
     } catch (error) {
-      message.error('Erreur lors de l\'analyse des produits')
+      message.error("Erreur lors de l'analyse des produits")
     } finally {
       setAnalyzingAll(false)
     }
@@ -141,30 +150,33 @@ export default function OnboardingReviewProducts() {
 
   if (loading) {
     return (
-      <OnboardingLayout currentStep={currentStepNumber} title={currentStep?.title || ''}>
-        <div className="flex justify-center items-center py-20">
-          <Spin size="large" />
+      <OnboardingLayout
+        currentStep={currentStepNumber}
+        title={currentStep?.title || ''}
+      >
+        <div className='flex justify-center items-center py-20'>
+          <Spin size='large' />
         </div>
       </OnboardingLayout>
     )
   }
 
   return (
-    <OnboardingLayout currentStep={currentStepNumber} title={currentStep?.title || ''}>
-      <div className="space-y-6">
+    <OnboardingLayout
+      currentStep={currentStepNumber}
+      title={currentStep?.title || ''}
+    >
+      <div className='space-y-6'>
         {products.length === 0 ? (
-          <Empty
-            description="Aucun produit trouvé"
-            className="py-12"
-          >
-            <Button type="primary" onClick={handleContinue}>
+          <Empty description='Aucun produit trouvé' className='py-12'>
+            <Button type='primary' onClick={handleContinue}>
               Continuer sans produits
             </Button>
           </Empty>
         ) : (
           <>
             {/* Products List */}
-            <div className="space-y-4">
+            <div className='space-y-4'>
               {products.map(product => (
                 <ProductCard
                   key={product.id}
@@ -176,17 +188,14 @@ export default function OnboardingReviewProducts() {
             </div>
 
             {/* Action Buttons */}
-            <div className="flex items-center justify-between pt-6 border-t">
-              <Button
-                size="large"
-                onClick={handlePrevious}
-              >
+            <div className='flex items-center justify-between pt-6 border-t'>
+              <Button size='large' onClick={handlePrevious}>
                 Précédent
               </Button>
 
               <Space>
                 <Button
-                  size="large"
+                  size='large'
                   loading={analyzingAll}
                   onClick={handleAnalyzeAll}
                 >
@@ -194,15 +203,16 @@ export default function OnboardingReviewProducts() {
                 </Button>
 
                 <Button
-                  type="primary"
-                  size="large"
+                  type='primary'
+                  size='large'
                   onClick={handleContinue}
                   disabled={!allApproved && products.length > 0}
                 >
                   Continuer
                   {!allApproved && products.length > 0 && (
-                    <span className="ml-2 text-xs">
-                      ({products.filter(p => p.approved).length}/{products.length} approuvés)
+                    <span className='ml-2 text-xs'>
+                      ({products.filter(p => p.approved).length}/
+                      {products.length} approuvés)
                     </span>
                   )}
                 </Button>
@@ -210,7 +220,7 @@ export default function OnboardingReviewProducts() {
             </div>
 
             {!allApproved && products.length > 0 && (
-              <p className="text-sm text-gray-500 text-center">
+              <p className='text-sm text-gray-500 text-center'>
                 Veuillez approuver tous les produits pour continuer
               </p>
             )}

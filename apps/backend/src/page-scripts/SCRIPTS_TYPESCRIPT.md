@@ -122,6 +122,7 @@ declare global {
 ### Configuration TypeScript
 
 Le `tsconfig.json` dans `scripts/` :
+
 - `noEmit: true` : Ne compile pas les fichiers
 - `target: ES2020` : Syntaxe moderne
 - `lib: ["DOM"]` : APIs du navigateur
@@ -130,6 +131,7 @@ Le `tsconfig.json` dans `scripts/` :
 ### Configuration ESLint
 
 Le `.eslintrc.json` désactive :
+
 - `no-undef` : Car les globals du navigateur ne sont pas dans Node
 - `@typescript-eslint/ban-ts-comment` : Pour autoriser `@ts-nocheck`
 
@@ -215,6 +217,7 @@ console.warn('⚠️  Warning:', warning);
 ```
 
 Les logs apparaissent dans :
+
 - La console du navigateur (si headless: false)
 - Les logs du connector
 
@@ -266,7 +269,7 @@ getGetCatalogScript(variables: ScriptVariables): string {
     await fetch(`${BACKEND_URL}/contacts/sync`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${TOKEN}`,
+        Authorization: `Bearer ${TOKEN}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(contact),

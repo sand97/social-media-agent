@@ -1,6 +1,6 @@
-import { IsEnum } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
 import { OrderStatus } from '@app/generated/client';
+import { ApiProperty } from '@nestjs/swagger';
+import { IsEnum } from 'class-validator';
 
 export class UpdateOrderStatusDto {
   @ApiProperty({

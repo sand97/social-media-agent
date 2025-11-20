@@ -60,7 +60,7 @@ export default [
 
       // TypeScript specific rules
       '@typescript-eslint/no-unused-vars': [
-        'error',
+        'warn',
         { argsIgnorePattern: '^_' },
       ],
       '@typescript-eslint/no-explicit-any': 'warn',
@@ -173,6 +173,10 @@ export default [
         localStorage: 'readonly',
         sessionStorage: 'readonly',
         fetch: 'readonly',
+        setTimeout: 'readonly',
+        clearTimeout: 'readonly',
+        setInterval: 'readonly',
+        clearInterval: 'readonly',
       },
     },
     plugins: {
@@ -214,7 +218,9 @@ export default [
   // NestJS/Backend configuration
   {
     files: ['apps/backend/**/*.{ts,js}'],
+    ignores: ['**/*.{test,spec,e2e-spec}.{ts,js}', '**/__tests__/**'],
     languageOptions: {
+      parser: tsparser,
       globals: {
         process: 'readonly',
         Buffer: 'readonly',
@@ -225,11 +231,19 @@ export default [
         require: 'readonly',
         global: 'readonly',
         jest: 'readonly',
+        setTimeout: 'readonly',
+        clearTimeout: 'readonly',
+        setInterval: 'readonly',
+        clearInterval: 'readonly',
+        fetch: 'readonly',
       },
       parserOptions: {
         project: './apps/backend/tsconfig.json',
         tsconfigRootDir: import.meta.dirname,
       },
+    },
+    plugins: {
+      '@typescript-eslint': tseslint,
     },
     rules: {
       'no-console': 'off', // Allow console in server code
@@ -243,13 +257,81 @@ export default [
     },
   },
 
+  // WhatsApp Agent configuration
+  {
+    files: ['apps/whatsapp-agent/**/*.{ts,js}'],
+    languageOptions: {
+      parser: tsparser,
+      globals: {
+        process: 'readonly',
+        Buffer: 'readonly',
+        __dirname: 'readonly',
+        __filename: 'readonly',
+        exports: 'writable',
+        module: 'readonly',
+        require: 'readonly',
+        global: 'readonly',
+        jest: 'readonly',
+        setTimeout: 'readonly',
+        clearTimeout: 'readonly',
+        setInterval: 'readonly',
+        clearInterval: 'readonly',
+        fetch: 'readonly',
+      },
+    },
+    plugins: {
+      '@typescript-eslint': tseslint,
+    },
+    rules: {
+      'no-console': 'off',
+      '@typescript-eslint/no-explicit-any': 'warn',
+    },
+  },
+
+  // WhatsApp Connector configuration
+  {
+    files: ['apps/whatsapp-connector/**/*.{ts,js}'],
+    languageOptions: {
+      parser: tsparser,
+      globals: {
+        process: 'readonly',
+        Buffer: 'readonly',
+        __dirname: 'readonly',
+        __filename: 'readonly',
+        exports: 'writable',
+        module: 'readonly',
+        require: 'readonly',
+        global: 'readonly',
+        jest: 'readonly',
+        setTimeout: 'readonly',
+        clearTimeout: 'readonly',
+        setInterval: 'readonly',
+        clearInterval: 'readonly',
+        fetch: 'readonly',
+      },
+    },
+    plugins: {
+      '@typescript-eslint': tseslint,
+    },
+    rules: {
+      'no-console': 'off',
+      '@typescript-eslint/no-explicit-any': 'warn',
+    },
+  },
+
   // Test files configuration
   {
     files: [
       '**/*.{test,spec}.{ts,tsx,js,jsx}',
+      '**/*.e2e-spec.{ts,tsx,js,jsx}',
       '**/__tests__/**/*.{ts,tsx,js,jsx}',
     ],
     languageOptions: {
+      parser: tsparser,
+      parserOptions: {
+        ecmaVersion: 2024,
+        sourceType: 'module',
+      },
       globals: {
         describe: 'readonly',
         it: 'readonly',
@@ -318,6 +400,7 @@ export default [
       'coverage/',
       '.next/',
       '.cache/',
+      '.pnpm-store/',
       'apps/*/node_modules/',
       'packages/*/node_modules/',
       'apps/*/dist/',
@@ -325,8 +408,15 @@ export default [
       'packages/*/dist/',
       'packages/*/build/',
       'apps/backend/generated/',
+      'apps/backend/src/generated/',
+      'apps/backend/prisma/',
+      'apps/backend/prisma.config.ts',
+      'apps/frontend/.react-router/',
+      'apps/frontend/build/',
       '*.min.js',
       '*.bundle.js',
+      '**/*.d.ts',
+      '**/*.generated.ts',
     ],
   },
 ]

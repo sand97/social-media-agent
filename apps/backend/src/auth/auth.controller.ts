@@ -12,13 +12,15 @@ import {
   ApiResponse,
   ApiBearerAuth,
 } from '@nestjs/swagger';
+
+import { JwtAuthGuard } from '../guards/jwt-auth.guard';
+
 import { AuthService } from './auth.service';
-import { RequestPairingDto } from './dto/request-pairing.dto';
-import { VerifyPairingDto } from './dto/verify-pairing.dto';
 import { ConfirmPairingDto } from './dto/confirm-pairing.dto';
 import { LoginDto } from './dto/login.dto';
+import { RequestPairingDto } from './dto/request-pairing.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
-import { JwtAuthGuard } from '../guards/jwt-auth.guard';
+import { VerifyPairingDto } from './dto/verify-pairing.dto';
 
 @ApiTags('auth')
 @Controller('auth')

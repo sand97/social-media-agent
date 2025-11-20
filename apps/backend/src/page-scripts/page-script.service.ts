@@ -7,6 +7,7 @@ import { ConfigService } from '@nestjs/config';
 export interface ScriptVariables {
   BACKEND_URL?: string;
   TOKEN?: string;
+  INITIAL_ORIGINALS_URLS?: string; // JSON stringifié des images existantes [{id, original_url, url}]
   // Note: CLIENT_ID n'est plus une variable car il est encodé dans le TOKEN
   [key: string]: string | undefined;
 }

@@ -1,7 +1,6 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 
 const execCommand = (command: string): Promise<any> => {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
   const { exec } = require('node:child_process');
 
   return new Promise((resolve, reject) => {

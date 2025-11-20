@@ -1,3 +1,4 @@
+import { Product, ProductMetadata } from '@app/generated/client';
 import {
   Injectable,
   NotFoundException,
@@ -5,10 +6,11 @@ import {
   Logger,
   BadRequestException,
 } from '@nestjs/common';
+
 import { PrismaService } from '../prisma/prisma.service';
+
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
-import { Product, ProductMetadata } from '@app/generated/client';
 
 @Injectable()
 export class ProductsService {
@@ -109,7 +111,8 @@ export class ProductsService {
     // Build update data (only include provided fields)
     const updateData: Record<string, unknown> = {};
     if (data.name !== undefined) updateData.name = data.name;
-    if (data.description !== undefined) updateData.description = data.description;
+    if (data.description !== undefined)
+      updateData.description = data.description;
     if (data.price !== undefined) updateData.price = data.price;
     if (data.currency !== undefined) updateData.currency = data.currency;
     if (data.category !== undefined) updateData.category = data.category;
@@ -228,10 +231,7 @@ export class ProductsService {
   /**
    * Delete product metadata
    */
-  async deleteMetadata(
-    metadataId: string,
-    userId: string,
-  ): Promise<void> {
+  async deleteMetadata(metadataId: string, userId: string): Promise<void> {
     // Get metadata with product info
     const metadata = await this.prisma.productMetadata.findUnique({
       where: { id: metadataId },

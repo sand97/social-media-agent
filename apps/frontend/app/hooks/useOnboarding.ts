@@ -7,14 +7,28 @@ export interface OnboardingStep {
 }
 
 const ONBOARDING_STEPS: OnboardingStep[] = [
-  { path: '/onboarding/import', step: 0, title: 'Importation de vos données WhatsApp Business' },
-  { path: '/onboarding/review-products', step: 1, title: 'Vérification de vos produits' },
-  { path: '/onboarding/business-info', step: 2, title: 'Informations de votre boutique' },
+  {
+    path: '/onboarding/import',
+    step: 0,
+    title: 'Importation de vos données WhatsApp Business',
+  },
+  {
+    path: '/onboarding/review-products',
+    step: 1,
+    title: 'Vérification de vos produits',
+  },
+  {
+    path: '/onboarding/business-info',
+    step: 2,
+    title: 'Informations de votre boutique',
+  },
   { path: '/onboarding/advanced-options', step: 3, title: 'Options avancées' },
 ]
 
 export function useOnboarding(currentPath: string) {
-  const currentStepIndex = ONBOARDING_STEPS.findIndex(step => step.path === currentPath)
+  const currentStepIndex = ONBOARDING_STEPS.findIndex(
+    step => step.path === currentPath
+  )
   const currentStep = ONBOARDING_STEPS[currentStepIndex]
 
   const [canProceed, setCanProceed] = useState(false)

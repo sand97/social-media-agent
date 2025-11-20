@@ -1,6 +1,6 @@
-import { IsEnum, IsOptional } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
 import { WhatsAppAgentStatus, ConnectionStatus } from '@app/generated/client';
+import { ApiProperty } from '@nestjs/swagger';
+import { IsEnum, IsOptional } from 'class-validator';
 
 export class UpdateAgentStatusDto {
   @ApiProperty({

@@ -1,8 +1,9 @@
+import * as crypto from 'crypto';
+
+import { HttpService } from '@nestjs/axios';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
-import * as crypto from 'crypto';
 
 @Injectable()
 export class WebhookService {
@@ -78,15 +79,17 @@ export class WebhookService {
    * Génère une signature HMAC-SHA256 pour le payload
    */
   private generateSignature(payload: any): string | null {
-    const connectorSecret =
-      this.configService.get<string>('CONNECTOR_SECRET');
+    const connectorSecret = this.configService.get<string>('CONNECTOR_SECRET');
 
     if (!connectorSecret) {
       return null;
     }
 
     const body = JSON.stringify(payload);
-    return crypto.createHmac('sha256', connectorSecret).update(body).digest('hex');
+    return crypto
+      .createHmac('sha256', connectorSecret)
+      .update(body)
+      .digest('hex');
   }
 
   /**

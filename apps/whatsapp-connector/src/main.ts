@@ -1,11 +1,11 @@
+import { mkdirSync, writeFileSync } from 'fs';
+import { join } from 'path';
+
+import { AppModule } from '@app/app.module';
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import * as express from 'express';
-
-import { AppModule } from '@app/app.module';
-import { mkdirSync, writeFileSync } from 'fs';
-import { join } from 'path';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -32,7 +32,9 @@ async function bootstrap() {
   // Swagger configuration
   const config = new DocumentBuilder()
     .setTitle('WhatsApp Connector API')
-    .setDescription('REST wrapper for whatsapp-web.js - Execute WhatsApp methods and receive events via webhooks')
+    .setDescription(
+      'REST wrapper for whatsapp-web.js - Execute WhatsApp methods and receive events via webhooks',
+    )
     .setVersion('1.0')
     .build();
 
@@ -44,11 +46,10 @@ async function bootstrap() {
   mkdirSync(outputDir, { recursive: true });
   writeFileSync(
     join(outputDir, 'swagger.json'),
-    JSON.stringify(document, null, 2)
+    JSON.stringify(document, null, 2),
   );
 
   console.log('✅ Swagger JSON generated at swagger-output/swagger.json');
-
 
   const port = process.env.PORT || 3001;
   await app.listen(port);

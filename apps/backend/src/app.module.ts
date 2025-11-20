@@ -8,19 +8,20 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { SentryModule } from '@sentry/nestjs/setup';
 import { AcceptLanguageResolver, I18nModule } from 'nestjs-i18n';
+
 import { AuthModule } from './auth/auth.module';
-import { UserModule } from './user/user.module';
+import { CatalogModule } from './catalog/catalog.module';
+import { CommonModule } from './common/common.module';
+import { ConnectorClientModule } from './connector-client/connector-client.module';
+import { ConversationsModule } from './conversations/conversations.module';
+import { MinioModule } from './minio/minio.module';
+import { OrdersModule } from './orders/orders.module';
+import { PageScriptModule } from './page-scripts/page-script.module';
 import { ProductsModule } from './products/products.module';
 import { SettingsModule } from './settings/settings.module';
-import { ConversationsModule } from './conversations/conversations.module';
-import { OrdersModule } from './orders/orders.module';
-import { WhatsAppAgentModule } from './whatsapp-agent/whatsapp-agent.module';
-import { ConnectorClientModule } from './connector-client/connector-client.module';
+import { UserModule } from './user/user.module';
 import { WebhooksModule } from './webhooks/webhooks.module';
-import { CommonModule } from './common/common.module';
-import { CatalogModule } from './catalog/catalog.module';
-import { PageScriptModule } from './page-scripts/page-script.module';
-import { MinioModule } from './minio/minio.module';
+import { WhatsAppAgentModule } from './whatsapp-agent/whatsapp-agent.module';
 
 @Module({
   imports: [

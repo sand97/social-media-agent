@@ -1,5 +1,5 @@
-import { createContext, useCallback, useEffect, useState } from 'react'
 import apiClient from '@app/lib/api/client'
+import { createContext, useCallback, useEffect, useState } from 'react'
 
 interface User {
   id: string

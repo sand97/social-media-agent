@@ -1,5 +1,5 @@
-import { IsString, IsOptional, IsNumber, IsArray } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { IsString, IsOptional, IsNumber, IsArray } from 'class-validator';
 
 export class CreateProductDto {
   @ApiProperty({
@@ -48,7 +48,10 @@ export class CreateProductDto {
 
   @ApiProperty({
     description: 'Product images URLs',
-    example: ['https://example.com/image1.jpg', 'https://example.com/image2.jpg'],
+    example: [
+      'https://example.com/image1.jpg',
+      'https://example.com/image2.jpg',
+    ],
     required: false,
     type: [String],
   })

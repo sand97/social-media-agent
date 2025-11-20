@@ -1,5 +1,6 @@
 import { Body, Controller, Post, Logger } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+
 import { AuthService } from '../auth/auth.service';
 
 class WhatsAppConnectedDto {
@@ -60,5 +61,4 @@ export class WebhooksController {
       };
     }
   }
-
 }

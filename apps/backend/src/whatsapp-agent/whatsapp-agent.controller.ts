@@ -1,3 +1,4 @@
+import { WhatsAppAgent } from '@app/generated/client';
 import {
   Controller,
   Get,
@@ -16,22 +17,21 @@ import {
   ApiBearerAuth,
   ApiParam,
 } from '@nestjs/swagger';
-import { WhatsAppAgentService } from './whatsapp-agent.service';
-import { UpdateAgentStatusDto } from './dto/update-agent-status.dto';
+
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
-import { WhatsAppAgent } from '@app/generated/client';
+
+import { UpdateAgentStatusDto } from './dto/update-agent-status.dto';
+import { WhatsAppAgentService } from './whatsapp-agent.service';
 
 @ApiTags('whatsapp-agents')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
 @Controller('whatsapp-agents')
 export class WhatsAppAgentController {
-  constructor(
-    private readonly whatsappAgentService: WhatsAppAgentService,
-  ) {}
+  constructor(private readonly whatsappAgentService: WhatsAppAgentService) {}
 
   @Get('me')
-  @ApiOperation({ summary: 'Get current user\'s WhatsApp agent' })
+  @ApiOperation({ summary: "Get current user's WhatsApp agent" })
   @ApiResponse({
     status: 200,
     description: 'Returns the WhatsApp agent for the current user',

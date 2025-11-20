@@ -1,7 +1,6 @@
+import type { paths } from '@app/lib/api/v1'
 import createFetchClient, { type Middleware } from 'openapi-fetch'
 import createClient from 'openapi-react-query'
-
-import type { paths } from '@app/lib/api/v1'
 
 const fetchClient = createFetchClient<paths>({
   baseUrl: 'http://localhost:3005',

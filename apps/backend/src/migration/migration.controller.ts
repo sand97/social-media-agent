@@ -1,3 +1,6 @@
+import PasswordGuard from '@app/guards/password.guard';
+import { MigrateDto } from '@app/migration/migration.dto';
+import { MigrationService } from '@app/migration/migration.service';
 import {
   Body,
   ClassSerializerInterceptor,
@@ -6,10 +9,7 @@ import {
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
-import { MigrationService } from '@app/migration/migration.service';
 import { ApiTags } from '@nestjs/swagger';
-import PasswordGuard from '@app/guards/password.guard';
-import { MigrateDto } from '@app/migration/migration.dto';
 
 @ApiTags('migration')
 @Controller('migration')
@@ -18,7 +18,6 @@ export class MigrationController {
   @UseInterceptors(ClassSerializerInterceptor)
   @UseGuards(PasswordGuard())
   @Post('deploy')
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   public async migrate(@Body() _: MigrateDto): Promise<any> {
     const result = await this.migrationService.deployPrismaMigration();
 

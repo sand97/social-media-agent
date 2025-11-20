@@ -10,7 +10,7 @@ export class ExecuteMethodDto {
   method: string;
 
   @ApiProperty({
-    description: 'Paramètres à passer à la méthode (dans l\'ordre)',
+    description: "Paramètres à passer à la méthode (dans l'ordre)",
     example: ['123456789@c.us', 'Hello World!'],
     required: false,
     isArray: true,

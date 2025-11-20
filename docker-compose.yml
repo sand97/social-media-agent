@@ -1,5 +1,4 @@
 services:
-
   # Backend Service
   backend:
     container_name: apps-backend
@@ -86,7 +85,7 @@ services:
     environment:
       PG_DATA: /var/lib/postgresql/data
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -d app_db -U app_user" ]
+      test: ["CMD-SHELL", "pg_isready -d app_db -U app_user"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -100,9 +99,9 @@ services:
     image: redis:5
     env_file:
       - ./apps/backend/.env
-    command: [ "redis-server", "--bind", "redis", "--port", "6379" ]
+    command: ["redis-server", "--bind", "redis", "--port", "6379"]
     healthcheck:
-      test: [ "CMD-SHELL", "redis-cli -h redis ping | grep 'PONG' || exit 1" ]
+      test: ["CMD-SHELL", "redis-cli -h redis ping | grep 'PONG' || exit 1"]
       interval: 10s
       timeout: 30s
       retries: 5
@@ -110,7 +109,6 @@ services:
       - redis_data:/var/lib/redis
     networks:
       - webnet
-
 
 networks:
   webnet:

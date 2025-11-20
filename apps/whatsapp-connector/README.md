@@ -76,6 +76,7 @@ Content-Type: application/json
 #### Exemples de méthodes disponibles
 
 **Envoyer un message :**
+
 ```json
 {
   "method": "sendMessage",
@@ -84,6 +85,7 @@ Content-Type: application/json
 ```
 
 **Récupérer tous les chats :**
+
 ```json
 {
   "method": "getChats",
@@ -92,6 +94,7 @@ Content-Type: application/json
 ```
 
 **Récupérer un contact par ID :**
+
 ```json
 {
   "method": "getContactById",
@@ -100,6 +103,7 @@ Content-Type: application/json
 ```
 
 **Marquer un chat comme lu :**
+
 ```json
 {
   "method": "getChatById",
@@ -114,6 +118,7 @@ GET http://localhost:3001/whatsapp/status
 ```
 
 Réponse :
+
 ```json
 {
   "isReady": true,
@@ -148,6 +153,7 @@ Content-Type: application/json
 Tous les événements suivants sont envoyés aux webhooks configurés :
 
 ### Authentification
+
 - `qr` - QR code disponible
 - `ready` - Client prêt
 - `authenticated` - Authentification réussie
@@ -155,6 +161,7 @@ Tous les événements suivants sont envoyés aux webhooks configurés :
 - `disconnected` - Déconnexion
 
 ### Messages
+
 - `message` - Message reçu
 - `message_create` - Message créé (envoyé ou reçu)
 - `message_ack` - Accusé de réception
@@ -165,6 +172,7 @@ Tous les événements suivants sont envoyés aux webhooks configurés :
 - `media_uploaded` - Média uploadé
 
 ### Groupes
+
 - `group_join` - Membre a rejoint le groupe
 - `group_leave` - Membre a quitté le groupe
 - `group_update` - Groupe mis à jour
@@ -172,6 +180,7 @@ Tous les événements suivants sont envoyés aux webhooks configurés :
 - `group_membership_request` - Demande d'adhésion au groupe
 
 ### Autres
+
 - `chat_archived` - Chat archivé
 - `chat_removed` - Chat supprimé
 - `contact_changed` - Contact modifié
@@ -235,6 +244,7 @@ Consultez la documentation de whatsapp-web.js pour la liste complète :
 https://docs.wwebjs.dev/Client.html
 
 Exemples de méthodes courantes :
+
 - `sendMessage(chatId, content)`
 - `getChats()`
 - `getChatById(chatId)`
@@ -253,15 +263,18 @@ Et bien d'autres...
 ## Troubleshooting
 
 ### Le QR code n'apparaît pas
+
 - Vérifiez que `WHATSAPP_SESSION_PATH` est accessible en écriture
 - Supprimez le dossier de session et redémarrez
 
 ### Déconnexions fréquentes
+
 - Évitez de redémarrer le service trop souvent
 - Vérifiez que le serveur a suffisamment de ressources
 - Assurez-vous que Chromium/Puppeteer fonctionne correctement
 
 ### Les webhooks ne reçoivent pas d'événements
+
 - Vérifiez que `WEBHOOK_URLS` est correctement configuré
 - Vérifiez les logs du service pour les erreurs HTTP
 - Testez les URLs avec curl/Postman

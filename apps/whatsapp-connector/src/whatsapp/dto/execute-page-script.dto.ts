@@ -1,10 +1,9 @@
-import { IsString, IsNotEmpty } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { IsString, IsNotEmpty } from 'class-validator';
 
 export class ExecutePageScriptDto {
   @ApiProperty({
-    description:
-      'JavaScript code to execute in the WhatsApp Web page context',
+    description: 'JavaScript code to execute in the WhatsApp Web page context',
     example: `
       const collections = await window.WPP.catalog.getCollections(
         window.WPP.conn?.getMyUserId()?._serialized || '',

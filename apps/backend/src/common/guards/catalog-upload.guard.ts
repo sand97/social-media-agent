@@ -27,7 +27,9 @@ export class CatalogUploadGuard implements CanActivate {
   constructor(private readonly configService: ConfigService) {}
 
   canActivate(context: ExecutionContext): boolean {
-    const request = context.switchToHttp().getRequest<Request & { clientId?: string }>();
+    const request = context
+      .switchToHttp()
+      .getRequest<Request & { clientId?: string }>();
 
     // Récupérer le token depuis le header Authorization
     const authHeader = request.headers.authorization;

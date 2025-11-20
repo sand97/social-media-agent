@@ -2,7 +2,8 @@
 
 ## Overview
 
-The onboarding flow consists of 4 steps that guide new users through setting up their WhatsApp Business integration.
+The onboarding flow consists of 4 steps that guide new users through setting up their WhatsApp
+Business integration.
 
 ## File Structure
 
@@ -38,6 +39,7 @@ All routes are registered in `app/routes.ts`:
 **Route:** `/onboarding/import`
 
 **Features:**
+
 - Auto-starts import on mount
 - Loading animation with progress tracking
 - 4 import steps displayed with status indicators
@@ -46,6 +48,7 @@ All routes are registered in `app/routes.ts`:
 - Auto-navigates to next step on success
 
 **Components Used:**
+
 - Progress (Ant Design)
 - Spin (Ant Design)
 - Alert (Ant Design)
@@ -55,6 +58,7 @@ All routes are registered in `app/routes.ts`:
 **Route:** `/onboarding/review-products`
 
 **Features:**
+
 - Displays imported products in cards
 - Each product has:
   - Image, name, description, price
@@ -68,11 +72,13 @@ All routes are registered in `app/routes.ts`:
 - Continue button (disabled until all products approved)
 
 **Components Used:**
+
 - ProductCard (custom)
 - AIAnalysisPanel (custom)
 - Card, Button, Checkbox, Tag (Ant Design)
 
 **API Endpoints:**
+
 - `GET /products` - Load products
 - `POST /ai/analyze-product/:id` - Analyze product
 
@@ -81,6 +87,7 @@ All routes are registered in `app/routes.ts`:
 **Route:** `/onboarding/business-info`
 
 **Features:**
+
 - Business location form:
   - Country (select)
   - City (input)
@@ -96,10 +103,12 @@ All routes are registered in `app/routes.ts`:
 - Saves to backend and navigates to next step
 
 **Components Used:**
+
 - Form, Input, Select, InputNumber (Ant Design)
 - Card, Button, Checkbox (Ant Design)
 
 **API Endpoints:**
+
 - `POST /settings/business` - Save business settings
 
 ## Step 4: Advanced Options
@@ -107,6 +116,7 @@ All routes are registered in `app/routes.ts`:
 **Route:** `/onboarding/advanced-options`
 
 **Features:**
+
 - Auto-reminder option:
   - Send reminder after 24h if customer promises order
 - Review request option:
@@ -116,10 +126,12 @@ All routes are registered in `app/routes.ts`:
 - Completes onboarding and navigates to dashboard
 
 **Components Used:**
+
 - Form, Checkbox, Card, Alert, Tag (Ant Design)
 - Icons: BellOutlined, StarOutlined, TagsOutlined
 
 **API Endpoints:**
+
 - `POST /settings/advanced` - Save advanced settings
 
 ## Shared Components
@@ -127,6 +139,7 @@ All routes are registered in `app/routes.ts`:
 ### OnboardingLayout
 
 Wrapper component providing:
+
 - Progress stepper (4 steps)
 - Consistent layout
 - Title display
@@ -135,6 +148,7 @@ Wrapper component providing:
 ### ProductCard
 
 Displays a single product with:
+
 - Product image (with fallback)
 - Name, description, price
 - AI analysis button
@@ -144,6 +158,7 @@ Displays a single product with:
 ### AIAnalysisPanel
 
 Shows AI analysis results:
+
 - Suggestion type badges (spelling, metadata, improvement)
 - Current vs suggested values
 - Reason for suggestion
@@ -157,17 +172,17 @@ Manages onboarding state:
 
 ```typescript
 const {
-  currentStep,           // Current step info
-  currentStepNumber,     // Step index (0-3)
-  totalSteps,           // Total steps (4)
-  canProceed,           // Can proceed to next step
-  setCanProceed,        // Update proceed status
-  getNextStep,          // Get next step info
-  getPreviousStep,      // Get previous step info
-  hasNext,              // Has next step
-  hasPrevious,          // Has previous step
-  isFirstStep,          // Is first step
-  isLastStep,           // Is last step
+  currentStep, // Current step info
+  currentStepNumber, // Step index (0-3)
+  totalSteps, // Total steps (4)
+  canProceed, // Can proceed to next step
+  setCanProceed, // Update proceed status
+  getNextStep, // Get next step info
+  getPreviousStep, // Get previous step info
+  hasNext, // Has next step
+  hasPrevious, // Has previous step
+  isFirstStep, // Is first step
+  isLastStep, // Is last step
 } = useOnboarding(currentPath)
 ```
 
@@ -189,6 +204,7 @@ const {
 ## Type Safety
 
 All components are TypeScript with:
+
 - Interface definitions for data structures
 - Proper typing for props
 - Type-safe API client usage

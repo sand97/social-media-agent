@@ -104,11 +104,16 @@ export interface ClientInfoData {
 /**
  * Type pour les données d'insertion de BusinessInfo
  */
-export type BusinessInfoCreateInput = Prisma.BusinessInfoCreateInput | Prisma.BusinessInfoUpdateInput;
+export type BusinessInfoCreateInput =
+  | Prisma.BusinessInfoCreateInput
+  | Prisma.BusinessInfoUpdateInput;
 
 /**
  * Type pour les données d'insertion de Product
  */
-export type ProductUpsertData = Omit<Prisma.ProductCreateInput, 'user' | 'collection'> & {
+export type ProductUpsertData = Omit<
+  Prisma.ProductCreateInput,
+  'user' | 'collection'
+> & {
   collection_id?: string;
 };

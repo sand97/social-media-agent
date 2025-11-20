@@ -33,6 +33,7 @@ cp .env.example .env
 ```
 
 Éditer `.env` et configurer:
+
 - `DATABASE_URL`: URL de connexion PostgreSQL
 - `REDIS_URL`: URL de connexion Redis
 - `JWT_SECRET`: Clé secrète pour JWT (générer une clé aléatoire)
@@ -55,6 +56,7 @@ cp .env.example .env
 ```
 
 Éditer `.env` et ajouter:
+
 - `GROK_API_KEY`: Votre clé API xAI (ou Gemini)
 
 #### Frontend
@@ -82,6 +84,7 @@ pnpm dev:all
 ```
 
 Ceci lance:
+
 - **Backend** sur http://localhost:3000
 - **Frontend** sur http://localhost:5173
 - **WhatsApp Connector** sur http://localhost:3001
@@ -96,6 +99,7 @@ Ceci lance:
 ## 🧪 Données de Test
 
 Après le seeding, vous pouvez vous connecter avec:
+
 - **Téléphone**: +33612345678
 - **Email**: test@example.com
 - **Crédits**: 1000

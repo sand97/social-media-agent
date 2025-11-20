@@ -1,3 +1,4 @@
+import { Conversation } from '@app/generated/client';
 import {
   Injectable,
   NotFoundException,
@@ -5,10 +6,11 @@ import {
   Logger,
   BadRequestException,
 } from '@nestjs/common';
+
 import { PrismaService } from '../prisma/prisma.service';
+
 import { CreateConversationDto } from './dto/create-conversation.dto';
 import { UpdateConversationDto } from './dto/update-conversation.dto';
-import { Conversation } from '@app/generated/client';
 
 @Injectable()
 export class ConversationsService {
@@ -129,7 +131,8 @@ export class ConversationsService {
 
     // Build update data
     const updateData: any = {};
-    if (data.contactName !== undefined) updateData.contactName = data.contactName;
+    if (data.contactName !== undefined)
+      updateData.contactName = data.contactName;
     if (data.requiresManualResponse !== undefined)
       updateData.requiresManualResponse = data.requiresManualResponse;
 

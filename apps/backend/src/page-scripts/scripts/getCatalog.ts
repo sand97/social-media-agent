@@ -5,6 +5,7 @@
  * Variables injectées :
  * - BACKEND_URL: URL du backend
  * - TOKEN: Token JWT d'authentification (contient le clientId signé)
+ * - INITIAL_ORIGINALS_URLS: JSON stringifié contenant la liste des images existantes [{id, original_url}]
  *
  * IMPORTANT: Le clientId n'est PAS une variable car il est extrait du token
  * côté backend pour des raisons de sécurité. Cela empêche un attaquant avec
@@ -18,8 +19,29 @@
 (async () => {
   const BACKEND_URL = '{{BACKEND_URL}}';
   const TOKEN = '{{TOKEN}}';
+  const INITIAL_ORIGINALS_URLS_RAW = '{{INITIAL_ORIGINALS_URLS}}';
 
   console.log('🔍 Démarrage de la récupération du catalogue...');
+
+  // Parser la liste des images existantes
+  let initialOriginalsUrls = [];
+  try {
+    if (
+      INITIAL_ORIGINALS_URLS_RAW &&
+      INITIAL_ORIGINALS_URLS_RAW !== '[]' &&
+      INITIAL_ORIGINALS_URLS_RAW !== ''
+    ) {
+      initialOriginalsUrls = JSON.parse(INITIAL_ORIGINALS_URLS_RAW);
+      console.log(
+        `📋 ${initialOriginalsUrls.length} images existantes détectées`,
+      );
+    } else {
+      console.log('📋 Première synchronisation - aucune image existante');
+    }
+  } catch (e) {
+    console.error('❌ Erreur parsing initialOriginalsUrls:', e);
+    initialOriginalsUrls = [];
+  }
 
   try {
     // Récupérer l'ID de l'utilisateur
@@ -43,6 +65,10 @@
     // Traiter chaque collection et produit pour télécharger les images
     const processedCollections = [];
     let totalImages = 0;
+    let skippedImages = 0;
+
+    // Collecter toutes les URLs du catalogue actuel
+    const currentCatalogUrls = new Set();
 
     for (const collection of collections) {
       const processedProducts = [];
@@ -93,6 +119,29 @@
 
           for (const imageInfo of imageUrls) {
             try {
+              // Ajouter l'URL au catalogue actuel
+              currentCatalogUrls.add(imageInfo.url);
+
+              // Vérifier si l'image existe déjà
+              const existingImage = initialOriginalsUrls.find(
+                (img) => img.original_url === imageInfo.url,
+              );
+
+              if (existingImage) {
+                // L'image existe déjà, on skip l'upload
+                uploadedImages.push({
+                  index: imageInfo.index,
+                  type: imageInfo.type,
+                  url: existingImage.url, // URL Minio existante
+                  originalUrl: imageInfo.url,
+                });
+                skippedImages++;
+                console.log(
+                  `⏭️ Image ${imageInfo.index} du produit ${product.id} déjà uploadée (skip)`,
+                );
+                continue;
+              }
+
               // Télécharger l'image dans le navigateur
               const response = await fetch(imageInfo.url, {
                 method: 'GET',
@@ -196,7 +245,62 @@
       });
     }
 
-    console.log(`✅ Traitement terminé - ${totalImages} images uploadées`);
+    console.log(
+      `✅ Traitement terminé - ${totalImages} nouvelles images, ${skippedImages} images existantes`,
+    );
+
+    // Déterminer les images à supprimer (présentes dans initialOriginalsUrls mais pas dans currentCatalogUrls)
+    // IMPORTANT: Ne supprimer que si initialOriginalsUrls n'est pas vide (sinon c'est l'initialisation)
+    const imagesToDelete = [];
+    if (initialOriginalsUrls.length > 0) {
+      for (const existingImage of initialOriginalsUrls) {
+        if (!currentCatalogUrls.has(existingImage.original_url)) {
+          imagesToDelete.push(existingImage.id);
+        }
+      }
+
+      if (imagesToDelete.length > 0) {
+        console.log(
+          `🗑️ ${imagesToDelete.length} images obsolètes à supprimer...`,
+        );
+
+        // Appeler l'endpoint de suppression
+        try {
+          const deleteResponse = await window.nodeFetch(
+            `${BACKEND_URL}/catalog/delete-images`,
+            {
+              method: 'POST',
+              headers: {
+                Authorization: `Bearer ${TOKEN}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                imageIds: imagesToDelete,
+              }),
+            },
+          );
+
+          if (deleteResponse.ok) {
+            const deleteResult = await deleteResponse.json();
+            console.log(
+              `✅ Images obsolètes supprimées:`,
+              deleteResult.deletedCount,
+            );
+          } else {
+            console.error(
+              `❌ Erreur lors de la suppression des images obsolètes`,
+            );
+          }
+        } catch (deleteError: any) {
+          console.error(
+            `❌ Erreur appel endpoint delete-images:`,
+            deleteError.message,
+          );
+        }
+      } else {
+        console.log(`✅ Aucune image obsolète à supprimer`);
+      }
+    }
 
     // Envoyer les données complètes du catalogue au backend pour sauvegarde en BD (via nodeFetch)
     console.log('💾 Envoi des données du catalogue au backend...');

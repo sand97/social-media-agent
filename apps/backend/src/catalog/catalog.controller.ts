@@ -6,10 +6,17 @@ import {
   Logger,
   UseGuards,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
-import { CatalogService } from './catalog.service';
-import { CatalogUploadGuard } from '../common/guards/catalog-upload.guard';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
+
 import { ClientId } from '../common/decorators/client-id.decorator';
+import { CatalogUploadGuard } from '../common/guards/catalog-upload.guard';
+
+import { CatalogService } from './catalog.service';
 import type { CatalogData, ClientInfoData } from './types/catalog.types';
 
 @ApiTags('Catalog')
@@ -39,7 +46,7 @@ export class CatalogController {
   })
   @ApiResponse({
     status: 400,
-    description: 'Erreur lors de l\'upload',
+    description: "Erreur lors de l'upload",
   })
   @ApiResponse({
     status: 401,
@@ -103,9 +110,9 @@ export class CatalogController {
   @UseGuards(CatalogUploadGuard)
   @ApiBearerAuth()
   @ApiOperation({
-    summary: 'Upload l\'avatar du compte WhatsApp',
+    summary: "Upload l'avatar du compte WhatsApp",
     description:
-      'Endpoint appelé par le script exécuté dans le connector pour uploader l\'avatar du compte. Le clientId est extrait du token JWT. Accepte les données en base64 (JSON) depuis nodeFetch.',
+      "Endpoint appelé par le script exécuté dans le connector pour uploader l'avatar du compte. Le clientId est extrait du token JWT. Accepte les données en base64 (JSON) depuis nodeFetch.",
   })
   @ApiResponse({
     status: 200,
@@ -164,7 +171,10 @@ export class CatalogController {
   ) {
     this.logger.debug(`Saving client info for: ${clientId}`);
 
-    const result = await this.catalogService.saveClientInfo(clientId, clientInfo);
+    const result = await this.catalogService.saveClientInfo(
+      clientId,
+      clientInfo,
+    );
 
     if (!result.success) {
       throw new BadRequestException(result.error || 'Save failed');
@@ -204,6 +214,56 @@ export class CatalogController {
       success: true,
       message: 'Catalog saved successfully',
       stats: result.stats,
+    };
+  }
+
+  @Post('delete-images')
+  @UseGuards(CatalogUploadGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Supprime des images obsolètes',
+    description:
+      'Endpoint appelé par le script pour supprimer les images qui ne sont plus dans le catalogue WhatsApp. Supprime les fichiers de Minio et les entrées de la BD.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Images supprimées avec succès',
+    schema: {
+      example: {
+        success: true,
+        deletedCount: 5,
+      },
+    },
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Erreur lors de la suppression',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Token invalide ou expiré',
+  })
+  async deleteImages(
+    @ClientId() clientId: string,
+    @Body('imageIds') imageIds: string[],
+  ) {
+    this.logger.debug(
+      `Deleting ${imageIds?.length || 0} images for: ${clientId}`,
+    );
+
+    if (!imageIds || !Array.isArray(imageIds)) {
+      throw new BadRequestException('imageIds must be an array');
+    }
+
+    const result = await this.catalogService.deleteImages(imageIds);
+
+    if (!result.success) {
+      throw new BadRequestException(result.error || 'Delete failed');
+    }
+
+    return {
+      success: true,
+      deletedCount: result.deletedCount,
     };
   }
 }

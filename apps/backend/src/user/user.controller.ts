@@ -13,10 +13,12 @@ import {
   ApiResponse,
   ApiBearerAuth,
 } from '@nestjs/swagger';
-import { UserService } from './user.service';
-import { UpdateUserDto } from './dto/update-user.dto';
-import { ImportWhatsAppDataResponseDto } from './dto/import-whatsapp-data-response.dto';
+
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
+
+import { ImportWhatsAppDataResponseDto } from './dto/import-whatsapp-data-response.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
+import { UserService } from './user.service';
 
 @ApiTags('users')
 @Controller('users')

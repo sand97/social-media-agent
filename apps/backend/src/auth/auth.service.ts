@@ -159,14 +159,12 @@ export class AuthService {
 
       // Synchronize user data (profile, business, catalog) in the background
       // We don't await this to avoid blocking the response
-      this.userSyncService
-        .synchronizeUserData(phoneNumber)
-        .catch((error) => {
-          this.logger.error(
-            `Background sync failed for user ${user.id}: ${error.message}`,
-            error.stack,
-          );
-        });
+      this.userSyncService.synchronizeUserData(phoneNumber).catch((error) => {
+        this.logger.error(
+          `Background sync failed for user ${user.id}: ${error.message}`,
+          error.stack,
+        );
+      });
 
       return {
         accessToken,
