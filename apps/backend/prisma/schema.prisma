@@ -93,6 +93,13 @@ enum GroupType {
   CUSTOM // Groupe personnalisé
 }
 
+enum SyncStatus {
+  PENDING // En attente de démarrage
+  IN_PROGRESS // Synchronisation en cours
+  COMPLETED // Synchronisation terminée
+  FAILED // Échec de la synchronisation
+}
+
 // ============================================
 // MODELS
 // ============================================
@@ -122,6 +129,7 @@ model User {
   // Relations
   whatsappAgent     WhatsAppAgent?
   businessInfo      BusinessInfo?
+  onboardingThread  OnboardingThread?
   collections       Collection[]
   products          Product[]
   tags              Tag[]
@@ -153,6 +161,10 @@ model WhatsAppAgent {
   status           WhatsAppAgentStatus @default(PROVISIONING)
   connectionStatus ConnectionStatus    @default(PAIRING_REQUIRED)
 
+  // Synchronisation des données WhatsApp
+  syncStatus   SyncStatus @default(PENDING)
+  syncProgress Json? // { clientInfo: { status, progress, timestamp }, catalog: { status, progress, details } }
+
   // Métadonnées (JSON pour flexibilité)
   metadata Json? // { containerId, vpsProvider, region, etc. }
 
@@ -163,6 +175,58 @@ model WhatsAppAgent {
 
   @@index([userId])
   @@index([status])
+  @@index([syncStatus])
+}
+
+model OnboardingThread {
+  id     String @id @unique @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Score de contexte (0-100)
+  score Int @default(0)
+
+  // Contexte actuel de l'entreprise (Markdown)
+  context String? @db.Text
+
+  // Besoins identifiés (JSON)
+  needs Json? // { products: [], delivery: [], payments: [], etc. }
+
+  // Statut du thread
+  status String @default("in_progress") // "in_progress", "completed"
+
+  // Relations
+  messages ThreadMessage[]
+
+  // Dates
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@index([score])
+}
+
+model ThreadMessage {
+  id       String           @id @unique @default(cuid())
+  threadId String
+  thread   OnboardingThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+
+  // Rôle du message
+  role String // "user", "assistant", "system"
+
+  // Contenu du message
+  content String @db.Text
+
+  // Métadonnées au moment du message (JSON)
+  metadata Json? // { score, context, needs, question, propositions }
+
+  // Date
+  createdAt DateTime @default(now())
+
+  @@index([threadId])
+  @@index([role])
+  @@index([createdAt])
 }
 
 model BusinessInfo {
@@ -289,7 +353,7 @@ model ProductImage {
   product    Product @relation(fields: [product_id], references: [id], onDelete: Cascade)
 
   // Informations de l'image
-  url            String  // URL dans MinIO
+  url            String // URL dans MinIO
   original_url   String? // URL originale WhatsApp complète (avec query params)
   normalized_url String? // URL normalisée (partie stable sans query params) pour comparaison
   image_type     String  @default("main") // "main" ou "additional"

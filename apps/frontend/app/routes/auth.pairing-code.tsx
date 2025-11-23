@@ -3,7 +3,7 @@ import { useAuth } from '@app/hooks/useAuth'
 import apiClient from '@app/lib/api/client'
 import { App, Card, Typography, Steps, Button } from 'antd'
 import { useEffect, useState } from 'react'
-import { useLocation, useNavigate, Link } from 'react-router'
+import { useLocation, useNavigate, Link } from 'react-router-dom'
 
 const { Title, Text, Paragraph } = Typography
 

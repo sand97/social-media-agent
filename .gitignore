@@ -30,3 +30,6 @@ yarn-debug.log*
 
 # Temporary images
 temp/
+
+# LangGraph API
+.langgraph_api

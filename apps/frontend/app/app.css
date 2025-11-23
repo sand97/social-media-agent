@@ -63,7 +63,7 @@ body {
   margin-top: 4px;
 }
 .ant-btn {
-  @apply py-[22px] px-8 rounded-full font-medium;
+  @apply py-[22px] px-8 rounded-full font-medium cursor-pointer;
 }
 
 .ant-btn-primary.ant-btn-variant-solid {
@@ -88,4 +88,16 @@ body {
 
 .ant-input-group-wrapper-outlined .ant-input-group-addon {
   padding: 0 32px;
+}
+
+a {
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: var(--color-primary);
+  text-decoration-thickness: 1px;
+  color: var(--color-text-dark);
+  &:hover {
+    color: var(--color-text-dark);
+    text-decoration-thickness: 2px;
+  }
 }

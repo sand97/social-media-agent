@@ -12,9 +12,11 @@ import { AcceptLanguageResolver, I18nModule } from 'nestjs-i18n';
 import { AuthModule } from './auth/auth.module';
 import { CatalogModule } from './catalog/catalog.module';
 import { CommonModule } from './common/common.module';
+import aiConfig from './config/ai.config';
 import { ConnectorClientModule } from './connector-client/connector-client.module';
 import { ConversationsModule } from './conversations/conversations.module';
 import { MinioModule } from './minio/minio.module';
+import { OnboardingModule } from './onboarding/onboarding.module';
 import { OrdersModule } from './orders/orders.module';
 import { PageScriptModule } from './page-scripts/page-script.module';
 import { ProductsModule } from './products/products.module';
@@ -37,6 +39,7 @@ import { WhatsAppAgentModule } from './whatsapp-agent/whatsapp-agent.module';
     }),
     ConfigModule.forRoot({
       isGlobal: true,
+      load: [aiConfig],
     }),
     CacheModule.register({
       isGlobal: true,
@@ -54,6 +57,7 @@ import { WhatsAppAgentModule } from './whatsapp-agent/whatsapp-agent.module';
     CatalogModule,
     ConnectorClientModule,
     WhatsAppAgentModule,
+    OnboardingModule,
     AuthModule,
     UserModule,
     ProductsModule,

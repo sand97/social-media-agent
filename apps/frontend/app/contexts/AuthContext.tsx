@@ -1,5 +1,5 @@
 import apiClient from '@app/lib/api/client'
-import { createContext, useCallback, useEffect, useState } from 'react'
+import { createContext, useCallback, useEffect, useMemo, useState } from 'react'
 
 interface User {
   id: string
@@ -26,6 +26,7 @@ interface AuthContextType {
   login: (token: string, user?: User) => void
   logout: () => void
   checkAuth: () => Promise<void>
+  updateContextScore: (score: number) => void
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -54,6 +55,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
     setUser(null)
     localStorage.removeItem('auth_token')
     localStorage.removeItem('user')
+  }, [])
+
+  const updateContextScore = useCallback((score: number) => {
+    setUser(prev => {
+      if (!prev) return prev
+      const updated = { ...prev, contextScore: score }
+      localStorage.setItem('user', JSON.stringify(updated))
+      return updated
+    })
   }, [])
 
   const checkAuth = useCallback(async () => {
@@ -94,15 +104,21 @@ export function AuthProvider({ children }: AuthProviderProps) {
     checkAuth()
   }, [checkAuth])
 
-  const value = {
-    user,
-    token,
-    isAuthenticated: !!token && !!user,
-    isLoading,
-    login,
-    logout,
-    checkAuth,
-  }
+  const isAuthenticated = !!token && !!user
+
+  const value = useMemo(
+    () => ({
+      user,
+      token,
+      isAuthenticated,
+      isLoading,
+      login,
+      logout,
+      checkAuth,
+      updateContextScore,
+    }),
+    [user, token, isAuthenticated, isLoading, login, logout, checkAuth, updateContextScore]
+  )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

@@ -1,9 +1,11 @@
 import { ConnectorClientService } from '@app/connector-client';
 import { PageScriptService } from '@app/page-scripts';
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 import { TokenService } from '../common/services/token.service';
+import { OnboardingGateway } from '../onboarding/onboarding.gateway';
+import { OnboardingService } from '../onboarding/onboarding.service';
 import { PrismaService } from '../prisma/prisma.service';
 
 import { WhatsAppAgentService } from './whatsapp-agent.service';
@@ -11,6 +13,7 @@ import { WhatsAppAgentService } from './whatsapp-agent.service';
 /**
  * Service responsible for synchronizing user data after WhatsApp connection
  * This includes profile info, business info, catalog, etc.
+ * Now with WebSocket progress tracking!
  */
 @Injectable()
 export class UserSyncService {
@@ -23,7 +26,77 @@ export class UserSyncService {
     private readonly tokenService: TokenService,
     private readonly prisma: PrismaService,
     private readonly whatsappAgentService: WhatsAppAgentService,
+    @Inject(forwardRef(() => OnboardingGateway))
+    private readonly onboardingGateway: OnboardingGateway,
+    @Inject(forwardRef(() => OnboardingService))
+    private readonly onboardingService: OnboardingService,
   ) {}
+
+  /**
+   * Update sync progress in WhatsAppAgent and emit WebSocket event
+   */
+  private async updateSyncProgress(
+    userId: string,
+    step: 'clientInfo' | 'catalog',
+    status: 'started' | 'in_progress' | 'completed' | 'failed',
+    progress?: number,
+    details?: string,
+  ): Promise<void> {
+    try {
+      const agent = await this.whatsappAgentService.getAgentForUser(userId);
+      if (!agent) return;
+
+      // Get current syncProgress
+      const currentProgress = (agent.syncProgress as any) || {};
+
+      // Update progress for this step
+      const updatedProgress = {
+        ...currentProgress,
+        [step]: {
+          status,
+          progress: progress ?? 100,
+          details,
+          timestamp: new Date().toISOString(),
+        },
+      };
+
+      // Determine overall syncStatus
+      let syncStatus: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'FAILED' =
+        'IN_PROGRESS';
+
+      if (
+        updatedProgress.clientInfo?.status === 'completed' &&
+        updatedProgress.catalog?.status === 'completed'
+      ) {
+        syncStatus = 'COMPLETED';
+      } else if (
+        updatedProgress.clientInfo?.status === 'failed' ||
+        updatedProgress.catalog?.status === 'failed'
+      ) {
+        syncStatus = 'FAILED';
+      }
+
+      // Update in database
+      await this.prisma.whatsAppAgent.update({
+        where: { id: agent.id },
+        data: {
+          syncProgress: updatedProgress,
+          syncStatus,
+        },
+      });
+
+      // Emit WebSocket event
+      this.onboardingGateway.emitSyncProgress(userId, {
+        step,
+        status,
+        progress,
+        details,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      this.logger.error(`Failed to update sync progress`, error);
+    }
+  }
 
   /**
    * Synchronize all user data after WhatsApp pairing
@@ -35,21 +108,80 @@ export class UserSyncService {
   async synchronizeUserData(phoneNumber: string): Promise<void> {
     this.logger.log(`🔄 [START] User data synchronization for: ${phoneNumber}`);
 
+    // Get user ID
+    const cleanedPhoneNumber = '+'
+      .concat(phoneNumber.replace(/@[a-z.]+$/i, ''))
+      .replace('++', '+');
+
+    const user = await this.prisma.user.findUnique({
+      where: { phoneNumber: cleanedPhoneNumber },
+    });
+
+    if (!user) {
+      this.logger.error(`User not found for: ${cleanedPhoneNumber}`);
+      return;
+    }
+
     try {
+      // Set sync status to IN_PROGRESS
+      const agent = await this.whatsappAgentService.getAgentForUser(user.id);
+      if (agent) {
+        await this.prisma.whatsAppAgent.update({
+          where: { id: agent.id },
+          data: { syncStatus: 'IN_PROGRESS' },
+        });
+      }
+
       // Step 1: Execute client info script (profile, business info, avatar)
-      await this.syncClientInfo(phoneNumber);
+      await this.syncClientInfo(phoneNumber, user.id);
 
       // Step 2: Execute catalog script (collections, products, images)
-      await this.syncCatalog(phoneNumber);
+      await this.syncCatalog(phoneNumber, user.id);
 
       this.logger.log(
         `✅ [END] User data synchronization completed for: ${phoneNumber}`,
       );
+
+      // Step 3: Trigger initial AI evaluation for onboarding
+      // Only if thread doesn't exist or has no messages yet
+      const existingThread = await this.onboardingService.getThreadWithMessages(
+        user.id,
+      );
+      const hasMessages = existingThread && existingThread.messages.length > 0;
+
+      if (!hasMessages) {
+        this.logger.log(
+          `🤖 Triggering initial AI evaluation for user: ${user.id}`,
+        );
+        // This is done in the background to avoid blocking the sync completion
+        this.onboardingService
+          .performInitialEvaluation(user.id)
+          .catch((error) => {
+            this.logger.error(
+              `Failed to perform initial AI evaluation for user ${user.id}: ${error.message}`,
+              error.stack,
+            );
+          });
+      } else {
+        this.logger.log(
+          `⏭️ Skipping AI evaluation for user ${user.id}: thread already exists with ${existingThread.messages.length} messages`,
+        );
+      }
     } catch (error: any) {
       this.logger.error(
         `❌ [ERROR] User data synchronization failed for ${phoneNumber}: ${error.message}`,
         error.stack,
       );
+
+      // Mark sync as failed
+      const agent = await this.whatsappAgentService.getAgentForUser(user.id);
+      if (agent) {
+        await this.prisma.whatsAppAgent.update({
+          where: { id: agent.id },
+          data: { syncStatus: 'FAILED' },
+        });
+      }
+
       // We don't throw here to prevent blocking the pairing verification
       // The sync can be retried later
     }
@@ -59,10 +191,18 @@ export class UserSyncService {
    * Synchronize client information (profile name, avatar, business info)
    *
    * @param clientId - WhatsApp client ID (phone number)
+   * @param userId - User ID
    * @returns Promise<void>
    */
-  private async syncClientInfo(clientId: string): Promise<void> {
+  private async syncClientInfo(
+    clientId: string,
+    userId: string,
+  ): Promise<void> {
     this.logger.log(`🚀 [START] Executing client info script for: ${clientId}`);
+
+    // Emit started event
+    await this.updateSyncProgress(userId, 'clientInfo', 'started');
+    this.onboardingGateway.emitSyncStarted(userId, 'clientInfo');
 
     try {
       // Get user and agent to retrieve connectorUrl
@@ -114,11 +254,30 @@ export class UserSyncService {
           `✅ [END] Client info script executed successfully for ${clientId}`,
         );
         this.logger.debug(`[CLIENT-INFO] Result:`, result.result);
+
+        // Emit completed event
+        await this.updateSyncProgress(userId, 'clientInfo', 'completed', 100);
+        this.onboardingGateway.emitSyncCompleted(userId, 'clientInfo');
       } else {
         this.logger.error(
           `❌ [ERROR] Client info script execution failed for ${clientId}`,
           result.error,
         );
+
+        // Emit failed event
+        await this.updateSyncProgress(
+          userId,
+          'clientInfo',
+          'failed',
+          0,
+          result.error,
+        );
+        this.onboardingGateway.emitSyncFailed(
+          userId,
+          'clientInfo',
+          result.error || 'Unknown error',
+        );
+
         throw new Error(
           `Client info script failed: ${result.error || 'Unknown error'}`,
         );
@@ -128,6 +287,21 @@ export class UserSyncService {
         `❌ [ERROR] Failed to sync client info for ${clientId}: ${error.message}`,
         error.stack,
       );
+
+      // Emit failed event
+      await this.updateSyncProgress(
+        userId,
+        'clientInfo',
+        'failed',
+        0,
+        error.message,
+      );
+      this.onboardingGateway.emitSyncFailed(
+        userId,
+        'clientInfo',
+        error.message,
+      );
+
       throw error;
     }
   }
@@ -136,10 +310,15 @@ export class UserSyncService {
    * Synchronize catalog data (collections, products, images)
    *
    * @param clientId - WhatsApp client ID (phone number)
+   * @param userId - User ID
    * @returns Promise<void>
    */
-  private async syncCatalog(clientId: string): Promise<void> {
+  private async syncCatalog(clientId: string, userId: string): Promise<void> {
     this.logger.log(`🚀 [START] Executing catalog script for: ${clientId}`);
+
+    // Emit started event
+    await this.updateSyncProgress(userId, 'catalog', 'started');
+    this.onboardingGateway.emitSyncStarted(userId, 'catalog');
 
     try {
       // Generate a JWT token signed with the clientId
@@ -233,11 +412,30 @@ export class UserSyncService {
           `✅ [END] Catalog script executed successfully for ${clientId}`,
         );
         this.logger.debug(`[CATALOG] Result:`, result.result);
+
+        // Emit completed event
+        await this.updateSyncProgress(userId, 'catalog', 'completed', 100);
+        this.onboardingGateway.emitSyncCompleted(userId, 'catalog');
       } else {
         this.logger.error(
           `❌ [ERROR] Catalog script execution failed for ${clientId}`,
           result.error,
         );
+
+        // Emit failed event
+        await this.updateSyncProgress(
+          userId,
+          'catalog',
+          'failed',
+          0,
+          result.error,
+        );
+        this.onboardingGateway.emitSyncFailed(
+          userId,
+          'catalog',
+          result.error || 'Unknown error',
+        );
+
         throw new Error(
           `Catalog script failed: ${result.error || 'Unknown error'}`,
         );
@@ -247,6 +445,17 @@ export class UserSyncService {
         `❌ [ERROR] Failed to sync catalog for ${clientId}: ${error.message}`,
         error.stack,
       );
+
+      // Emit failed event
+      await this.updateSyncProgress(
+        userId,
+        'catalog',
+        'failed',
+        0,
+        error.message,
+      );
+      this.onboardingGateway.emitSyncFailed(userId, 'catalog', error.message);
+
       throw error;
     }
   }

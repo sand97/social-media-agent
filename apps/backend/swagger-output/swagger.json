@@ -425,6 +425,79 @@
         ]
       }
     },
+    "/onboarding/threads": {
+      "get": {
+        "operationId": "OnboardingController_getThread",
+        "summary": "Get onboarding thread",
+        "description": "Returns onboarding thread with messages and current score",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Onboarding"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/onboarding/messages": {
+      "post": {
+        "operationId": "OnboardingController_sendMessage",
+        "summary": "Send user message",
+        "description": "Sends a user message and triggers AI response. Returns 202 Accepted. Response will be sent via WebSocket.",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendMessageDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Onboarding"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/onboarding/complete": {
+      "post": {
+        "operationId": "OnboardingController_completeOnboarding",
+        "summary": "Complete onboarding",
+        "description": "Marks onboarding as completed and activates the user. Requires score >= 80%.",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Onboarding"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
     "/auth/request-pairing": {
       "post": {
         "operationId": "AuthController_requestPairingCode",
@@ -2051,6 +2124,10 @@
         "required": [
           "status"
         ]
+      },
+      "SendMessageDto": {
+        "type": "object",
+        "properties": {}
       },
       "RequestPairingDto": {
         "type": "object",

@@ -12,10 +12,13 @@ import {
   BadRequestException,
   Logger,
   Inject,
+  forwardRef,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { lastValueFrom } from 'rxjs';
+
+import { OnboardingService } from '../onboarding/onboarding.service';
 
 @Injectable()
 export class AuthService {
@@ -30,6 +33,8 @@ export class AuthService {
     private readonly connectorClientService: ConnectorClientService,
     private readonly userSyncService: UserSyncService,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
+    @Inject(forwardRef(() => OnboardingService))
+    private readonly onboardingService: OnboardingService,
   ) {}
 
   /**
@@ -300,6 +305,7 @@ export class AuthService {
     otpCode?: string,
   ): Promise<{
     accessToken: string;
+    redirectTo: string;
     user: any;
   }> {
     try {
@@ -348,11 +354,26 @@ export class AuthService {
         // Delete OTP from cache
         await this.cacheManager.del(cacheKey);
 
-        // Update user status to ACTIVE and clear pairing token
+        // Check onboarding status
+        const thread = await this.onboardingService.getThreadWithMessages(
+          user.id,
+        );
+        const onboardingComplete = thread && thread.score >= 80;
+
+        // Determine redirect path and user status
+        let redirectTo = '/context/onboarding';
+        let userStatus: UserStatus = UserStatus.ONBOARDING;
+
+        if (onboardingComplete) {
+          redirectTo = '/dashboard';
+          userStatus = UserStatus.ACTIVE;
+        }
+
+        // Update user status and clear pairing token
         const updatedUser = await this.prisma.user.update({
           where: { id: user.id },
           data: {
-            status: UserStatus.ACTIVE,
+            status: userStatus,
             lastLoginAt: new Date(),
             pairingToken: null,
             pairingTokenExpiresAt: null,
@@ -362,10 +383,13 @@ export class AuthService {
         // Generate JWT token
         const accessToken = this.generateJwtToken(user.id);
 
-        this.logger.log(`User logged in successfully via OTP: ${user.id}`);
+        this.logger.log(
+          `User logged in successfully via OTP: ${user.id}, redirect to: ${redirectTo}`,
+        );
 
         return {
           accessToken,
+          redirectTo,
           user: {
             id: updatedUser.id,
             phoneNumber: updatedUser.phoneNumber,
@@ -402,10 +426,14 @@ export class AuthService {
       // Generate JWT token for onboarding
       const accessToken = this.generateJwtToken(user.id);
 
-      this.logger.log(`Pairing confirmed successfully for user: ${user.id}`);
+      this.logger.log(
+        `Pairing confirmed successfully for user: ${user.id}, redirect to: /context/onboarding`,
+      );
 
+      // New users always go through onboarding
       return {
         accessToken,
+        redirectTo: '/context/onboarding',
         user: {
           id: updatedUser.id,
           phoneNumber: updatedUser.phoneNumber,
@@ -494,6 +522,11 @@ export class AuthService {
       where: { id: userId },
       include: {
         businessInfo: true,
+        onboardingThread: {
+          select: {
+            score: true,
+          },
+        },
       },
     });
 
@@ -507,6 +540,7 @@ export class AuthService {
       status: user.status,
       whatsappProfile: user.whatsappProfile,
       businessInfo: user.businessInfo,
+      contextScore: user.onboardingThread?.score ?? 0,
     };
   }
 

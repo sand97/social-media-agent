@@ -15,7 +15,7 @@ import {
   message,
 } from 'antd'
 import { useState } from 'react'
-import { useNavigate } from 'react-router'
+import { useNavigate } from 'react-router-dom'
 
 interface DeliveryLocation {
   country: string

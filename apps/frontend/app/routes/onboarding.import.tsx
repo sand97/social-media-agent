@@ -3,7 +3,7 @@ import { useOnboarding } from '@app/hooks/useOnboarding'
 import apiClient from '@app/lib/api/client'
 import { Progress, Spin, Alert, Button } from 'antd'
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router'
+import { useNavigate } from 'react-router-dom'
 
 const importSteps = [
   'Connexion à WhatsApp...',

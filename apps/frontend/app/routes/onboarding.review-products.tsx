@@ -7,7 +7,7 @@ import { useOnboarding } from '@app/hooks/useOnboarding'
 import apiClient from '@app/lib/api/client'
 import { Button, Space, Empty, Spin, message } from 'antd'
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router'
+import { useNavigate } from 'react-router-dom'
 
 interface Product {
   id: string

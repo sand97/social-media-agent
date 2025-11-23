@@ -29,14 +29,9 @@ apiClient.interceptors.response.use(
   response => response,
   error => {
     if (error.response?.status === 401) {
-      // Clear token and redirect to login
+      // Clear token - let React components handle redirect
       localStorage.removeItem('auth_token')
       localStorage.removeItem('user')
-
-      // Only redirect if not already on auth pages
-      if (!window.location.pathname.startsWith('/auth')) {
-        window.location.href = '/auth/login'
-      }
     }
     return Promise.reject(error)
   }

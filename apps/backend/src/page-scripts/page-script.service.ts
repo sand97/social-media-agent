@@ -148,13 +148,18 @@ export class PageScriptService {
    * Liste tous les scripts disponibles
    */
   getAvailableScripts(): string[] {
-    return ['getCatalog', 'getClientInfo', 'isAuthenticated', 'sendTextMessage'];
+    return [
+      'getCatalog',
+      'getClientInfo',
+      'isAuthenticated',
+      'sendTextMessage',
+    ];
   }
 
   /**
-   * Obtient un script par son nom
+   * Obtient un script par son nom (legacy)
    */
-  getScript(scriptName: string, variables: ScriptVariables = {}): string {
+  getScriptByName(scriptName: string, variables: ScriptVariables = {}): string {
     switch (scriptName) {
       case 'getCatalog':
         return this.getGetCatalogScript(variables);
@@ -167,5 +172,14 @@ export class PageScriptService {
       default:
         throw new Error(`Script "${scriptName}" not found`);
     }
+  }
+
+  /**
+   * Obtient un script par son chemin (supporte les sous-dossiers)
+   * Ex: getScript('labels/getAllLabels', { LABEL_NAME: 'Test' })
+   */
+  getScript(scriptPath: string, variables: ScriptVariables = {}): string {
+    const scriptContent = this.loadScript(scriptPath);
+    return this.replacePlaceholders(scriptContent, variables);
   }
 }

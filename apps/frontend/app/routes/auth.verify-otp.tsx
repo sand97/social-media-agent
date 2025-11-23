@@ -3,7 +3,7 @@ import { useAuth } from '@app/hooks/useAuth'
 import apiClient from '@app/lib/api/client'
 import { App, Button, Form, Input } from 'antd'
 import { useState } from 'react'
-import { useNavigate, useLocation } from 'react-router'
+import { useNavigate, useLocation } from 'react-router-dom'
 
 interface VerifyOtpResponse {
   accessToken: string
@@ -137,9 +137,7 @@ export default function VerifyOtpPage() {
                       <strong>{state?.phoneNumber}</strong> (votre numéro) sur
                       votre application WhatsApp
                     </p>
-                    <p>
-                      et saisir ci-dessous le code qui s'y trouve
-                    </p>
+                    <p>et saisir ci-dessous le code qui s'y trouve</p>
                   </>
                 )}
               </div>

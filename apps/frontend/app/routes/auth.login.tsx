@@ -10,7 +10,7 @@ import Form from 'antd/es/form'
 import FormItem from 'antd/es/form/FormItem'
 import PhoneInput, { type PhoneNumber } from 'antd-phone-input'
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router'
+import { useNavigate } from 'react-router-dom'
 
 const LAST_PHONE_KEY = 'whatsapp-agent-last-phone'
 
@@ -92,7 +92,6 @@ export default function LoginPage() {
     }
   }
 
-  // Restore last phone number
   useEffect(() => {
     const savedPhone = localStorage.getItem(LAST_PHONE_KEY)
     if (savedPhone) {
@@ -107,7 +106,6 @@ export default function LoginPage() {
 
   return (
     <div className='min-h-screen flex flex-col items-center bg-bg-subtle px-2 py-8'>
-      {/* Main Card */}
       <div className='w-card max-w-full my-[15vh] flex flex-col items-center'>
         <div className='bg-white rounded-card-outer shadow-card-subtle p-1'>
           <div className='bg-white rounded-card-inner shadow-card p-12'>
@@ -124,13 +122,11 @@ export default function LoginPage() {
               </p>
             </div>
 
-            {/* Form */}
             <Form
               form={form}
               onFinish={handleSubmit}
               className='flex flex-col items-center gap-3'
             >
-              {/* Phone Input */}
               <FormItem
                 name='phone'
                 // className='!mb-0 w-[320px]'
@@ -146,7 +142,6 @@ export default function LoginPage() {
                 />
               </FormItem>
 
-              {/* Submit Button */}
               <FormItem className='mb-0 mt-4'>
                 <Button
                   type='primary'
@@ -163,7 +158,6 @@ export default function LoginPage() {
           </div>
         </div>
 
-        {/* Secondary Buttons */}
         <div className='flex justify-center gap-4 lg:mt-4 mt-2'>
           <Button
             variant={'outlined'}
@@ -190,7 +184,6 @@ export default function LoginPage() {
         </div>
       </div>
 
-      {/* Features Section */}
       <div
         className='flex flex-wrap items-start justify-center gap-8'
         id='features'
@@ -216,7 +209,6 @@ export default function LoginPage() {
         ))}
       </div>
 
-      {/* Feature Details Modal */}
       <Modal
         open={selectedFeature !== null}
         onCancel={() => setSelectedFeatureKey(null)}

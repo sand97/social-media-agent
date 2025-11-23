@@ -9,11 +9,12 @@ import {
   QuestionCircleOutlined,
   UserOutlined,
   LoadingOutlined,
+  LogoutOutlined,
 } from '@ant-design/icons'
 import { useAuth } from '@app/hooks/useAuth'
-import { Avatar, Spin } from 'antd'
-import { useEffect } from 'react'
-import { Outlet, useNavigate, useLocation } from 'react-router'
+import { Avatar, Spin, Divider, Modal } from 'antd'
+import { useEffect, useRef } from 'react'
+import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 
 interface MenuItem {
   key: string
@@ -26,7 +27,12 @@ const menuSections = [
   {
     title: 'Compte',
     items: [
-      { key: 'home', label: 'Accueil', icon: <HomeOutlined />, path: '/dashboard' },
+      {
+        key: 'home',
+        label: 'Accueil',
+        icon: <HomeOutlined />,
+        path: '/dashboard',
+      },
       {
         key: 'stats',
         label: 'Statistiques',
@@ -90,15 +96,48 @@ const menuSections = [
 ]
 
 export default function DashboardLayout() {
-  const { user, isLoading, isAuthenticated } = useAuth()
+  const { user, isLoading, isAuthenticated, logout } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
+  const [modal, contextHolder] = Modal.useModal()
+  const isNavigatingRef = useRef(false)
 
+  // Redirect to login if not authenticated
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      navigate('/auth/login')
+    if (!isLoading && !isAuthenticated && !isNavigatingRef.current) {
+      isNavigatingRef.current = true
+      navigate('/auth/login', { replace: true })
+    }
+    // Reset when authenticated
+    if (isAuthenticated) {
+      isNavigatingRef.current = false
     }
   }, [isLoading, isAuthenticated, navigate])
+
+  // Redirect to context if score < 80% and trying to access restricted routes
+  const contextScore = user?.contextScore ?? 0
+  useEffect(() => {
+    // Only run this check when user is authenticated and loaded
+    if (isLoading || !isAuthenticated || !user) return
+
+    const isContextRoute = location.pathname === '/context'
+
+    // If score < 80% and not on context route, redirect to context
+    if (contextScore < 80 && !isContextRoute) {
+      navigate('/context', { replace: true })
+    }
+  }, [isLoading, isAuthenticated, user, contextScore, location.pathname, navigate])
+
+  const handleLogout = () => {
+    modal.confirm({
+      title: 'Déconnexion',
+      content: 'Êtes-vous sûr de vouloir vous déconnecter ?',
+      okText: 'Oui, me déconnecter',
+      cancelText: 'Annuler',
+      okButtonProps: { danger: true },
+      onOk: logout,
+    })
+  }
 
   const isActive = (path: string) => {
     return (
@@ -106,26 +145,37 @@ export default function DashboardLayout() {
     )
   }
 
-  const renderMenuItem = (item: MenuItem) => (
-    <button
-      key={item.key}
-      onClick={() => navigate(item.path)}
-      type='button'
-      className={`
-        flex items-center gap-[10px] px-4 py-2 rounded-xl cursor-pointer w-full text-left bg-transparent border-none
-        ${
-          isActive(item.path)
-            ? 'shadow-[0px_0px_1px_0px_rgba(0,0,0,0.4)] bg-white font-medium'
-            : 'hover:bg-white hover:shadow-[0px_0px_1px_0px_rgba(0,0,0,0.2)]'
-        }
-      `}
-    >
-      <span className='text-lg'>{item.icon}</span>
-      <span className='text-base text-primary-text leading-4'>
-        {item.label}
-      </span>
-    </button>
-  )
+  // Check if context score is below 80% - only context menu should be active
+  const isContextIncomplete = (user?.contextScore ?? 0) < 80
+
+  const renderMenuItem = (item: MenuItem) => {
+    // Only context menu is enabled when score < 80%
+    const isDisabled = isContextIncomplete && item.key !== 'context'
+
+    return (
+      <button
+        key={item.key}
+        onClick={() => !isDisabled && navigate(item.path)}
+        type='button'
+        disabled={isDisabled}
+        className={`
+          flex items-center gap-[10px] px-4 py-2 rounded-xl w-full text-left bg-transparent border-none
+          ${
+            isDisabled
+              ? 'cursor-not-allowed opacity-40'
+              : isActive(item.path)
+                ? 'shadow-[0px_0px_1px_0px_rgba(0,0,0,0.4)] bg-white font-medium cursor-pointer'
+                : 'hover:bg-white hover:shadow-[0px_0px_1px_0px_rgba(0,0,0,0.2)] cursor-pointer'
+          }
+        `}
+      >
+        <span className='text-lg'>{item.icon}</span>
+        <span className='text-base text-primary-text leading-4'>
+          {item.label}
+        </span>
+      </button>
+    )
+  }
 
   if (isLoading) {
     return (
@@ -136,15 +186,19 @@ export default function DashboardLayout() {
   }
 
   if (!isAuthenticated) {
-    return null // Will redirect via useEffect
+    // Show loading while redirect happens via useEffect
+    return (
+      <div className='min-h-screen flex items-center justify-center bg-[#fdfdfd]'>
+        <Spin indicator={<LoadingOutlined style={{ fontSize: 24 }} spin />} />
+      </div>
+    )
   }
-
-  console.log('user', user)
 
   return (
     <div className='min-h-screen flex max-w-[1290px] mx-auto'>
+      {contextHolder}
       {/* Sidebar */}
-      <aside className='w-[296px] h-screen overflow-y-auto px-4 py-20 flex flex-col gap-12'>
+      <aside className='w-[296px] h-screen overflow-y-auto px-4 pt-20 pb-6 flex flex-col gap-12'>
         {/* User Profile */}
         <div className='flex items-center gap-2'>
           <Avatar
@@ -171,7 +225,7 @@ export default function DashboardLayout() {
         </div>
 
         {/* Menu Sections */}
-        {menuSections.map((section) => (
+        {menuSections.map(section => (
           <div key={section.title} className='flex flex-col gap-3'>
             <div className='px-4'>
               <span className='text-sm text-[#494949] leading-4 tracking-[0.35px]'>
@@ -181,6 +235,23 @@ export default function DashboardLayout() {
             {section.items.map(renderMenuItem)}
           </div>
         ))}
+
+        {/* Logout Button */}
+        <div className='mt-auto px-4'>
+          <Divider className='!mb-6' />
+          <button
+            onClick={handleLogout}
+            type='button'
+            className='flex items-center gap-[10px] w-full text-left bg-transparent border-none cursor-pointer hover:opacity-80 transition-opacity'
+          >
+            <span className='text-lg text-[#ff4d4f]'>
+              <LogoutOutlined />
+            </span>
+            <span className='text-base text-[#ff4d4f] leading-4 tracking-[0.35px] font-medium'>
+              Déconnexion
+            </span>
+          </button>
+        </div>
       </aside>
 
       {/* Main Content */}

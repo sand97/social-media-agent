@@ -416,7 +416,7 @@ export class CatalogService {
         let collection = await this.prisma.collection.findFirst({
           where: {
             user_id: user.id,
-            id: whatsappCollectionId,
+            whatsapp_collection_id: whatsappCollectionId,
           },
         });
 

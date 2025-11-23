@@ -188,6 +188,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/onboarding/threads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get onboarding thread
+         * @description Returns onboarding thread with messages and current score
+         */
+        get: operations["OnboardingController_getThread"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/onboarding/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Send user message
+         * @description Sends a user message and triggers AI response. Returns 202 Accepted. Response will be sent via WebSocket.
+         */
+        post: operations["OnboardingController_sendMessage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/onboarding/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Complete onboarding
+         * @description Marks onboarding as completed and activates the user. Requires score >= 80%.
+         */
+        post: operations["OnboardingController_completeOnboarding"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/request-pairing": {
         parameters: {
             query?: never;
@@ -696,6 +756,7 @@ export interface components {
              */
             connectionStatus?: "CONNECTED" | "DISCONNECTED" | "QR_REQUIRED" | "PAIRING_REQUIRED";
         };
+        SendMessageDto: Record<string, never>;
         RequestPairingDto: {
             /**
              * @description Phone number in E.164 format
@@ -1466,6 +1527,61 @@ export interface operations {
             };
             /** @description WhatsApp agent not found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    OnboardingController_getThread: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    OnboardingController_sendMessage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SendMessageDto"];
+            };
+        };
+        responses: {
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    OnboardingController_completeOnboarding: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };

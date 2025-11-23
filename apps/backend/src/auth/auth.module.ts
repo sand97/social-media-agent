@@ -1,10 +1,12 @@
 import { ConnectorClientModule } from '@app/connector-client';
 import { PrismaModule } from '@app/prisma/prisma.module';
 import { WhatsAppAgentModule } from '@app/whatsapp-agent/whatsapp-agent.module';
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
+
+import { OnboardingModule } from '../onboarding/onboarding.module';
 
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
@@ -26,6 +28,7 @@ import { JwtStrategy } from './strategies/jwt.strategy';
     PrismaModule,
     WhatsAppAgentModule,
     ConnectorClientModule,
+    forwardRef(() => OnboardingModule),
   ],
   providers: [AuthService, JwtStrategy],
   controllers: [AuthController],
