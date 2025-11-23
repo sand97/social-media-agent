@@ -20,7 +20,9 @@ import {
 
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 
+import { UpdateAgentConfigDto } from './dto/update-agent-config.dto';
 import { UpdateAgentStatusDto } from './dto/update-agent-status.dto';
+import { ValidateContactDto } from './dto/validate-contact.dto';
 import { WhatsAppAgentService } from './whatsapp-agent.service';
 
 @ApiTags('whatsapp-agents')
@@ -111,5 +113,89 @@ export class WhatsAppAgentController {
     @Param('id') id: string,
   ): Promise<{ healthy: boolean; status?: string; error?: string }> {
     return this.whatsappAgentService.checkAgentHealth(id);
+  }
+
+  @Get('labels')
+  @ApiOperation({ summary: 'Get all WhatsApp labels for current user' })
+  @ApiResponse({
+    status: 200,
+    description: 'Returns all WhatsApp labels',
+    schema: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          id: { type: 'string' },
+          name: { type: 'string' },
+          hexColor: { type: 'string' },
+          colorIndex: { type: 'number' },
+          count: { type: 'number' },
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'WhatsApp agent not found',
+  })
+  async getLabels(@Request() req): Promise<
+    Array<{
+      id: string;
+      name: string;
+      hexColor: string;
+      colorIndex: number;
+      count: number;
+    }>
+  > {
+    const userId = req.user.userId || req.user.id;
+    return this.whatsappAgentService.getLabels(userId);
+  }
+
+  @Post('contacts/validate')
+  @ApiOperation({ summary: 'Validate if a phone number exists on WhatsApp' })
+  @ApiResponse({
+    status: 201,
+    description: 'Returns validation result',
+    schema: {
+      type: 'object',
+      properties: {
+        exists: { type: 'boolean' },
+        phoneNumber: { type: 'string' },
+        contactId: { type: 'string' },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'WhatsApp agent not found',
+  })
+  async validateContact(
+    @Request() req,
+    @Body() dto: ValidateContactDto,
+  ): Promise<{
+    exists: boolean;
+    phoneNumber: string;
+    contactId?: string;
+  }> {
+    const userId = req.user.userId || req.user.id;
+    return this.whatsappAgentService.validateContact(userId, dto.phoneNumber);
+  }
+
+  @Patch('config')
+  @ApiOperation({ summary: 'Update agent configuration' })
+  @ApiResponse({
+    status: 200,
+    description: 'Agent configuration updated successfully',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'WhatsApp agent not found',
+  })
+  async updateAgentConfig(
+    @Request() req,
+    @Body() dto: UpdateAgentConfigDto,
+  ): Promise<WhatsAppAgent> {
+    const userId = req.user.userId || req.user.id;
+    return this.whatsappAgentService.updateAgentConfig(userId, dto);
   }
 }

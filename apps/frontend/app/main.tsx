@@ -1,30 +1,30 @@
 import '@app/app.css'
 import { AuthProvider } from '@app/contexts/AuthContext'
 import { antdProviderProps } from '@app/core/theme'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { ConfigProvider, App as AntdApp } from 'antd'
-import frFR from 'antd/locale/fr_FR'
-import React from 'react'
-import ReactDOM from 'react-dom/client'
-import { createBrowserRouter, RouterProvider, Outlet } from 'react-router-dom'
 
 // Layouts
 import AuthLayout from '@app/layout/auth-layout'
 import DashboardLayout from '@app/layout/dashboard-layout'
 
 // Pages
-import Home from '@app/routes/home'
 import LoginPage from '@app/routes/auth.login'
 import PairingCodePage from '@app/routes/auth.pairing-code'
 import VerifyOtpPage from '@app/routes/auth.verify-otp'
-import Dashboard from '@app/routes/dashboard'
-import Stats from '@app/routes/stats'
 import Catalog from '@app/routes/catalog'
 import ContextOnboarding from '@app/routes/context.onboarding'
+import Dashboard from '@app/routes/dashboard'
+import Home from '@app/routes/home'
+import OnboardingAdvancedOptions from '@app/routes/onboarding.advanced-options'
+import OnboardingBusinessInfo from '@app/routes/onboarding.business-info'
 import OnboardingImport from '@app/routes/onboarding.import'
 import OnboardingReviewProducts from '@app/routes/onboarding.review-products'
-import OnboardingBusinessInfo from '@app/routes/onboarding.business-info'
-import OnboardingAdvancedOptions from '@app/routes/onboarding.advanced-options'
+import Stats from '@app/routes/stats'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { ConfigProvider, App as AntdApp } from 'antd'
+import frFR from 'antd/locale/fr_FR'
+import React from 'react'
+import ReactDOM from 'react-dom/client'
+import { createBrowserRouter, RouterProvider, Outlet } from 'react-router-dom'
 
 const queryClient = new QueryClient()
 

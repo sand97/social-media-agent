@@ -4,15 +4,15 @@ import {
   ShopOutlined,
   ArrowUpOutlined,
   StopOutlined,
-  RightOutlined,
 } from '@ant-design/icons'
-import RocketIcon from '@app/assets/Rocket.svg?react'
-import TestIcon from '@app/assets/Test.svg?react'
+import {
+  AgentTestCard,
+  AgentProductionCard,
+} from '@app/components/agent-config'
 import { useAuth } from '@app/hooks/useAuth'
 import apiClient from '@app/lib/api/client'
 import { App, Button, Input, Modal, Skeleton, Spin } from 'antd'
 import { useState, useEffect, useRef } from 'react'
-import { Link } from 'react-router-dom'
 import { io, Socket } from 'socket.io-client'
 
 interface ThreadMessage {
@@ -218,14 +218,16 @@ export default function ContextOnboardingPage() {
 
         // Remove the last user message from the UI
         setMessages(prev => {
-          const lastUserIndex = prev.findLastIndex(m => m.role === 'user')
-          if (lastUserIndex !== -1) {
-            return [
-              ...prev.slice(0, lastUserIndex),
-              ...prev.slice(lastUserIndex + 1),
-            ]
-          }
-          return prev
+          const reversedIndex = [...prev]
+            .reverse()
+            .findIndex(m => m.role === 'user')
+
+          if (reversedIndex === -1) return prev
+          const lastUserIndex = prev.length - 1 - reversedIndex
+          return [
+            ...prev.slice(0, lastUserIndex),
+            ...prev.slice(lastUserIndex + 1),
+          ]
         })
       }
     )
@@ -446,49 +448,11 @@ export default function ContextOnboardingPage() {
 
           {/* Cards container - vertical on mobile, horizontal on desktop */}
           <div className='flex flex-col gap-2 md:flex-row'>
-            {/* Test Card */}
-            <div className='flex flex-1 flex-col gap-12 rounded-[20px] bg-white px-6 py-4 shadow-[0px_0px_1px_0px_rgba(0,0,0,0.4)]'>
-              <div className='flex items-center justify-between'>
-                <div className='flex size-12 items-center justify-center rounded-full bg-white shadow-[0px_0px_1px_0px_rgba(0,0,0,0.4)]'>
-                  <TestIcon className='size-6' />
-                </div>
-                <Button type='default' variant='outlined' icon={<RightOutlined />} iconPosition='end'>
-                  Configurer
-                </Button>
-              </div>
-              <div className='flex flex-col gap-2'>
-                <p className='m-0 text-base font-medium text-black'>
-                  Test avec un contact ou des Tags
-                </p>
-                <p className='m-0 text-sm leading-6'>
-                  L&apos;IA ne répondra que pour les contacts ou les Tags
-                  sélectionner
-                </p>
-              </div>
+            <div className='flex-1'>
+              <AgentTestCard />
             </div>
-
-            {/* Activate Card */}
-            <div className='flex flex-1 flex-col gap-12 rounded-[20px] bg-white px-6 py-4 shadow-[0px_0px_1px_0px_rgba(0,0,0,0.4)]'>
-              <div className='flex items-center justify-between'>
-                <div className='flex size-12 items-center justify-center rounded-full bg-white shadow-[0px_0px_1px_0px_rgba(0,0,0,0.4)]'>
-                  <RocketIcon className='size-6' />
-                </div>
-                <Button type='primary' variant='outlined' icon={<RightOutlined />} iconPosition='end'>
-                  Activer l&apos;IA
-                </Button>
-              </div>
-              <div className='flex flex-col gap-2'>
-                <p className='m-0 text-base font-medium text-black'>
-                  Activer l&apos;IA pour tout vos contacts
-                </p>
-                <p className='m-0 text-sm leading-6'>
-                  L&apos;IA répondra à tous les contacts sauf aux contacts
-                  exclu.{' '}
-                  <Link to='#'>
-                    Exclure des contacts
-                  </Link>
-                </p>
-              </div>
+            <div className='flex-1'>
+              <AgentProductionCard />
             </div>
           </div>
 

@@ -361,7 +361,7 @@ export class AuthService {
         const onboardingComplete = thread && thread.score >= 80;
 
         // Determine redirect path and user status
-        let redirectTo = '/context/onboarding';
+        let redirectTo = '/context';
         let userStatus: UserStatus = UserStatus.ONBOARDING;
 
         if (onboardingComplete) {
@@ -427,13 +427,13 @@ export class AuthService {
       const accessToken = this.generateJwtToken(user.id);
 
       this.logger.log(
-        `Pairing confirmed successfully for user: ${user.id}, redirect to: /context/onboarding`,
+        `Pairing confirmed successfully for user: ${user.id}, redirect to: /context`,
       );
 
       // New users always go through onboarding
       return {
         accessToken,
-        redirectTo: '/context/onboarding',
+        redirectTo: '/context',
         user: {
           id: updatedUser.id,
           phoneNumber: updatedUser.phoneNumber,
@@ -527,6 +527,14 @@ export class AuthService {
             score: true,
           },
         },
+        whatsappAgent: {
+          select: {
+            testPhoneNumbers: true,
+            testLabels: true,
+            labelsToNotReply: true,
+            productionEnabled: true,
+          },
+        },
       },
     });
 
@@ -541,6 +549,14 @@ export class AuthService {
       whatsappProfile: user.whatsappProfile,
       businessInfo: user.businessInfo,
       contextScore: user.onboardingThread?.score ?? 0,
+      agentConfig: user.whatsappAgent
+        ? {
+            testPhoneNumbers: user.whatsappAgent.testPhoneNumbers,
+            testLabels: user.whatsappAgent.testLabels,
+            labelsToNotReply: user.whatsappAgent.labelsToNotReply,
+            productionEnabled: user.whatsappAgent.productionEnabled,
+          }
+        : null,
     };
   }
 

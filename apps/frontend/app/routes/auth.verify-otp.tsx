@@ -83,7 +83,7 @@ export default function VerifyOtpPage() {
       // Check context score and redirect accordingly
       const contextScore = response.data.user.contextScore ?? 0
       if (contextScore < 80) {
-        navigate('/context/onboarding')
+        navigate('/context')
       } else {
         navigate('/')
       }
@@ -167,6 +167,11 @@ export default function VerifyOtpPage() {
                       style={{
                         width: '100%',
                       }}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') {
+                          form.submit()
+                        }
+                      }}
                     />
                   </Form.Item>
                 </Form>
@@ -211,7 +216,7 @@ export default function VerifyOtpPage() {
                   <Button
                     type='primary'
                     size='large'
-                    onClick={handleVerifyOtp}
+                    onClick={() => handleVerifyOtp()}
                     loading={isVerifying}
                     className='h-[46px] px-8 bg-[#24d366] border-none hover:bg-[#1fb855] flex items-center gap-2'
                   >

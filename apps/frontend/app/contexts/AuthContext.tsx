@@ -1,6 +1,13 @@
 import apiClient from '@app/lib/api/client'
 import { createContext, useCallback, useEffect, useMemo, useState } from 'react'
 
+interface AgentConfig {
+  testPhoneNumbers: string[]
+  testLabels: string[]
+  labelsToNotReply: string[]
+  productionEnabled: boolean
+}
+
 interface User {
   id: string
   email?: string
@@ -15,6 +22,7 @@ interface User {
     profile_name?: string
     [key: string]: any
   }
+  agentConfig?: AgentConfig | null
   [key: string]: any
 }
 
@@ -117,7 +125,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
       checkAuth,
       updateContextScore,
     }),
-    [user, token, isAuthenticated, isLoading, login, logout, checkAuth, updateContextScore]
+    [
+      user,
+      token,
+      isAuthenticated,
+      isLoading,
+      login,
+      logout,
+      checkAuth,
+      updateContextScore,
+    ]
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

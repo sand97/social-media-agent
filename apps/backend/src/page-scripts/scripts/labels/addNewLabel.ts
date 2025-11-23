@@ -25,6 +25,21 @@
     const palette = await window.WPP.labels.getLabelColorPalette();
     const existingLabels = await window.WPP.labels.getAllLabels();
 
+    // Check if label with same name already exists
+    const existingLabel = existingLabels.find(
+      label => label.name.toLowerCase() === labelName.toLowerCase()
+    );
+    if (existingLabel) {
+      // Label already exists, return it
+      return {
+        id: existingLabel.id,
+        name: existingLabel.name,
+        hexColor: existingLabel.hexColor,
+        colorIndex: existingLabel.colorIndex,
+        alreadyExists: true,
+      };
+    }
+
     // Get used color indices
     const usedColorIndices = new Set(existingLabels.map(label => label.colorIndex));
 

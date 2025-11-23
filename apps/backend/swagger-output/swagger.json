@@ -425,6 +425,140 @@
         ]
       }
     },
+    "/whatsapp-agents/labels": {
+      "get": {
+        "operationId": "WhatsAppAgentController_getLabels",
+        "summary": "Get all WhatsApp labels for current user",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Returns all WhatsApp labels",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string"
+                      },
+                      "name": {
+                        "type": "string"
+                      },
+                      "hexColor": {
+                        "type": "string"
+                      },
+                      "colorIndex": {
+                        "type": "number"
+                      },
+                      "count": {
+                        "type": "number"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "WhatsApp agent not found"
+          }
+        },
+        "tags": [
+          "whatsapp-agents"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/whatsapp-agents/contacts/validate": {
+      "post": {
+        "operationId": "WhatsAppAgentController_validateContact",
+        "summary": "Validate if a phone number exists on WhatsApp",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ValidateContactDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Returns validation result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "exists": {
+                      "type": "boolean"
+                    },
+                    "phoneNumber": {
+                      "type": "string"
+                    },
+                    "contactId": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "WhatsApp agent not found"
+          }
+        },
+        "tags": [
+          "whatsapp-agents"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/whatsapp-agents/config": {
+      "patch": {
+        "operationId": "WhatsAppAgentController_updateAgentConfig",
+        "summary": "Update agent configuration",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateAgentConfigDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Agent configuration updated successfully"
+          },
+          "404": {
+            "description": "WhatsApp agent not found"
+          }
+        },
+        "tags": [
+          "whatsapp-agents"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
     "/onboarding/threads": {
       "get": {
         "operationId": "OnboardingController_getThread",
@@ -2124,6 +2258,62 @@
         "required": [
           "status"
         ]
+      },
+      "ValidateContactDto": {
+        "type": "object",
+        "properties": {
+          "phoneNumber": {
+            "type": "string",
+            "description": "Phone number to validate",
+            "example": "+237612345678"
+          }
+        },
+        "required": [
+          "phoneNumber"
+        ]
+      },
+      "UpdateAgentConfigDto": {
+        "type": "object",
+        "properties": {
+          "testPhoneNumbers": {
+            "description": "Phone numbers for test mode (AI only responds to these)",
+            "example": [
+              "+237612345678",
+              "+237698765432"
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "testLabels": {
+            "description": "Label names for test mode (AI only responds to contacts with these labels)",
+            "example": [
+              "Test",
+              "VIP"
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "labelsToNotReply": {
+            "description": "Label names to exclude in production mode (AI will not respond to contacts with these labels)",
+            "example": [
+              "DoNotReply",
+              "Blocked"
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "productionEnabled": {
+            "type": "boolean",
+            "description": "Enable production mode for the AI agent",
+            "example": true
+          }
+        }
       },
       "SendMessageDto": {
         "type": "object",

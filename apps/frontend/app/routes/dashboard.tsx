@@ -1,11 +1,14 @@
 import {
   ArrowRightOutlined,
-  SettingOutlined,
-  MessageOutlined,
   GoogleOutlined,
   FacebookOutlined,
   RiseOutlined,
+  MessageOutlined,
 } from '@ant-design/icons'
+import {
+  AgentTestCard,
+  AgentProductionCard,
+} from '@app/components/agent-config'
 import { Button, Card, Typography, Badge } from 'antd'
 
 const { Title, Text, Link } = Typography
@@ -29,71 +32,8 @@ export default function DashboardPage() {
           Tester ou passer en production
         </Title>
         <div className='grid grid-cols-2 gap-4'>
-          {/* Test Card */}
-          <Card
-            className='h-full'
-            styles={{
-              body: { padding: 24 },
-            }}
-          >
-            <div className='flex flex-col gap-4 w-full'>
-              <div className='flex items-start justify-between'>
-                <div className='w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center'>
-                  <SettingOutlined className='text-lg' />
-                </div>
-                <Button
-                  type='default'
-                  shape='round'
-                  icon={<ArrowRightOutlined />}
-                  iconPosition='end'
-                >
-                  Configurer
-                </Button>
-              </div>
-              <div>
-                <Text strong className='block mb-1'>
-                  Test avec un contact ou des Tags
-                </Text>
-                <Text type='secondary'>
-                  L&apos;IA ne répondra que pour les contacts ou les Tags
-                  sélectionner
-                </Text>
-              </div>
-            </div>
-          </Card>
-
-          {/* Activate Card */}
-          <Card
-            className='h-full'
-            styles={{
-              body: { padding: 24 },
-            }}
-          >
-            <div className='flex flex-col gap-4 w-full'>
-              <div className='flex items-start justify-between'>
-                <div className='w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center'>
-                  <MessageOutlined className='text-lg' />
-                </div>
-                <Button
-                  type='primary'
-                  shape='round'
-                  icon={<ArrowRightOutlined />}
-                  iconPosition='end'
-                >
-                  Activer l&apos;IA
-                </Button>
-              </div>
-              <div>
-                <Text strong className='block mb-1'>
-                  Activer l&apos;IA pour tout vos contacts
-                </Text>
-                <Text type='secondary'>
-                  L&apos;IA répondra à tous les contacts sauf aux contacts
-                  exclu. <Link underline>Exclure des contacts</Link>
-                </Text>
-              </div>
-            </div>
-          </Card>
+          <AgentTestCard />
+          <AgentProductionCard />
         </div>
       </section>
 

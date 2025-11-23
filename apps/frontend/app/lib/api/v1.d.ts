@@ -188,6 +188,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/whatsapp-agents/labels": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get all WhatsApp labels for current user */
+        get: operations["WhatsAppAgentController_getLabels"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/whatsapp-agents/contacts/validate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Validate if a phone number exists on WhatsApp */
+        post: operations["WhatsAppAgentController_validateContact"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/whatsapp-agents/config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update agent configuration */
+        patch: operations["WhatsAppAgentController_updateAgentConfig"];
+        trace?: never;
+    };
     "/onboarding/threads": {
         parameters: {
             query?: never;
@@ -755,6 +806,44 @@ export interface components {
              * @enum {string}
              */
             connectionStatus?: "CONNECTED" | "DISCONNECTED" | "QR_REQUIRED" | "PAIRING_REQUIRED";
+        };
+        ValidateContactDto: {
+            /**
+             * @description Phone number to validate
+             * @example +237612345678
+             */
+            phoneNumber: string;
+        };
+        UpdateAgentConfigDto: {
+            /**
+             * @description Phone numbers for test mode (AI only responds to these)
+             * @example [
+             *       "+237612345678",
+             *       "+237698765432"
+             *     ]
+             */
+            testPhoneNumbers?: string[];
+            /**
+             * @description Label names for test mode (AI only responds to contacts with these labels)
+             * @example [
+             *       "Test",
+             *       "VIP"
+             *     ]
+             */
+            testLabels?: string[];
+            /**
+             * @description Label names to exclude in production mode (AI will not respond to contacts with these labels)
+             * @example [
+             *       "DoNotReply",
+             *       "Blocked"
+             *     ]
+             */
+            labelsToNotReply?: string[];
+            /**
+             * @description Enable production mode for the AI agent
+             * @example true
+             */
+            productionEnabled?: boolean;
         };
         SendMessageDto: Record<string, never>;
         RequestPairingDto: {
@@ -1519,6 +1608,103 @@ export interface operations {
         requestBody?: never;
         responses: {
             /** @description Returns the health status of the agent */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description WhatsApp agent not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    WhatsAppAgentController_getLabels: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Returns all WhatsApp labels */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        id?: string;
+                        name?: string;
+                        hexColor?: string;
+                        colorIndex?: number;
+                        count?: number;
+                    }[];
+                };
+            };
+            /** @description WhatsApp agent not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    WhatsAppAgentController_validateContact: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ValidateContactDto"];
+            };
+        };
+        responses: {
+            /** @description Returns validation result */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        exists?: boolean;
+                        phoneNumber?: string;
+                        contactId?: string;
+                    };
+                };
+            };
+            /** @description WhatsApp agent not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    WhatsAppAgentController_updateAgentConfig: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateAgentConfigDto"];
+            };
+        };
+        responses: {
+            /** @description Agent configuration updated successfully */
             200: {
                 headers: {
                     [name: string]: unknown;

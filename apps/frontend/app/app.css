@@ -90,14 +90,22 @@ body {
   padding: 0 32px;
 }
 
+.ant-input-prefix {
+  margin-inline-end: 8px;
+}
+
+
 a {
   cursor: pointer;
   text-decoration: underline;
   text-decoration-color: var(--color-primary);
-  text-decoration-thickness: 1px;
   color: var(--color-text-dark);
+  transition: text-decoration-thickness 0.3s ease;
+  text-decoration-thickness: 10%;
   &:hover {
     color: var(--color-text-dark);
-    text-decoration-thickness: 2px;
+    text-decoration: underline;
+    text-decoration-thickness: 15%;
+    text-decoration-color: var(--color-primary);
   }
 }

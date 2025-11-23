@@ -1,10 +1,15 @@
 import * as crypto from 'crypto';
 
+import { ConnectorClientService } from '@app/connector-client/connector-client.service';
 import {
   WhatsAppAgent,
   WhatsAppAgentStatus,
   ConnectionStatus,
 } from '@app/generated/client';
+import {
+  PageScriptService,
+  ScriptVariables,
+} from '@app/page-scripts/page-script.service';
 import {
   Injectable,
   ConflictException,
@@ -25,6 +30,8 @@ export class WhatsAppAgentService {
     private readonly prisma: PrismaService,
     private readonly cryptoService: CryptoService,
     private readonly configService: ConfigService,
+    private readonly connectorClientService: ConnectorClientService,
+    private readonly pageScriptService: PageScriptService,
   ) {}
 
   /**
@@ -237,5 +244,121 @@ export class WhatsAppAgentService {
    */
   private generateRandomPassword(): string {
     return crypto.randomBytes(16).toString('hex');
+  }
+
+  /**
+   * Execute a script on the user's WhatsApp connector
+   */
+  private async executeScript(
+    userId: string,
+    scriptPath: string,
+    variables: ScriptVariables = {},
+  ): Promise<unknown> {
+    const agent = await this.prisma.whatsAppAgent.findFirst({
+      where: { userId },
+    });
+
+    if (!agent) {
+      throw new NotFoundException('WhatsApp agent not found for user');
+    }
+
+    const connectorUrl = await this.getConnectorUrl(agent);
+    const script = this.pageScriptService.getScript(scriptPath, variables);
+
+    return await this.connectorClientService.executeScript(
+      connectorUrl,
+      script,
+    );
+  }
+
+  /**
+   * Get all WhatsApp labels for a user
+   */
+  async getLabels(userId: string): Promise<
+    Array<{
+      id: string;
+      name: string;
+      hexColor: string;
+      colorIndex: number;
+      count: number;
+    }>
+  > {
+    const result = await this.executeScript(userId, 'labels/getAllLabels');
+    return result as Array<{
+      id: string;
+      name: string;
+      hexColor: string;
+      colorIndex: number;
+      count: number;
+    }>;
+  }
+
+  /**
+   * Validate if a phone number exists on WhatsApp
+   */
+  async validateContact(
+    userId: string,
+    phoneNumber: string,
+  ): Promise<{
+    exists: boolean;
+    phoneNumber: string;
+    contactId?: string;
+  }> {
+    const result = await this.executeScript(
+      userId,
+      'contact/queryContactExists',
+      { PHONE_NUMBER: phoneNumber },
+    );
+    return result as {
+      exists: boolean;
+      phoneNumber: string;
+      contactId?: string;
+    };
+  }
+
+  /**
+   * Update agent configuration (test mode, production mode, labels)
+   */
+  async updateAgentConfig(
+    userId: string,
+    config: {
+      testPhoneNumbers?: string[];
+      testLabels?: string[];
+      labelsToNotReply?: string[];
+      productionEnabled?: boolean;
+    },
+  ): Promise<WhatsAppAgent> {
+    const agent = await this.prisma.whatsAppAgent.findFirst({
+      where: { userId },
+    });
+
+    if (!agent) {
+      throw new NotFoundException('WhatsApp agent not found for user');
+    }
+
+    const updateData: Partial<{
+      testPhoneNumbers: string[];
+      testLabels: string[];
+      labelsToNotReply: string[];
+      productionEnabled: boolean;
+    }> = {};
+
+    if (config.testPhoneNumbers !== undefined) {
+      updateData.testPhoneNumbers = config.testPhoneNumbers;
+    }
+    if (config.testLabels !== undefined) {
+      updateData.testLabels = config.testLabels;
+    }
+    if (config.labelsToNotReply !== undefined) {
+      updateData.labelsToNotReply = config.labelsToNotReply;
+    }
+    if (config.productionEnabled !== undefined) {
+      updateData.productionEnabled = config.productionEnabled;
+    }
+
+    return this.prisma.whatsAppAgent.update({
+      where: { id: agent.id },
+      data: updateData,
+    });
   }
 }

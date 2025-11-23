@@ -168,6 +168,12 @@ model WhatsAppAgent {
   // Métadonnées (JSON pour flexibilité)
   metadata Json? // { containerId, vpsProvider, region, etc. }
 
+  // Configuration IA
+  testPhoneNumbers   String[] @default([]) // Numéros de téléphone de test
+  testLabels         String[] @default([]) // Labels de test (l'IA répond uniquement à ces labels)
+  labelsToNotReply   String[] @default([]) // Labels à exclure (l'IA ne répond pas à ces labels)
+  productionEnabled  Boolean  @default(false) // Mode production activé
+
   // Dates
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt

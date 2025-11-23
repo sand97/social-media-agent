@@ -126,7 +126,14 @@ export default function DashboardLayout() {
     if (contextScore < 80 && !isContextRoute) {
       navigate('/context', { replace: true })
     }
-  }, [isLoading, isAuthenticated, user, contextScore, location.pathname, navigate])
+  }, [
+    isLoading,
+    isAuthenticated,
+    user,
+    contextScore,
+    location.pathname,
+    navigate,
+  ])
 
   const handleLogout = () => {
     modal.confirm({
@@ -170,7 +177,7 @@ export default function DashboardLayout() {
         `}
       >
         <span className='text-lg'>{item.icon}</span>
-        <span className='text-base text-primary-text leading-4'>
+        <span className='text-sm text-primary-text leading-4'>
           {item.label}
         </span>
       </button>
@@ -228,7 +235,7 @@ export default function DashboardLayout() {
         {menuSections.map(section => (
           <div key={section.title} className='flex flex-col gap-3'>
             <div className='px-4'>
-              <span className='text-sm text-[#494949] leading-4 tracking-[0.35px]'>
+              <span className='text-xs text-[#494949] leading-4 tracking-[0.35px]'>
                 {section.title}
               </span>
             </div>
