@@ -193,137 +193,137 @@ export class WhatsAppClientService implements OnModuleInit, OnModuleDestroy {
       this.logger.warn('WhatsApp client disconnected:', args);
       this.webhookService.sendEvent('disconnected', args);
     });
-    //
-    // // Change state
-    // this.client.on('change_state', (...args) => {
-    //   this.logger.log('State changed:', args);
-    //   this.webhookService.sendEvent('change_state', args);
-    // });
-    //
-    // // Messages
-    // this.client.on('message', (...args) => {
-    //   const [message] = args;
-    //   this.logger.debug(`Message received from ${message?.from || 'unknown'}`);
-    //   this.webhookService.sendEvent('message', args);
-    // });
-    //
-    // this.client.on('message_create', (...args) => {
-    //   const [message] = args;
-    //   this.logger.debug(
-    //     `Message created: ${message?.id?._serialized || 'unknown'}`,
-    //   );
-    //   this.webhookService.sendEvent('message_create', args);
-    // });
-    //
-    // this.client.on('message_ack', (...args) => {
-    //   const [message, ack] = args;
-    //   this.logger.debug(
-    //     `Message ACK: ${message?.id?._serialized || 'unknown'} - ${ack}`,
-    //   );
-    //   this.webhookService.sendEvent('message_ack', args);
-    // });
-    //
-    // this.client.on('message_edit', (...args) => {
-    //   const [message] = args;
-    //   this.logger.debug(
-    //     `Message edited: ${message?.id?._serialized || 'unknown'}`,
-    //   );
-    //   this.webhookService.sendEvent('message_edit', args);
-    // });
-    //
-    // this.client.on('message_revoke_me', (...args) => {
-    //   const [message] = args;
-    //   this.logger.debug(
-    //     `Message revoked for me: ${message?.id?._serialized || 'unknown'}`,
-    //   );
-    //   this.webhookService.sendEvent('message_revoke_me', args);
-    // });
-    //
-    // this.client.on('message_revoke_everyone', (...args) => {
-    //   const [message] = args;
-    //   this.logger.debug(
-    //     `Message revoked for everyone: ${message?.id?._serialized || 'unknown'}`,
-    //   );
-    //   this.webhookService.sendEvent('message_revoke_everyone', args);
-    // });
-    //
-    // this.client.on('message_reaction', (...args) => {
-    //   const [reaction] = args;
-    //   this.logger.debug(
-    //     `Message reaction: ${reaction?.id?._serialized || 'unknown'}`,
-    //   );
-    //   this.webhookService.sendEvent('message_reaction', args);
-    // });
-    //
-    // this.client.on('media_uploaded', (...args) => {
-    //   const [message] = args;
-    //   this.logger.debug(
-    //     `Media uploaded: ${message?.id?._serialized || 'unknown'}`,
-    //   );
-    //   this.webhookService.sendEvent('media_uploaded', args);
-    // });
-    //
-    // // Groups
-    // this.client.on('group_join', (...args) => {
-    //   this.logger.debug('User joined group');
-    //   this.webhookService.sendEvent('group_join', args);
-    // });
-    //
-    // this.client.on('group_leave', (...args) => {
-    //   this.logger.debug('User left group');
-    //   this.webhookService.sendEvent('group_leave', args);
-    // });
-    //
-    // this.client.on('group_update', (...args) => {
-    //   this.logger.debug('Group updated');
-    //   this.webhookService.sendEvent('group_update', args);
-    // });
-    //
-    // this.client.on('group_admin_changed', (...args) => {
-    //   this.logger.debug('Group admin changed');
-    //   this.webhookService.sendEvent('group_admin_changed', args);
-    // });
-    //
-    // this.client.on('group_membership_request', (...args) => {
-    //   this.logger.debug('Group membership request');
-    //   this.webhookService.sendEvent('group_membership_request', args);
-    // });
-    //
-    // // Chats
-    // this.client.on('chat_archived', (...args) => {
-    //   const [chat] = args;
-    //   this.logger.debug(`Chat archived: ${chat?.id?._serialized || 'unknown'}`);
-    //   this.webhookService.sendEvent('chat_archived', args);
-    // });
-    //
-    // this.client.on('chat_removed', (...args) => {
-    //   const [chat] = args;
-    //   this.logger.debug(`Chat removed: ${chat?.id?._serialized || 'unknown'}`);
-    //   this.webhookService.sendEvent('chat_removed', args);
-    // });
-    //
-    // // Contacts
-    // this.client.on('contact_changed', (...args) => {
-    //   const [contact] = args;
-    //   this.logger.debug(
-    //     `Contact changed: ${contact?.id?._serialized || 'unknown'}`,
-    //   );
-    //   this.webhookService.sendEvent('contact_changed', args);
-    // });
-    //
-    // // Calls
-    // this.client.on('incoming_call', (...args) => {
-    //   this.logger.debug('Incoming call');
-    //   this.webhookService.sendEvent('incoming_call', args);
-    // });
-    //
-    // // Vote update (pour les polls)
-    // this.client.on('vote_update', (...args) => {
-    //   this.logger.debug('Vote update');
-    //   this.webhookService.sendEvent('vote_update', args);
-    // });
-    //
-    // // Code (pour l'authentification par code)
+
+    // Change state
+    this.client.on('change_state', (...args) => {
+      this.logger.log('State changed:', args);
+      this.webhookService.sendEvent('change_state', args);
+    });
+
+    // Messages
+    this.client.on('message', (...args) => {
+      const [message] = args;
+      this.logger.debug(`Message received from ${message?.from || 'unknown'}`);
+      this.webhookService.sendEvent('message', args);
+    });
+
+    this.client.on('message_create', (...args) => {
+      const [message] = args;
+      this.logger.debug(
+        `Message created: ${message?.id?._serialized || 'unknown'}`,
+      );
+      this.webhookService.sendEvent('message_create', args);
+    });
+
+    this.client.on('message_ack', (...args) => {
+      const [message, ack] = args;
+      this.logger.debug(
+        `Message ACK: ${message?.id?._serialized || 'unknown'} - ${ack}`,
+      );
+      this.webhookService.sendEvent('message_ack', args);
+    });
+
+    this.client.on('message_edit', (...args) => {
+      const [message] = args;
+      this.logger.debug(
+        `Message edited: ${message?.id?._serialized || 'unknown'}`,
+      );
+      this.webhookService.sendEvent('message_edit', args);
+    });
+
+    this.client.on('message_revoke_me', (...args) => {
+      const [message] = args;
+      this.logger.debug(
+        `Message revoked for me: ${message?.id?._serialized || 'unknown'}`,
+      );
+      this.webhookService.sendEvent('message_revoke_me', args);
+    });
+
+    this.client.on('message_revoke_everyone', (...args) => {
+      const [message] = args;
+      this.logger.debug(
+        `Message revoked for everyone: ${message?.id?._serialized || 'unknown'}`,
+      );
+      this.webhookService.sendEvent('message_revoke_everyone', args);
+    });
+
+    this.client.on('message_reaction', (...args) => {
+      const [reaction] = args;
+      this.logger.debug(
+        `Message reaction: ${reaction?.id?._serialized || 'unknown'}`,
+      );
+      this.webhookService.sendEvent('message_reaction', args);
+    });
+
+    this.client.on('media_uploaded', (...args) => {
+      const [message] = args;
+      this.logger.debug(
+        `Media uploaded: ${message?.id?._serialized || 'unknown'}`,
+      );
+      this.webhookService.sendEvent('media_uploaded', args);
+    });
+
+    // Groups
+    this.client.on('group_join', (...args) => {
+      this.logger.debug('User joined group');
+      this.webhookService.sendEvent('group_join', args);
+    });
+
+    this.client.on('group_leave', (...args) => {
+      this.logger.debug('User left group');
+      this.webhookService.sendEvent('group_leave', args);
+    });
+
+    this.client.on('group_update', (...args) => {
+      this.logger.debug('Group updated');
+      this.webhookService.sendEvent('group_update', args);
+    });
+
+    this.client.on('group_admin_changed', (...args) => {
+      this.logger.debug('Group admin changed');
+      this.webhookService.sendEvent('group_admin_changed', args);
+    });
+
+    this.client.on('group_membership_request', (...args) => {
+      this.logger.debug('Group membership request');
+      this.webhookService.sendEvent('group_membership_request', args);
+    });
+
+    // Chats
+    this.client.on('chat_archived', (...args) => {
+      const [chat] = args;
+      this.logger.debug(`Chat archived: ${chat?.id?._serialized || 'unknown'}`);
+      this.webhookService.sendEvent('chat_archived', args);
+    });
+
+    this.client.on('chat_removed', (...args) => {
+      const [chat] = args;
+      this.logger.debug(`Chat removed: ${chat?.id?._serialized || 'unknown'}`);
+      this.webhookService.sendEvent('chat_removed', args);
+    });
+
+    // Contacts
+    this.client.on('contact_changed', (...args) => {
+      const [contact] = args;
+      this.logger.debug(
+        `Contact changed: ${contact?.id?._serialized || 'unknown'}`,
+      );
+      this.webhookService.sendEvent('contact_changed', args);
+    });
+
+    // Calls
+    this.client.on('incoming_call', (...args) => {
+      this.logger.debug('Incoming call');
+      this.webhookService.sendEvent('incoming_call', args);
+    });
+
+    // Vote update (pour les polls)
+    this.client.on('vote_update', (...args) => {
+      this.logger.debug('Vote update');
+      this.webhookService.sendEvent('vote_update', args);
+    });
+
+    // Code (pour l'authentification par code)
     // this.client.on('code', (...args) => {
     //   this.logger.debug('Authentication code received');
     //   this.webhookService.sendEvent('code', args);
