@@ -1,0 +1,101 @@
+// This is the Prisma schema for WhatsApp Agent
+// Local database for agent-specific data (memories, checkpoints)
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// ENUMS
+// ============================================
+
+enum MemoryType {
+  PREFERENCE  // Préférences client (couleur préférée, taille, etc.)
+  VIP_NOTE    // Note importante sur un client VIP
+  ORDER       // Information de commande
+  CONTEXT     // Contexte de conversation
+}
+
+// ============================================
+// MODELS
+// ============================================
+
+// Mémoires persistantes des conversations
+// Utilisé pour stocker des informations critiques qui doivent persister
+model ConversationMemory {
+  id        String     @id @default(cuid())
+  chatId    String     // WhatsApp chat ID (237xxx@c.us)
+  type      MemoryType
+  key       String     // Clé de la mémoire (ex: "color_preference", "vip_reason")
+  value     Json       // Valeur de la mémoire (structure flexible)
+
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  expiresAt DateTime?  // Expiration optionnelle
+
+  @@index([chatId])
+  @@index([type])
+  @@index([expiresAt])
+  @@index([chatId, type])
+}
+
+// Messages programmés (reminders)
+// Bull Queue va utiliser cette table pour persister les jobs
+model ScheduledMessage {
+  id           String   @id @default(cuid())
+  chatId       String   // WhatsApp chat ID
+  scheduledFor DateTime // Quand envoyer le message
+  context      Json     // Contexte du message (reason, intentToCheck, actionIfFalse)
+  status       String   @default("pending") // "pending", "sent", "cancelled"
+
+  // Métadonnées
+  jobId        String?  // ID du job Bull Queue
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  sentAt       DateTime?
+
+  @@index([chatId])
+  @@index([scheduledFor])
+  @@index([status])
+}
+
+// Catalogue local avec embeddings pour recherche sémantique
+model CatalogProduct {
+  id          String   @id // WhatsApp product ID
+  name        String
+  description String?  @db.Text
+  price       Float?
+  currency    String?
+  availability String?
+
+  // Collection info
+  collectionId   String?
+  collectionName String?
+
+  // Metadata WhatsApp
+  retailerId     String?
+  maxAvailable   Int?
+  imageHashes    String[] @default([])
+
+  // Embedding for semantic search (stored as JSON array of floats)
+  embedding Json? // Vector embedding for similarity search
+
+  // Synchronization
+  lastSyncedAt DateTime @default(now())
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([name])
+  @@index([collectionId])
+  @@index([lastSyncedAt])
+}
+
+// Note: La table `checkpoints` sera créée automatiquement par PostgresSaver de LangGraph
+// pour stocker l'état des conversations (historique, contexte agent, etc.)

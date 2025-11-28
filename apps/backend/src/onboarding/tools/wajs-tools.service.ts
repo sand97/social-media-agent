@@ -291,7 +291,10 @@ export class WaJsToolsService {
       ),
 
       tool(
-        async ({ onlyMyContacts, withLabels, name, limit }, config: ToolConfig) => {
+        async (
+          { onlyMyContacts, withLabels, name, limit },
+          config: ToolConfig,
+        ) => {
           const userId = config?.context?.userId;
           if (!userId) {
             throw new Error('userId not found in runtime context');

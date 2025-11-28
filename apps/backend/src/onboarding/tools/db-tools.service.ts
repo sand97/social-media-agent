@@ -31,6 +31,11 @@ export class DbToolsService {
       this.createReadBusinessProfileTool(),
       this.createReadProductsTool(),
       // Tags and Groups removed - use WaJs tools instead (getAllLabels, getAllGroups)
+      // BUT Groups DB tools for managing authorized groups with usage
+      this.createListGroupsTool(),
+      this.createAddGroupTool(),
+      this.createUpdateGroupTool(),
+      this.createDeleteGroupTool(),
       this.createUpdateContextTool(),
       this.createUpdateNeedsTool(),
       this.createGetContextScoreTool(),
@@ -203,6 +208,188 @@ export class DbToolsService {
         name: 'getContextScore',
         description: 'Obtenir le score actuel du contexte',
         schema: z.object({}),
+      },
+    );
+  }
+
+  /**
+   * List all authorized groups for this user from database
+   * These are groups that the user has configured to work with the agent
+   */
+  private createListGroupsTool(): ReturnType<typeof tool> {
+    return tool(
+      async (_, config: ToolConfig) => {
+        const userId = config?.context?.userId;
+        if (!userId) {
+          throw new Error('userId not found in runtime context');
+        }
+        const groups = await this.prisma.group.findMany({
+          where: { userId },
+          select: {
+            id: true,
+            whatsappGroupId: true,
+            name: true,
+            usage: true,
+            createdAt: true,
+          },
+          orderBy: { createdAt: 'desc' },
+        });
+        return JSON.stringify(groups);
+      },
+      {
+        name: 'listAuthorizedGroups',
+        description:
+          'Lister tous les groupes WhatsApp autorisés enregistrés dans la base de données avec leurs usages',
+        schema: z.object({}),
+      },
+    );
+  }
+
+  /**
+   * Add a group to the authorized groups list with its usage
+   */
+  private createAddGroupTool(): ReturnType<typeof tool> {
+    return tool(
+      async ({ whatsappGroupId, name, usage }, config: ToolConfig) => {
+        const userId = config?.context?.userId;
+        if (!userId) {
+          throw new Error('userId not found in runtime context');
+        }
+
+        // Check if group already exists for this user
+        const existing = await this.prisma.group.findFirst({
+          where: { userId, whatsappGroupId },
+        });
+
+        if (existing) {
+          return JSON.stringify({
+            success: false,
+            error: 'Ce groupe est déjà enregistré',
+            existingGroup: existing,
+          });
+        }
+
+        const group = await this.prisma.group.create({
+          data: {
+            userId,
+            whatsappGroupId,
+            name,
+            usage,
+          },
+        });
+
+        return JSON.stringify({
+          success: true,
+          message: 'Groupe ajouté avec succès',
+          group,
+        });
+      },
+      {
+        name: 'addAuthorizedGroup',
+        description:
+          "Ajouter un groupe WhatsApp à la liste des groupes autorisés avec son usage (ex: 'Support client', 'Ventes', 'Notifications')",
+        schema: z.object({
+          whatsappGroupId: z
+            .string()
+            .describe("ID WhatsApp du groupe (ex: '12345@g.us')"),
+          name: z.string().describe('Nom du groupe'),
+          usage: z
+            .string()
+            .describe(
+              "Usage du groupe (ex: 'Support client', 'Ventes', 'Notifications')",
+            ),
+        }),
+      },
+    );
+  }
+
+  /**
+   * Update the usage of an authorized group
+   */
+  private createUpdateGroupTool(): ReturnType<typeof tool> {
+    return tool(
+      async ({ groupId, name, usage }, config: ToolConfig) => {
+        const userId = config?.context?.userId;
+        if (!userId) {
+          throw new Error('userId not found in runtime context');
+        }
+
+        // Ensure the group belongs to this user
+        const group = await this.prisma.group.findFirst({
+          where: { id: groupId, userId },
+        });
+
+        if (!group) {
+          return JSON.stringify({
+            success: false,
+            error: 'Groupe non trouvé ou non autorisé',
+          });
+        }
+
+        const updated = await this.prisma.group.update({
+          where: { id: groupId },
+          data: {
+            ...(name && { name }),
+            ...(usage && { usage }),
+          },
+        });
+
+        return JSON.stringify({
+          success: true,
+          message: 'Groupe mis à jour avec succès',
+          group: updated,
+        });
+      },
+      {
+        name: 'updateAuthorizedGroup',
+        description: "Modifier le nom ou l'usage d'un groupe autorisé",
+        schema: z.object({
+          groupId: z.string().describe('ID du groupe dans la base de données'),
+          name: z.string().optional().describe('Nouveau nom du groupe'),
+          usage: z.string().optional().describe('Nouvel usage du groupe'),
+        }),
+      },
+    );
+  }
+
+  /**
+   * Delete an authorized group
+   */
+  private createDeleteGroupTool(): ReturnType<typeof tool> {
+    return tool(
+      async ({ groupId }, config: ToolConfig) => {
+        const userId = config?.context?.userId;
+        if (!userId) {
+          throw new Error('userId not found in runtime context');
+        }
+
+        // Ensure the group belongs to this user
+        const group = await this.prisma.group.findFirst({
+          where: { id: groupId, userId },
+        });
+
+        if (!group) {
+          return JSON.stringify({
+            success: false,
+            error: 'Groupe non trouvé ou non autorisé',
+          });
+        }
+
+        await this.prisma.group.delete({
+          where: { id: groupId },
+        });
+
+        return JSON.stringify({
+          success: true,
+          message: 'Groupe supprimé avec succès',
+        });
+      },
+      {
+        name: 'deleteAuthorizedGroup',
+        description: 'Supprimer un groupe de la liste des groupes autorisés',
+        schema: z.object({
+          groupId: z.string().describe('ID du groupe dans la base de données'),
+        }),
       },
     );
   }

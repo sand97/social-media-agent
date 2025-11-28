@@ -8,13 +8,13 @@
 
 (async () => {
   try {
-    const contactId = '{{CONTACT_ID}}'
+    const contactId = '{{CONTACT_ID}}';
     if (!contactId || contactId.includes('{{')) {
-      throw new Error('CONTACT_ID is required')
+      throw new Error('CONTACT_ID is required');
     }
 
-    const contact = await window.WPP.contact.get(contactId)
-    
+    const contact = await window.WPP.contact.get(contactId);
+
     return {
       id: contact.id._serialized,
       name: contact.name || contact.pushname,
@@ -23,9 +23,9 @@
       isUser: contact.isUser,
       isWAContact: contact.isWAContact,
       profilePicThumbObj: contact.profilePicThumbObj,
-    }
+    };
   } catch (error) {
-    console.error('Failed to get contact:', error)
-    throw error
+    console.error('Failed to get contact:', error);
+    throw error;
   }
-})()
+})();

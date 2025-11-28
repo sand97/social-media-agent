@@ -8,25 +8,25 @@
 
 (async () => {
   try {
-    const productId = '{{PRODUCT_ID}}'
+    const productId = '{{PRODUCT_ID}}';
     if (!productId || productId.includes('{{')) {
-      throw new Error('PRODUCT_ID is required')
+      throw new Error('PRODUCT_ID is required');
     }
-    const visibleStr = '{{VISIBLE}}'
+    const visibleStr = '{{VISIBLE}}';
     if (!visibleStr || visibleStr.includes('{{')) {
-      throw new Error('VISIBLE is required ("true" or "false")')
+      throw new Error('VISIBLE is required ("true" or "false")');
     }
-    const visible = visibleStr === 'true'
+    const visible = visibleStr === 'true';
 
-    await window.WPP.catalog.setProductVisibility(productId, visible)
-    
+    await window.WPP.catalog.setProductVisibility(productId, visible);
+
     return {
       success: true,
       productId,
       visible,
-    }
+    };
   } catch (error) {
-    console.error('Failed to set product visibility:', error)
-    throw error
+    console.error('Failed to set product visibility:', error);
+    throw error;
   }
-})()
+})();

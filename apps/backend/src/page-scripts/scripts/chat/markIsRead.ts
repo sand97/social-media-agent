@@ -8,16 +8,16 @@
 
 (async () => {
   try {
-    const chatId = '{{CHAT_ID}}'
+    const chatId = '{{CHAT_ID}}';
     if (!chatId || chatId.includes('{{')) {
-      throw new Error('CHAT_ID is required')
+      throw new Error('CHAT_ID is required');
     }
 
-    await window.WPP.chat.markIsRead(chatId)
-    
-    return { success: true, chatId }
+    await window.WPP.chat.markIsRead(chatId);
+
+    return { success: true, chatId };
   } catch (error) {
-    console.error('Failed to mark chat as read:', error)
-    throw error
+    console.error('Failed to mark chat as read:', error);
+    throw error;
   }
-})()
+})();

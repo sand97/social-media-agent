@@ -8,19 +8,19 @@
 
 (async () => {
   try {
-    const profileName = '{{PROFILE_NAME}}'
+    const profileName = '{{PROFILE_NAME}}';
     if (!profileName || profileName.includes('{{')) {
-      throw new Error('PROFILE_NAME is required')
+      throw new Error('PROFILE_NAME is required');
     }
 
-    await window.WPP.profile.setMyProfileName(profileName)
-    
+    await window.WPP.profile.setMyProfileName(profileName);
+
     return {
       success: true,
       name: profileName,
-    }
+    };
   } catch (error) {
-    console.error('Failed to set profile name:', error)
-    throw error
+    console.error('Failed to set profile name:', error);
+    throw error;
   }
-})()
+})();

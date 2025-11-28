@@ -20,6 +20,11 @@ import {
 
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 
+import {
+  CanProcessDto,
+  CanProcessResponseDto,
+} from './dto/can-process.dto';
+import { LogOperationDto } from './dto/log-operation.dto';
 import { UpdateAgentConfigDto } from './dto/update-agent-config.dto';
 import { UpdateAgentStatusDto } from './dto/update-agent-status.dto';
 import { ValidateContactDto } from './dto/validate-contact.dto';
@@ -197,5 +202,46 @@ export class WhatsAppAgentController {
   ): Promise<WhatsAppAgent> {
     const userId = req.user.userId || req.user.id;
     return this.whatsappAgentService.updateAgentConfig(userId, dto);
+  }
+}
+
+// Separate controller for agent operations (no auth required - called by whatsapp-agent service)
+@ApiTags('agent')
+@Controller('agent')
+export class AgentController {
+  constructor(private readonly whatsappAgentService: WhatsAppAgentService) {}
+
+  @Post('can-process')
+  @ApiOperation({
+    summary: 'Check if agent can process a message',
+    description:
+      'Called by whatsapp-agent service to check if a message should be processed and get agent context + authorized groups',
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Returns processing decision and agent configuration',
+    type: CanProcessResponseDto,
+  })
+  async canProcess(@Body() dto: CanProcessDto): Promise<CanProcessResponseDto> {
+    return this.whatsappAgentService.canProcess(dto.chatId, dto.message);
+  }
+
+  @Post('log-operation')
+  @ApiOperation({
+    summary: 'Log an agent operation',
+    description: 'Called by whatsapp-agent service to log conversations',
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Operation logged successfully',
+  })
+  async logOperation(
+    @Body() dto: LogOperationDto,
+  ): Promise<{ success: boolean }> {
+    return this.whatsappAgentService.logOperation(
+      dto.chatId,
+      dto.userMessage,
+      dto.agentResponse,
+    );
   }
 }

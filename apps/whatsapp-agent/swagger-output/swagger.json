@@ -26,9 +26,7 @@
                       },
                       "additionalProperties": {
                         "type": "object",
-                        "required": [
-                          "status"
-                        ],
+                        "required": ["status"],
                         "properties": {
                           "status": {
                             "type": "string"
@@ -43,9 +41,7 @@
                       "example": {},
                       "additionalProperties": {
                         "type": "object",
-                        "required": [
-                          "status"
-                        ],
+                        "required": ["status"],
                         "properties": {
                           "status": {
                             "type": "string"
@@ -64,9 +60,7 @@
                       },
                       "additionalProperties": {
                         "type": "object",
-                        "required": [
-                          "status"
-                        ],
+                        "required": ["status"],
                         "properties": {
                           "status": {
                             "type": "string"
@@ -100,9 +94,7 @@
                       },
                       "additionalProperties": {
                         "type": "object",
-                        "required": [
-                          "status"
-                        ],
+                        "required": ["status"],
                         "properties": {
                           "status": {
                             "type": "string"
@@ -122,9 +114,7 @@
                       },
                       "additionalProperties": {
                         "type": "object",
-                        "required": [
-                          "status"
-                        ],
+                        "required": ["status"],
                         "properties": {
                           "status": {
                             "type": "string"
@@ -147,9 +137,7 @@
                       },
                       "additionalProperties": {
                         "type": "object",
-                        "required": [
-                          "status"
-                        ],
+                        "required": ["status"],
                         "properties": {
                           "status": {
                             "type": "string"
@@ -177,9 +165,7 @@
             "description": "Event received successfully"
           }
         },
-        "tags": [
-          "Webhook"
-        ]
+        "tags": ["Webhook"]
       }
     },
     "/products/analyze": {
@@ -216,9 +202,7 @@
             "description": "Erreur lors de l'analyse"
           }
         },
-        "tags": [
-          "products"
-        ]
+        "tags": ["products"]
       }
     }
   },
@@ -251,9 +235,7 @@
             "example": "Vêtements"
           }
         },
-        "required": [
-          "name"
-        ]
+        "required": ["name"]
       },
       "SpellingCorrection": {
         "type": "object",
@@ -274,10 +256,7 @@
             "example": 15
           }
         },
-        "required": [
-          "original",
-          "corrected"
-        ]
+        "required": ["original", "corrected"]
       },
       "MetadataSuggestion": {
         "type": "object",
@@ -289,14 +268,7 @@
           },
           "values": {
             "description": "Valeurs possibles pour cette métadonnée",
-            "example": [
-              "XS",
-              "S",
-              "M",
-              "L",
-              "XL",
-              "XXL"
-            ],
+            "example": ["XS", "S", "M", "L", "XL", "XXL"],
             "type": "array",
             "items": {
               "type": "string"
@@ -308,10 +280,7 @@
             "example": "Les vêtements nécessitent généralement une indication de taille"
           }
         },
-        "required": [
-          "key",
-          "values"
-        ]
+        "required": ["key", "values"]
       },
       "AnalysisResultDto": {
         "type": "object",

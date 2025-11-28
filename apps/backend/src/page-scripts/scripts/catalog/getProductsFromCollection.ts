@@ -8,29 +8,33 @@
 
 (async () => {
   try {
-    const collectionId = '{{COLLECTION_ID}}'
+    const collectionId = '{{COLLECTION_ID}}';
     if (!collectionId || collectionId.includes('{{')) {
-      throw new Error('COLLECTION_ID is required')
+      throw new Error('COLLECTION_ID is required');
     }
 
     // Get user ID
-    const userId = window.WPP.conn?.getMyUserId()?._serialized || ''
+    const userId = window.WPP.conn?.getMyUserId()?._serialized || '';
 
     if (!userId) {
-      throw new Error('User ID not found')
+      throw new Error('User ID not found');
     }
 
     // Get all collections
-    const collections = await window.WPP.catalog.getCollections(userId, 50, 100)
+    const collections = await window.WPP.catalog.getCollections(
+      userId,
+      50,
+      100,
+    );
 
     // Find the specific collection
-    const collection = collections.find(c => c.id === collectionId)
+    const collection = collections.find((c) => c.id === collectionId);
 
     if (!collection) {
-      throw new Error(`Collection ${collectionId} not found`)
+      throw new Error(`Collection ${collectionId} not found`);
     }
 
-    return (collection.products || []).map(product => ({
+    return (collection.products || []).map((product) => ({
       id: product.id,
       name: product.name,
       description: product.description,
@@ -39,9 +43,9 @@
       availability: product.availability,
       isHidden: product.isHidden,
       imageUrl: product.imageUrl,
-    }))
+    }));
   } catch (error) {
-    console.error('Failed to get products from collection:', error)
-    throw error
+    console.error('Failed to get products from collection:', error);
+    throw error;
   }
-})()
+})();

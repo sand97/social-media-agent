@@ -1,15 +1,20 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import axios, { AxiosInstance } from 'axios';
 
 @Injectable()
-export class ConnectorClientService {
+export class ConnectorClientService implements OnModuleInit {
   private readonly logger = new Logger(ConnectorClientService.name);
   private readonly connectorUrl: string;
   public readonly sessionName: string;
   private axiosInstance: AxiosInstance;
+  private isReady = false;
 
-  constructor(private readonly configService: ConfigService) {
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly eventEmitter: EventEmitter2,
+  ) {
     this.connectorUrl = this.configService.get<string>(
       'CONNECTOR_URL',
       'http://localhost:3001',
@@ -29,6 +34,41 @@ export class ConnectorClientService {
 
     this.logger.log(`Connector URL configured: ${this.connectorUrl}`);
     this.logger.log(`Session Name: ${this.sessionName}`);
+  }
+
+  /**
+   * Check connector status on module init and emit ready event
+   */
+  async onModuleInit() {
+    // Wait a bit for connector to start, then check status
+    setTimeout(() => {
+      this.checkAndEmitReady().catch((error) => {
+        this.logger.warn(
+          `Failed to check connector status on startup: ${error.message}`,
+        );
+      });
+    }, 2000);
+  }
+
+  /**
+   * Check if connector is ready and emit event if it is
+   */
+  private async checkAndEmitReady(): Promise<void> {
+    try {
+      const status = await this.getStatus();
+
+      if (status?.isReady === true && !this.isReady) {
+        this.isReady = true;
+        this.logger.log(
+          '✅ Connector is ready - emitting connector.ready event',
+        );
+        this.eventEmitter.emit('connector.ready', {
+          sessionName: this.sessionName,
+        });
+      }
+    } catch (error) {
+      this.logger.debug(`Connector not ready yet: ${error.message}`);
+    }
   }
 
   /**
@@ -119,6 +159,21 @@ export class ConnectorClientService {
       params: {
         sessionName: this.sessionName,
       },
+    });
+
+    return response.data;
+  }
+
+  /**
+   * Execute a script in the WhatsApp Web page context
+   * @param script - JavaScript code to execute
+   */
+  async executeScript(script: string): Promise<any> {
+    this.logger.debug(`[CONNECTOR] Executing script in page context`);
+
+    const response = await this.axiosInstance.post('/whatsapp/execute-script', {
+      sessionName: this.sessionName,
+      script,
     });
 
     return response.data;

@@ -119,6 +119,7 @@ model User {
   orders            Order[]
   creditHistory     Credit[]
   subscription      Subscription?
+  groups            Group[]
 
   @@index([phoneNumber])
   @@index([status])
@@ -496,4 +497,21 @@ model Subscription {
 
   @@index([userId])
   @@index([tier])
+}
+
+model Group {
+  id              String  @id @unique @default(cuid())
+  userId          String
+  user            User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  whatsappGroupId String // ID WhatsApp du groupe (ex: "12345@g.us")
+  name            String // Nom du groupe
+  usage           String // Utilisation du groupe (ex: "Support client", "Ventes", "Notifications")
+
+  // Dates
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, whatsappGroupId]) // Un user ne peut pas avoir le même groupe deux fois
+  @@index([userId])
+  @@index([whatsappGroupId])
 }

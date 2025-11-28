@@ -10,13 +10,13 @@
   try {
     // Helper to check if placeholder was replaced
     const getParam = (value, defaultValue) => {
-      if (!value || value.includes('{{')) return defaultValue
-      return value
-    }
+      if (!value || value.includes('{{')) return defaultValue;
+      return value;
+    };
 
     const labelName = '{{LABEL_NAME}}';
     if (!labelName || labelName.includes('{{')) {
-      throw new Error('LABEL_NAME is required')
+      throw new Error('LABEL_NAME is required');
     }
 
     const colorStr = getParam('{{LABEL_COLOR}}', '');
@@ -27,7 +27,7 @@
 
     // Check if label with same name already exists
     const existingLabel = existingLabels.find(
-      label => label.name.toLowerCase() === labelName.toLowerCase()
+      (label) => label.name.toLowerCase() === labelName.toLowerCase(),
     );
     if (existingLabel) {
       // Label already exists, return it
@@ -41,7 +41,9 @@
     }
 
     // Get used color indices
-    const usedColorIndices = new Set(existingLabels.map(label => label.colorIndex));
+    const usedColorIndices = new Set(
+      existingLabels.map((label) => label.colorIndex),
+    );
 
     // Get available (unused) color indices
     const availableIndices = [];
@@ -73,7 +75,9 @@
       // Check if it's a hex color in the palette
       else if (trimmed.startsWith('#')) {
         const hexUpper = trimmed.toUpperCase();
-        const foundIndex = palette.findIndex(c => c.toUpperCase() === hexUpper);
+        const foundIndex = palette.findIndex(
+          (c) => c.toUpperCase() === hexUpper,
+        );
         if (foundIndex !== -1) {
           labelColor = String(foundIndex);
         } else {
@@ -89,7 +93,9 @@
       labelColor = getRandomColorIndex();
     }
 
-    const result = await window.WPP.labels.addNewLabel(labelName, { labelColor });
+    const result = await window.WPP.labels.addNewLabel(labelName, {
+      labelColor,
+    });
 
     return {
       id: result.id,

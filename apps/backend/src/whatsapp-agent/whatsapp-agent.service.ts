@@ -361,4 +361,171 @@ export class WhatsAppAgentService {
       data: updateData,
     });
   }
+
+  /**
+   * Check if the agent can process a message from a chat
+   * Returns agent configuration, context, and authorized groups
+   */
+  async canProcess(chatId: string, message: string): Promise<{
+    allowed: boolean;
+    reason?: string;
+    agentContext?: string;
+    managementGroupId?: string;
+    agentId?: string;
+    authorizedGroups?: Array<{ whatsappGroupId: string; usage: string }>;
+  }> {
+    // Extract user phone from chatId (format: "237657888690@c.us" or "12345@g.us")
+    const phoneMatch = chatId.match(/^(\d+)@c\.us$/);
+
+    if (!phoneMatch) {
+      // For group messages, we need to find the user another way
+      // For now, we'll handle group authorization later
+      const isGroup = chatId.includes('@g.us');
+
+      if (isGroup) {
+        // Find user by checking if this group is in their authorized groups
+        const group = await this.prisma.group.findFirst({
+          where: { whatsappGroupId: chatId },
+          include: {
+            user: {
+              include: {
+                whatsappAgent: true,
+                groups: true,
+                onboardingThread: true,
+              },
+            },
+          },
+        });
+
+        if (!group || !group.user) {
+          return {
+            allowed: false,
+            reason: 'Group not found or not authorized',
+          };
+        }
+
+        const user = group.user;
+        const agent = user.whatsappAgent;
+
+        if (!agent) {
+          return {
+            allowed: false,
+            reason: 'Agent not found for this user',
+          };
+        }
+
+        // Get agent context from onboarding thread
+        const agentContext = user.onboardingThread?.context || '';
+
+        // Get all authorized groups for this user
+        const authorizedGroups = user.groups.map((g) => ({
+          whatsappGroupId: g.whatsappGroupId,
+          usage: g.usage,
+        }));
+
+        // Find management group (you can define this by usage or have a specific field)
+        const managementGroup = user.groups.find((g) =>
+          g.usage.toLowerCase().includes('gestion'),
+        );
+
+        return {
+          allowed: true,
+          agentContext,
+          managementGroupId: managementGroup?.whatsappGroupId,
+          agentId: agent.id,
+          authorizedGroups,
+        };
+      }
+
+      return {
+        allowed: false,
+        reason: 'Invalid chat ID format',
+      };
+    }
+
+    const phoneNumber = phoneMatch[1];
+
+    // Find user by phone number
+    const user = await this.prisma.user.findUnique({
+      where: { phoneNumber },
+      include: {
+        whatsappAgent: true,
+        groups: true,
+        onboardingThread: true,
+      },
+    });
+
+    if (!user) {
+      return {
+        allowed: false,
+        reason: 'User not found',
+      };
+    }
+
+    const agent = user.whatsappAgent;
+
+    if (!agent) {
+      return {
+        allowed: false,
+        reason: 'Agent not configured for this user',
+      };
+    }
+
+    // Check if agent is running
+    if (agent.status !== WhatsAppAgentStatus.RUNNING) {
+      return {
+        allowed: false,
+        reason: `Agent is not running (status: ${agent.status})`,
+      };
+    }
+
+    // Get agent context from onboarding thread
+    const agentContext = user.onboardingThread?.context || '';
+
+    // Get all authorized groups
+    const authorizedGroups = user.groups.map((g) => ({
+      whatsappGroupId: g.whatsappGroupId,
+      usage: g.usage,
+    }));
+
+    // Find management group
+    const managementGroup = user.groups.find((g) =>
+      g.usage.toLowerCase().includes('gestion'),
+    );
+
+    return {
+      allowed: true,
+      agentContext,
+      managementGroupId: managementGroup?.whatsappGroupId,
+      agentId: agent.id,
+      authorizedGroups,
+    };
+  }
+
+  /**
+   * Log an agent operation (for analytics and monitoring)
+   */
+  async logOperation(
+    chatId: string,
+    userMessage: string,
+    agentResponse: string,
+  ): Promise<{ success: boolean }> {
+    // TODO: Implement logging to database or external service
+    // For now, just log to console
+    this.logger.log(
+      `Agent operation logged for chat ${chatId}: "${userMessage.substring(0, 50)}..." -> "${agentResponse.substring(0, 50)}..."`,
+    );
+
+    // You could store this in a separate table for analytics
+    // await this.prisma.agentLog.create({
+    //   data: {
+    //     chatId,
+    //     userMessage,
+    //     agentResponse,
+    //     timestamp: new Date(),
+    //   },
+    // });
+
+    return { success: true };
+  }
 }

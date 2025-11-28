@@ -1,9 +1,8 @@
+import { BackendClientService } from '@app/backend-client/backend-client.service';
+import { WhatsAppAgentService } from '@app/langchain/whatsapp-agent.service';
 import { Body, Controller, Post, Logger, HttpCode } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { lastValueFrom } from 'rxjs';
-
-import { BackendClientService } from '../backend-client/backend-client.service';
-import { LangChainAgentService } from '../langchain/langchain-agent.service';
 
 @ApiTags('Webhook')
 @Controller('webhook')
@@ -11,7 +10,7 @@ export class WebhookController {
   private readonly logger = new Logger(WebhookController.name);
 
   constructor(
-    private readonly agentService: LangChainAgentService,
+    private readonly agentService: WhatsAppAgentService,
     private readonly backendClient: BackendClientService,
   ) {}
 

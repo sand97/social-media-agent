@@ -7,7 +7,10 @@ import { PageScriptModule } from '../page-scripts/page-script.module';
 import { PrismaModule } from '../prisma/prisma.module';
 
 import { UserSyncService } from './user-sync.service';
-import { WhatsAppAgentController } from './whatsapp-agent.controller';
+import {
+  WhatsAppAgentController,
+  AgentController,
+} from './whatsapp-agent.controller';
 import { WhatsAppAgentService } from './whatsapp-agent.service';
 
 @Module({
@@ -18,7 +21,7 @@ import { WhatsAppAgentService } from './whatsapp-agent.service';
     PageScriptModule,
     forwardRef(() => OnboardingModule),
   ],
-  controllers: [WhatsAppAgentController],
+  controllers: [WhatsAppAgentController, AgentController],
   providers: [WhatsAppAgentService, UserSyncService],
   exports: [WhatsAppAgentService, UserSyncService],
 })

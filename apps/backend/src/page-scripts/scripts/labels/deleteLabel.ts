@@ -10,7 +10,7 @@
   try {
     const labelId = '{{LABEL_ID}}';
     if (!labelId || labelId.includes('{{')) {
-      throw new Error('LABEL_ID is required')
+      throw new Error('LABEL_ID is required');
     }
 
     await window.WPP.labels.deleteLabel(labelId);

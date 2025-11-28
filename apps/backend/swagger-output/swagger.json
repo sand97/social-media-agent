@@ -26,9 +26,7 @@
                       },
                       "additionalProperties": {
                         "type": "object",
-                        "required": [
-                          "status"
-                        ],
+                        "required": ["status"],
                         "properties": {
                           "status": {
                             "type": "string"
@@ -43,9 +41,7 @@
                       "example": {},
                       "additionalProperties": {
                         "type": "object",
-                        "required": [
-                          "status"
-                        ],
+                        "required": ["status"],
                         "properties": {
                           "status": {
                             "type": "string"
@@ -64,9 +60,7 @@
                       },
                       "additionalProperties": {
                         "type": "object",
-                        "required": [
-                          "status"
-                        ],
+                        "required": ["status"],
                         "properties": {
                           "status": {
                             "type": "string"
@@ -100,9 +94,7 @@
                       },
                       "additionalProperties": {
                         "type": "object",
-                        "required": [
-                          "status"
-                        ],
+                        "required": ["status"],
                         "properties": {
                           "status": {
                             "type": "string"
@@ -122,9 +114,7 @@
                       },
                       "additionalProperties": {
                         "type": "object",
-                        "required": [
-                          "status"
-                        ],
+                        "required": ["status"],
                         "properties": {
                           "status": {
                             "type": "string"
@@ -147,9 +137,7 @@
                       },
                       "additionalProperties": {
                         "type": "object",
-                        "required": [
-                          "status"
-                        ],
+                        "required": ["status"],
                         "properties": {
                           "status": {
                             "type": "string"
@@ -193,9 +181,7 @@
             "description": "Token invalide ou expiré"
           }
         },
-        "tags": [
-          "Catalog"
-        ],
+        "tags": ["Catalog"],
         "security": [
           {
             "bearer": []
@@ -214,9 +200,7 @@
             "description": "Avatar uploadé avec succès"
           }
         },
-        "tags": [
-          "Catalog"
-        ],
+        "tags": ["Catalog"],
         "security": [
           {
             "bearer": []
@@ -235,9 +219,7 @@
             "description": "Informations sauvegardées avec succès"
           }
         },
-        "tags": [
-          "Catalog"
-        ],
+        "tags": ["Catalog"],
         "security": [
           {
             "bearer": []
@@ -256,9 +238,7 @@
             "description": "Catalogue sauvegardé avec succès"
           }
         },
-        "tags": [
-          "Catalog"
-        ],
+        "tags": ["Catalog"],
         "security": [
           {
             "bearer": []
@@ -293,9 +273,7 @@
             "description": "Token invalide ou expiré"
           }
         },
-        "tags": [
-          "Catalog"
-        ],
+        "tags": ["Catalog"],
         "security": [
           {
             "bearer": []
@@ -316,9 +294,7 @@
             "description": "WhatsApp agent not found for this user"
           }
         },
-        "tags": [
-          "whatsapp-agents"
-        ],
+        "tags": ["whatsapp-agents"],
         "security": [
           {
             "bearer": []
@@ -339,9 +315,7 @@
             "description": "WhatsApp agent already exists for this user"
           }
         },
-        "tags": [
-          "whatsapp-agents"
-        ],
+        "tags": ["whatsapp-agents"],
         "security": [
           {
             "bearer": []
@@ -382,9 +356,7 @@
             "description": "WhatsApp agent not found"
           }
         },
-        "tags": [
-          "whatsapp-agents"
-        ],
+        "tags": ["whatsapp-agents"],
         "security": [
           {
             "bearer": []
@@ -415,9 +387,7 @@
             "description": "WhatsApp agent not found"
           }
         },
-        "tags": [
-          "whatsapp-agents"
-        ],
+        "tags": ["whatsapp-agents"],
         "security": [
           {
             "bearer": []
@@ -465,9 +435,7 @@
             "description": "WhatsApp agent not found"
           }
         },
-        "tags": [
-          "whatsapp-agents"
-        ],
+        "tags": ["whatsapp-agents"],
         "security": [
           {
             "bearer": []
@@ -516,9 +484,7 @@
             "description": "WhatsApp agent not found"
           }
         },
-        "tags": [
-          "whatsapp-agents"
-        ],
+        "tags": ["whatsapp-agents"],
         "security": [
           {
             "bearer": []
@@ -549,9 +515,7 @@
             "description": "WhatsApp agent not found"
           }
         },
-        "tags": [
-          "whatsapp-agents"
-        ],
+        "tags": ["whatsapp-agents"],
         "security": [
           {
             "bearer": []
@@ -570,9 +534,7 @@
             "description": ""
           }
         },
-        "tags": [
-          "Onboarding"
-        ],
+        "tags": ["Onboarding"],
         "security": [
           {
             "bearer": []
@@ -601,9 +563,7 @@
             "description": ""
           }
         },
-        "tags": [
-          "Onboarding"
-        ],
+        "tags": ["Onboarding"],
         "security": [
           {
             "bearer": []
@@ -622,9 +582,7 @@
             "description": ""
           }
         },
-        "tags": [
-          "Onboarding"
-        ],
+        "tags": ["Onboarding"],
         "security": [
           {
             "bearer": []
@@ -673,9 +631,7 @@
             "description": "Bad request - User is already paired"
           }
         },
-        "tags": [
-          "auth"
-        ]
+        "tags": ["auth"]
       }
     },
     "/auth/verify-pairing": {
@@ -731,9 +687,7 @@
             "description": "User not found"
           }
         },
-        "tags": [
-          "auth"
-        ]
+        "tags": ["auth"]
       }
     },
     "/auth/confirm-pairing": {
@@ -792,9 +746,7 @@
             "description": "Invalid or expired pairing token / Invalid OTP code"
           }
         },
-        "tags": [
-          "auth"
-        ]
+        "tags": ["auth"]
       }
     },
     "/auth/verify-otp": {
@@ -854,9 +806,7 @@
             "description": "Invalid or expired OTP"
           }
         },
-        "tags": [
-          "auth"
-        ]
+        "tags": ["auth"]
       }
     },
     "/auth/me": {
@@ -894,9 +844,7 @@
             "description": "Unauthorized"
           }
         },
-        "tags": [
-          "auth"
-        ],
+        "tags": ["auth"],
         "security": [
           {
             "bearer": []
@@ -920,9 +868,7 @@
             "description": "User not found"
           }
         },
-        "tags": [
-          "users"
-        ],
+        "tags": ["users"],
         "security": [
           {
             "bearer": []
@@ -954,9 +900,7 @@
             "description": "User not found"
           }
         },
-        "tags": [
-          "users"
-        ],
+        "tags": ["users"],
         "security": [
           {
             "bearer": []
@@ -990,9 +934,7 @@
             "description": "Failed to import WhatsApp data"
           }
         },
-        "tags": [
-          "users"
-        ],
+        "tags": ["users"],
         "security": [
           {
             "bearer": []
@@ -1016,9 +958,7 @@
             "description": "User not found"
           }
         },
-        "tags": [
-          "users"
-        ],
+        "tags": ["users"],
         "security": [
           {
             "bearer": []
@@ -1039,9 +979,7 @@
             "description": "Unauthorized"
           }
         },
-        "tags": [
-          "products"
-        ],
+        "tags": ["products"],
         "security": [
           {
             "bearer": []
@@ -1073,9 +1011,7 @@
             "description": "Unauthorized"
           }
         },
-        "tags": [
-          "products"
-        ],
+        "tags": ["products"],
         "security": [
           {
             "bearer": []
@@ -1111,9 +1047,7 @@
             "description": "Product not found"
           }
         },
-        "tags": [
-          "products"
-        ],
+        "tags": ["products"],
         "security": [
           {
             "bearer": []
@@ -1160,9 +1094,7 @@
             "description": "Product not found"
           }
         },
-        "tags": [
-          "products"
-        ],
+        "tags": ["products"],
         "security": [
           {
             "bearer": []
@@ -1196,9 +1128,7 @@
             "description": "Product not found"
           }
         },
-        "tags": [
-          "products"
-        ],
+        "tags": ["products"],
         "security": [
           {
             "bearer": []
@@ -1247,9 +1177,7 @@
             "description": "Product not found"
           }
         },
-        "tags": [
-          "products"
-        ],
+        "tags": ["products"],
         "security": [
           {
             "bearer": []
@@ -1273,9 +1201,7 @@
             "description": "Business information not found"
           }
         },
-        "tags": [
-          "settings"
-        ],
+        "tags": ["settings"],
         "security": [
           {
             "bearer": []
@@ -1307,9 +1233,7 @@
             "description": "User not found"
           }
         },
-        "tags": [
-          "settings"
-        ],
+        "tags": ["settings"],
         "security": [
           {
             "bearer": []
@@ -1333,9 +1257,7 @@
             "description": "User not found"
           }
         },
-        "tags": [
-          "settings"
-        ],
+        "tags": ["settings"],
         "security": [
           {
             "bearer": []
@@ -1367,9 +1289,7 @@
             "description": "User not found"
           }
         },
-        "tags": [
-          "settings"
-        ],
+        "tags": ["settings"],
         "security": [
           {
             "bearer": []
@@ -1415,9 +1335,7 @@
             "description": "Delivery location not found"
           }
         },
-        "tags": [
-          "settings"
-        ],
+        "tags": ["settings"],
         "security": [
           {
             "bearer": []
@@ -1451,9 +1369,7 @@
             "description": "Delivery location not found"
           }
         },
-        "tags": [
-          "settings"
-        ],
+        "tags": ["settings"],
         "security": [
           {
             "bearer": []
@@ -1477,9 +1393,7 @@
             "description": "User not found"
           }
         },
-        "tags": [
-          "settings"
-        ],
+        "tags": ["settings"],
         "security": [
           {
             "bearer": []
@@ -1511,9 +1425,7 @@
             "description": "User not found"
           }
         },
-        "tags": [
-          "settings"
-        ],
+        "tags": ["settings"],
         "security": [
           {
             "bearer": []
@@ -1559,9 +1471,7 @@
             "description": "Payment method not found"
           }
         },
-        "tags": [
-          "settings"
-        ],
+        "tags": ["settings"],
         "security": [
           {
             "bearer": []
@@ -1595,9 +1505,7 @@
             "description": "Payment method not found"
           }
         },
-        "tags": [
-          "settings"
-        ],
+        "tags": ["settings"],
         "security": [
           {
             "bearer": []
@@ -1618,9 +1526,7 @@
             "description": "Unauthorized"
           }
         },
-        "tags": [
-          "conversations"
-        ],
+        "tags": ["conversations"],
         "security": [
           {
             "bearer": []
@@ -1652,9 +1558,7 @@
             "description": "Unauthorized"
           }
         },
-        "tags": [
-          "conversations"
-        ],
+        "tags": ["conversations"],
         "security": [
           {
             "bearer": []
@@ -1691,9 +1595,7 @@
             "description": "Conversation not found"
           }
         },
-        "tags": [
-          "conversations"
-        ],
+        "tags": ["conversations"],
         "security": [
           {
             "bearer": []
@@ -1741,9 +1643,7 @@
             "description": "Conversation not found"
           }
         },
-        "tags": [
-          "conversations"
-        ],
+        "tags": ["conversations"],
         "security": [
           {
             "bearer": []
@@ -1783,9 +1683,7 @@
             "description": "Conversation or tag not found"
           }
         },
-        "tags": [
-          "conversations"
-        ],
+        "tags": ["conversations"],
         "security": [
           {
             "bearer": []
@@ -1831,9 +1729,7 @@
             "description": "Conversation or tag not found"
           }
         },
-        "tags": [
-          "conversations"
-        ],
+        "tags": ["conversations"],
         "security": [
           {
             "bearer": []
@@ -1873,9 +1769,7 @@
             "description": "Conversation or group not found"
           }
         },
-        "tags": [
-          "conversations"
-        ],
+        "tags": ["conversations"],
         "security": [
           {
             "bearer": []
@@ -1921,9 +1815,7 @@
             "description": "Conversation not found"
           }
         },
-        "tags": [
-          "conversations"
-        ],
+        "tags": ["conversations"],
         "security": [
           {
             "bearer": []
@@ -1942,12 +1834,7 @@
             "in": "query",
             "description": "Filter by order status",
             "schema": {
-              "enum": [
-                "NEGOTIATION",
-                "CONFIRMED",
-                "DELIVERED",
-                "CANCELLED"
-              ],
+              "enum": ["NEGOTIATION", "CONFIRMED", "DELIVERED", "CANCELLED"],
               "type": "string"
             }
           }
@@ -1960,9 +1847,7 @@
             "description": "Unauthorized"
           }
         },
-        "tags": [
-          "orders"
-        ],
+        "tags": ["orders"],
         "security": [
           {
             "bearer": []
@@ -1994,9 +1879,7 @@
             "description": "Unauthorized"
           }
         },
-        "tags": [
-          "orders"
-        ],
+        "tags": ["orders"],
         "security": [
           {
             "bearer": []
@@ -2033,9 +1916,7 @@
             "description": "Order not found"
           }
         },
-        "tags": [
-          "orders"
-        ],
+        "tags": ["orders"],
         "security": [
           {
             "bearer": []
@@ -2083,9 +1964,7 @@
             "description": "Order not found"
           }
         },
-        "tags": [
-          "orders"
-        ],
+        "tags": ["orders"],
         "security": [
           {
             "bearer": []
@@ -2135,9 +2014,7 @@
             "description": "Order not found"
           }
         },
-        "tags": [
-          "orders"
-        ],
+        "tags": ["orders"],
         "security": [
           {
             "bearer": []
@@ -2174,9 +2051,7 @@
             "description": "Order not found"
           }
         },
-        "tags": [
-          "orders"
-        ],
+        "tags": ["orders"],
         "security": [
           {
             "bearer": []
@@ -2205,9 +2080,7 @@
             "description": "Connexion traitée avec succès"
           }
         },
-        "tags": [
-          "webhooks"
-        ]
+        "tags": ["webhooks"]
       }
     }
   },
@@ -2233,13 +2106,7 @@
         "properties": {
           "status": {
             "type": "string",
-            "enum": [
-              "PROVISIONING",
-              "RUNNING",
-              "STOPPED",
-              "ERROR",
-              "DELETED"
-            ],
+            "enum": ["PROVISIONING", "RUNNING", "STOPPED", "ERROR", "DELETED"],
             "description": "The new status of the agent",
             "example": "RUNNING"
           },
@@ -2255,9 +2122,7 @@
             "example": "CONNECTED"
           }
         },
-        "required": [
-          "status"
-        ]
+        "required": ["status"]
       },
       "ValidateContactDto": {
         "type": "object",
@@ -2268,19 +2133,14 @@
             "example": "+237612345678"
           }
         },
-        "required": [
-          "phoneNumber"
-        ]
+        "required": ["phoneNumber"]
       },
       "UpdateAgentConfigDto": {
         "type": "object",
         "properties": {
           "testPhoneNumbers": {
             "description": "Phone numbers for test mode (AI only responds to these)",
-            "example": [
-              "+237612345678",
-              "+237698765432"
-            ],
+            "example": ["+237612345678", "+237698765432"],
             "type": "array",
             "items": {
               "type": "string"
@@ -2288,10 +2148,7 @@
           },
           "testLabels": {
             "description": "Label names for test mode (AI only responds to contacts with these labels)",
-            "example": [
-              "Test",
-              "VIP"
-            ],
+            "example": ["Test", "VIP"],
             "type": "array",
             "items": {
               "type": "string"
@@ -2299,10 +2156,7 @@
           },
           "labelsToNotReply": {
             "description": "Label names to exclude in production mode (AI will not respond to contacts with these labels)",
-            "example": [
-              "DoNotReply",
-              "Blocked"
-            ],
+            "example": ["DoNotReply", "Blocked"],
             "type": "array",
             "items": {
               "type": "string"
@@ -2328,9 +2182,7 @@
             "example": "+15551234567"
           }
         },
-        "required": [
-          "phoneNumber"
-        ]
+        "required": ["phoneNumber"]
       },
       "VerifyPairingDto": {
         "type": "object",
@@ -2349,10 +2201,7 @@
             }
           }
         },
-        "required": [
-          "phoneNumber",
-          "whatsappProfile"
-        ]
+        "required": ["phoneNumber", "whatsappProfile"]
       },
       "ConfirmPairingDto": {
         "type": "object",
@@ -2368,9 +2217,7 @@
             "example": "123456"
           }
         },
-        "required": [
-          "pairingToken"
-        ]
+        "required": ["pairingToken"]
       },
       "VerifyOtpDto": {
         "type": "object",
@@ -2386,10 +2233,7 @@
             "example": "123456"
           }
         },
-        "required": [
-          "phoneNumber",
-          "code"
-        ]
+        "required": ["phoneNumber", "code"]
       },
       "UpdateUserDto": {
         "type": "object",
@@ -2420,11 +2264,7 @@
             "description": "Number of contacts imported"
           }
         },
-        "required": [
-          "businessInfo",
-          "productsImported",
-          "contactsImported"
-        ]
+        "required": ["businessInfo", "productsImported", "contactsImported"]
       },
       "CreateProductDto": {
         "type": "object",
@@ -2467,9 +2307,7 @@
             }
           }
         },
-        "required": [
-          "name"
-        ]
+        "required": ["name"]
       },
       "UpdateProductDto": {
         "type": "object",
@@ -2532,11 +2370,7 @@
             "example": true
           }
         },
-        "required": [
-          "key",
-          "value",
-          "isVisible"
-        ]
+        "required": ["key", "value", "isVisible"]
       },
       "UpdateBusinessInfoDto": {
         "type": "object",
@@ -2586,10 +2420,7 @@
           },
           "phoneNumbers": {
             "description": "Additional phone numbers",
-            "example": [
-              "+237699999999",
-              "+237600000000"
-            ],
+            "example": ["+237699999999", "+237600000000"],
             "type": "array",
             "items": {
               "type": "string"
@@ -2621,12 +2452,7 @@
             "example": 5000
           }
         },
-        "required": [
-          "country",
-          "city",
-          "name",
-          "price"
-        ]
+        "required": ["country", "city", "name", "price"]
       },
       "UpdateDeliveryLocationDto": {
         "type": "object",
@@ -2659,10 +2485,7 @@
           "type": {
             "type": "string",
             "description": "Payment method type",
-            "enum": [
-              "CASH",
-              "MOBILE_MONEY"
-            ],
+            "enum": ["CASH", "MOBILE_MONEY"],
             "example": "MOBILE_MONEY"
           },
           "mobileMoneyNumber": {
@@ -2681,9 +2504,7 @@
             "example": true
           }
         },
-        "required": [
-          "type"
-        ]
+        "required": ["type"]
       },
       "UpdatePaymentMethodDto": {
         "type": "object",
@@ -2691,10 +2512,7 @@
           "type": {
             "type": "string",
             "description": "Payment method type",
-            "enum": [
-              "CASH",
-              "MOBILE_MONEY"
-            ],
+            "enum": ["CASH", "MOBILE_MONEY"],
             "example": "MOBILE_MONEY"
           },
           "mobileMoneyNumber": {
@@ -2733,10 +2551,7 @@
             "example": "237612345678"
           }
         },
-        "required": [
-          "whatsappChatId",
-          "contactNumber"
-        ]
+        "required": ["whatsappChatId", "contactNumber"]
       },
       "UpdateConversationDto": {
         "type": "object",
@@ -2860,12 +2675,7 @@
           "status": {
             "type": "string",
             "description": "Order status",
-            "enum": [
-              "NEGOTIATION",
-              "CONFIRMED",
-              "DELIVERED",
-              "CANCELLED"
-            ]
+            "enum": ["NEGOTIATION", "CONFIRMED", "DELIVERED", "CANCELLED"]
           }
         }
       },
@@ -2875,18 +2685,11 @@
           "status": {
             "type": "string",
             "description": "Order status",
-            "enum": [
-              "NEGOTIATION",
-              "CONFIRMED",
-              "DELIVERED",
-              "CANCELLED"
-            ],
+            "enum": ["NEGOTIATION", "CONFIRMED", "DELIVERED", "CANCELLED"],
             "example": "CONFIRMED"
           }
         },
-        "required": [
-          "status"
-        ]
+        "required": ["status"]
       },
       "WhatsAppConnectedDto": {
         "type": "object",

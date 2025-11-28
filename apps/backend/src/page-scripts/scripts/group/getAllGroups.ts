@@ -16,59 +16,70 @@
   try {
     // Helper to check if placeholder was replaced
     const getParam = (value, defaultValue) => {
-      if (!value || value.includes('{{')) return defaultValue
-      return value
-    }
+      if (!value || value.includes('{{')) return defaultValue;
+      return value;
+    };
 
     // Parse parameters
-    const nameFilter = getParam('{{NAME}}', '')
-    const limit = Math.min(parseInt(getParam('{{LIMIT}}', '10')) || 10, 10) // Max 10
-    const offset = parseInt(getParam('{{OFFSET}}', '0')) || 0
-    const excludeCommunitiesStr = getParam('{{EXCLUDE_COMMUNITIES}}', 'true')
-    const excludeCommunities = excludeCommunitiesStr !== 'false' // Default true
+    const nameFilter = getParam('{{NAME}}', '');
+    const limit = Math.min(parseInt(getParam('{{LIMIT}}', '10')) || 10, 10); // Max 10
+    const offset = parseInt(getParam('{{OFFSET}}', '0')) || 0;
+    const excludeCommunitiesStr = getParam('{{EXCLUDE_COMMUNITIES}}', 'true');
+    const excludeCommunities = excludeCommunitiesStr !== 'false'; // Default true
 
     // Get all groups using window.WPP.group.getAllGroups()
-    let groups = await window.WPP.group.getAllGroups()
+    let groups = await window.WPP.group.getAllGroups();
 
     // Filter out communities if requested
     if (excludeCommunities) {
-      groups = groups.filter(group => group.attributes.groupType !== 'COMMUNITY')
+      groups = groups.filter(
+        (group) => group.attributes.groupType !== 'COMMUNITY',
+      );
     }
 
     // Helper to normalize string (remove accents and lowercase)
-    const normalize = (str) => str?.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '') || ''
+    const normalize = (str) =>
+      str
+        ?.toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '') || '';
 
     // Filter by name if specified (accent-insensitive)
     if (nameFilter) {
-      const normalizedFilter = normalize(nameFilter)
-      groups = groups.filter(group => {
-        const name = normalize(group.attributes.name)
-        const formattedTitle = normalize(group.attributes.formattedTitle)
-        return name.includes(normalizedFilter) || formattedTitle.includes(normalizedFilter)
-      })
+      const normalizedFilter = normalize(nameFilter);
+      groups = groups.filter((group) => {
+        const name = normalize(group.attributes.name);
+        const formattedTitle = normalize(group.attributes.formattedTitle);
+        return (
+          name.includes(normalizedFilter) ||
+          formattedTitle.includes(normalizedFilter)
+        );
+      });
     }
 
     // Sort by most recent activity (t is timestamp of last message)
-    groups.sort((a, b) => (b.attributes.t || 0) - (a.attributes.t || 0))
+    groups.sort((a, b) => (b.attributes.t || 0) - (a.attributes.t || 0));
 
     // Apply pagination
-    const paginatedGroups = groups.slice(offset, offset + limit)
+    const paginatedGroups = groups.slice(offset, offset + limit);
 
     return {
       total: groups.length,
       offset,
       limit,
-      groups: paginatedGroups.map(group => ({
+      groups: paginatedGroups.map((group) => ({
         id: group.attributes.id._serialized,
         name: group.attributes.name || group.attributes.formattedTitle,
         formattedTitle: group.attributes.formattedTitle,
         groupType: group.attributes.groupType,
         participantsCount: group.attributes.participants?.length || 0,
-        lastActivity: group.attributes.t ? new Date(group.attributes.t * 1000).toISOString() : null,
+        lastActivity: group.attributes.t
+          ? new Date(group.attributes.t * 1000).toISOString()
+          : null,
       })),
-    }
+    };
   } catch (error) {
-    console.error('Failed to get groups:', error)
-    throw error
+    console.error('Failed to get groups:', error);
+    throw error;
   }
-})()
+})();

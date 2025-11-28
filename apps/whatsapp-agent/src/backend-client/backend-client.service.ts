@@ -5,6 +5,13 @@ import { AxiosError } from 'axios';
 import { Observable, throwError } from 'rxjs';
 import { map, catchError } from 'rxjs/operators';
 
+import {
+  CanProcessRequest,
+  CanProcessResponse,
+  LogOperationRequest,
+  LogOperationResponse,
+} from './backend-api.types';
+
 @Injectable()
 export class BackendClientService {
   private readonly logger = new Logger(BackendClientService.name);
@@ -55,5 +62,110 @@ export class BackendClientService {
           return throwError(() => error);
         }),
       );
+  }
+
+  /**
+   * Make a GET request to the backend
+   * @param path - API endpoint path
+   * @param config - Request configuration (params, headers, etc.)
+   */
+  async get(path: string, config?: any): Promise<any> {
+    const url = `${this.baseUrl}${path}`;
+    this.logger.debug(`GET ${url}`);
+
+    try {
+      const response = await this.httpService.axiosRef.get(url, config);
+      return response;
+    } catch (error: any) {
+      this.logger.error(`Error GET ${url}: ${error.message}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Make a POST request to the backend
+   * @param path - API endpoint path
+   * @param data - Request body data
+   * @param config - Request configuration (headers, etc.)
+   */
+  async post(path: string, data?: any, config?: any): Promise<any> {
+    const url = `${this.baseUrl}${path}`;
+    this.logger.debug(`POST ${url}`);
+
+    try {
+      const response = await this.httpService.axiosRef.post(url, data, config);
+      return response;
+    } catch (error: any) {
+      this.logger.error(`Error POST ${url}: ${error.message}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Check if the agent can process a message
+   * Returns agent configuration and authorized groups
+   */
+  async canProcess(
+    chatId: string,
+    message: string,
+  ): Promise<CanProcessResponse> {
+    const url = `${this.baseUrl}/agent/can-process`;
+    this.logger.debug(`POST ${url} for chatId: ${chatId}`);
+
+    try {
+      const requestData: CanProcessRequest = {
+        chatId,
+        message,
+        timestamp: new Date().toISOString(),
+      };
+
+      const response =
+        await this.httpService.axiosRef.post<CanProcessResponse>(
+          url,
+          requestData,
+        );
+
+      return response.data;
+    } catch (error: any) {
+      this.logger.error(
+        `Error checking can-process for ${chatId}: ${error.message}`,
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * Log an agent operation to the backend
+   */
+  async logOperation(
+    chatId: string,
+    userMessage: string,
+    agentResponse: string,
+  ): Promise<LogOperationResponse> {
+    const url = `${this.baseUrl}/agent/log-operation`;
+    this.logger.debug(`POST ${url} for chatId: ${chatId}`);
+
+    try {
+      const requestData: LogOperationRequest = {
+        chatId,
+        userMessage,
+        agentResponse,
+        timestamp: new Date().toISOString(),
+      };
+
+      const response =
+        await this.httpService.axiosRef.post<LogOperationResponse>(
+          url,
+          requestData,
+        );
+
+      return response.data;
+    } catch (error: any) {
+      // Log operation errors are non-critical, just log them
+      this.logger.warn(
+        `Failed to log operation for ${chatId}: ${error.message}`,
+      );
+      return { success: false };
+    }
   }
 }

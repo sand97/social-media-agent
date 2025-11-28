@@ -7,11 +7,11 @@
 
 (async () => {
   try {
-    const name = await window.WPP.profile.getMyProfileName()
-    
-    return { name }
+    const name = await window.WPP.profile.getMyProfileName();
+
+    return { name };
   } catch (error) {
-    console.error('Failed to get profile name:', error)
-    throw error
+    console.error('Failed to get profile name:', error);
+    throw error;
   }
-})()
+})();
