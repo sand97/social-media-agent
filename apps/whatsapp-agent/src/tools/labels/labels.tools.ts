@@ -40,7 +40,8 @@ export class LabelsTools {
             },
           );
 
-          const { result: labels } = await this.connectorClient.executeScript(script);
+          const { result: labels } =
+            await this.connectorClient.executeScript(script);
 
           return JSON.stringify({
             success: true,
@@ -137,7 +138,7 @@ export class LabelsTools {
       },
       {
         name: 'remove_label_from_contact',
-        description: 'Retirer un label (tag) d\'un contact WhatsApp',
+        description: "Retirer un label (tag) d'un contact WhatsApp",
         schema: z.object({
           contactId: z
             .string()

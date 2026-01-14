@@ -272,6 +272,25 @@
         ]
       }
     },
+    "/whatsapp/restart": {
+      "post": {
+        "operationId": "WhatsAppController_restartClient",
+        "summary": "Redémarrer le client WhatsApp",
+        "description": "Force le redémarrage du client WhatsApp pour générer un nouveau QR code. Utile quand le QR code a expiré.",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Client redémarré avec succès"
+          },
+          "500": {
+            "description": "Erreur lors du redémarrage"
+          }
+        },
+        "tags": [
+          "WhatsApp"
+        ]
+      }
+    },
     "/whatsapp/webhooks": {
       "get": {
         "operationId": "WhatsAppController_getWebhooks",

@@ -5,12 +5,14 @@ import {
 } from '@ant-design/icons'
 import { featuresConfig } from '@app/data/features'
 import apiClient from '@app/lib/api/client'
-import { App, Button, Modal } from 'antd'
+import { App, Button, Modal, Spin } from 'antd'
 import Form from 'antd/es/form'
 import FormItem from 'antd/es/form/FormItem'
 import PhoneInput, { type PhoneNumber } from 'antd-phone-input'
-import { useEffect, useState } from 'react'
+import { QRCodeSVG } from 'qrcode.react'
+import { useEffect, useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { io, Socket } from 'socket.io-client'
 
 const LAST_PHONE_KEY = 'whatsapp-agent-last-phone'
 
@@ -28,6 +30,11 @@ export function meta() {
   ]
 }
 
+// Fonction pour détecter si l'utilisateur est sur mobile (basée sur la largeur du navigateur)
+function isMobileDevice() {
+  return window.innerWidth < 768 // Mobile si largeur < 768px (breakpoint standard)
+}
+
 export default function LoginPage() {
   const navigate = useNavigate()
   const { notification } = App.useApp()
@@ -36,6 +43,14 @@ export default function LoginPage() {
   const [selectedFeatureKey, setSelectedFeatureKey] = useState<string | null>(
     null
   )
+  const [qrCode, setQrCode] = useState<string | null>(null)
+  const [pairingToken, setPairingToken] = useState<string | null>(null)
+  const [isQrMode, setIsQrMode] = useState(false)
+  const [isMobile] = useState(isMobileDevice())
+  const socketRef = useRef<Socket | null>(null)
+  const [lastQrTimestamp, setLastQrTimestamp] = useState<string | null>(null)
+  const [isQrExpired, setIsQrExpired] = useState(false)
+  const [isRefreshingQr, setIsRefreshingQr] = useState(false)
 
   // Récupérer la feature sélectionnée depuis la config
   const selectedFeature = selectedFeatureKey
@@ -44,7 +59,160 @@ export default function LoginPage() {
         .find(f => `${f.title}` === selectedFeatureKey)
     : null
 
-  const handleSubmit = async (values: FormValues) => {
+  // WebSocket connection for QR code updates and connection status
+  useEffect(() => {
+    if (!pairingToken) return
+
+    // Connect to auth WebSocket namespace
+    const socket = io(
+      `${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/auth`,
+      {
+        auth: {
+          pairingToken,
+        },
+        transports: ['websocket'],
+      }
+    )
+
+    socketRef.current = socket
+
+    // Listen for QR code updates
+    socket.on(
+      'auth:qr-update',
+      (data: {
+        qrCode: string
+        timestamp: string
+        expectedRefreshInterval: number
+      }) => {
+        console.log('🔐 Received QR code update:', {
+          timestamp: data.timestamp,
+          qrCodeLength: data.qrCode.length,
+          expectedRefreshInterval: data.expectedRefreshInterval,
+        })
+        setQrCode(data.qrCode)
+        setLastQrTimestamp(data.timestamp)
+        setIsQrExpired(false) // Reset expiration when we receive a new QR code
+      }
+    )
+
+    // Listen for successful connection
+    socket.on(
+      'auth:connected',
+      async (data: { success: boolean; timestamp: string }) => {
+        console.log('Connection successful:', data)
+        notification.success({
+          message: 'Connexion réussie',
+          description: 'Vous allez être redirigé...',
+        })
+
+        // Get redirect URL from backend
+        try {
+          const response = await apiClient.post('/auth/confirm-pairing', {
+            pairingToken,
+          })
+
+          setTimeout(() => {
+            navigate(response.data.redirectTo || '/context')
+          }, 1000)
+        } catch (error) {
+          console.error('Error confirming pairing:', error)
+          navigate('/context')
+        }
+      }
+    )
+
+    // Listen for connection errors
+    socket.on('auth:error', (data: { error: string; timestamp: string }) => {
+      console.error('Connection error:', data)
+      notification.error({
+        message: 'Erreur de connexion',
+        description: data.error,
+      })
+    })
+
+    // Handle connection errors
+    socket.on('connect_error', error => {
+      console.error('WebSocket connection error:', error)
+      notification.error({
+        message: 'Erreur de connexion',
+        description: 'Impossible de se connecter au serveur WebSocket',
+      })
+    })
+
+    // Cleanup on unmount
+    return () => {
+      socket.disconnect()
+    }
+  }, [pairingToken, navigate, notification])
+
+  // Monitor QR code expiration
+  useEffect(() => {
+    if (!lastQrTimestamp || !isQrMode) return
+
+    // Expected refresh interval is 25 seconds (from backend)
+    // We add 50% buffer (37.5 seconds total) before considering it expired
+    const EXPECTED_REFRESH_MS = 25000
+    const EXPIRATION_BUFFER = EXPECTED_REFRESH_MS * 1.5
+
+    const checkExpiration = () => {
+      const lastUpdate = new Date(lastQrTimestamp).getTime()
+      const now = Date.now()
+      const timeSinceLastUpdate = now - lastUpdate
+
+      if (timeSinceLastUpdate > EXPIRATION_BUFFER) {
+        console.warn(
+          '⏰ QR code has expired (no refresh for',
+          timeSinceLastUpdate / 1000,
+          'seconds)'
+        )
+        setIsQrExpired(true)
+      }
+    }
+
+    // Check immediately
+    checkExpiration()
+
+    // Then check every 5 seconds
+    const interval = setInterval(checkExpiration, 5000)
+
+    return () => clearInterval(interval)
+  }, [lastQrTimestamp, isQrMode])
+
+  const handleRefreshQRCode = async () => {
+    if (!pairingToken) return
+
+    setIsRefreshingQr(true)
+    setIsQrExpired(false)
+
+    try {
+      const response = await apiClient.post('/auth/refresh-qr', {
+        pairingToken,
+      })
+
+      if (response.status === 201 || response.status === 200) {
+        setQrCode(response.data.qrCode)
+        setLastQrTimestamp(new Date().toISOString())
+
+        notification.success({
+          message: 'Code QR rafraîchi',
+          description: response.data.message,
+        })
+      }
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } }
+      notification.error({
+        message: 'Erreur',
+        description:
+          err.response?.data?.message ||
+          'Une erreur est survenue lors du rafraîchissement du code QR',
+      })
+      setIsQrExpired(true)
+    } finally {
+      setIsRefreshingQr(false)
+    }
+  }
+
+  const handleContinue = async (values: FormValues) => {
     const { phone } = values
     const fullPhoneNumber = `+${phone.countryCode}${phone.areaCode}${phone.phoneNumber}`
 
@@ -59,34 +227,98 @@ export default function LoginPage() {
     setIsLoading(true)
 
     try {
+      // Détecter le type d'appareil
+      const deviceType = isMobile ? 'mobile' : 'desktop'
+
+      // Appel unifié pour tous les scénarios
       const response = await apiClient.post('/auth/request-pairing', {
         phoneNumber: fullPhoneNumber,
+        deviceType,
       })
 
       if (response.status === 201 || response.status === 200) {
         // Save phone for later
         localStorage.setItem(LAST_PHONE_KEY, JSON.stringify(phone))
 
-        // Navigate to OTP verification
-        navigate('/auth/verify-otp', {
-          state: {
+        const { scenario, pairingToken, code } = response.data
+
+        // Scénario 1: OTP (utilisateur déjà connecté)
+        if (scenario === 'otp') {
+          notification.success({
+            message: 'Code envoyé',
+            description:
+              'Un code de vérification a été envoyé sur votre WhatsApp',
+          })
+          navigate('/auth/verify-otp', {
+            state: {
+              phoneNumber: fullPhoneNumber,
+              pairingToken,
+              scenario: 'otp',
+            },
+          })
+          return
+        }
+
+        // Scénario 2: Pairing (mobile, nouvel utilisateur)
+        if (scenario === 'pairing') {
+          notification.success({
+            message: 'Code de pairing généré',
+            description: 'Veuillez entrer le code dans WhatsApp',
+          })
+          navigate('/auth/verify-otp', {
+            state: {
+              phoneNumber: fullPhoneNumber,
+              code,
+              pairingToken,
+              scenario: 'pairing',
+            },
+          })
+          return
+        }
+
+        // Scénario 3: QR Code (desktop, nouvel utilisateur)
+        if (scenario === 'qr') {
+          // Demander le QR code au backend
+          const qrResponse = await apiClient.post('/auth/request-qr', {
             phoneNumber: fullPhoneNumber,
-            code: response.data.code,
-            pairingToken: response.data.pairingToken,
-            scenario: response.data.scenario, // 'pairing' | 'otp'
-          },
-        })
-      } else {
-        throw new Error()
+          })
+
+          if (qrResponse.status === 201 || qrResponse.status === 200) {
+            setQrCode(qrResponse.data.qrCode)
+            setPairingToken(qrResponse.data.pairingToken)
+            setLastQrTimestamp(new Date().toISOString())
+            setIsQrMode(true)
+            setIsQrExpired(false)
+
+            notification.success({
+              message: 'Code QR généré',
+              description: 'Scannez le code QR avec votre WhatsApp',
+            })
+          }
+          return
+        }
       }
     } catch (error: unknown) {
       const err = error as { response?: { data?: { message?: string } } }
-      notification.error({
-        message: 'Erreur',
-        description:
-          err.response?.data?.message ||
-          'Une erreur est survenue lors de la demande du code',
-      })
+
+      // Message spécifique pour mobile si requestPairingCode échoue
+      if (
+        isMobile &&
+        err.response?.data?.message?.includes('code de jumelage a échoué')
+      ) {
+        notification.error({
+          message: 'Impossible de se connecter',
+          description: err.response.data.message,
+          duration: 10,
+        })
+      } else {
+        notification.error({
+          message: 'Erreur',
+          description:
+            err.response?.data?.message ||
+            'Une erreur est survenue lors de la connexion',
+        })
+      }
     } finally {
       setIsLoading(false)
     }
@@ -104,6 +336,74 @@ export default function LoginPage() {
     }
   }, [form])
 
+  // Affichage du QR code (desktop)
+  if (!isMobile && isQrMode && qrCode) {
+    return (
+      <div className='min-h-screen flex flex-col items-center bg-bg-subtle px-2 py-8'>
+        <div className='w-card max-w-full my-[15vh] flex flex-col items-center'>
+          <div className='bg-white rounded-card-outer shadow-card-subtle p-1'>
+            <div className='bg-white rounded-card-inner shadow-card p-12 flex flex-col items-center'>
+              {/* Header */}
+              <div className='text-center mb-8'>
+                <h1 className='text-xl font-medium text-text-dark leading-9 mb-2'>
+                  Votre business <span className='text-black'>piloté</span> par{' '}
+                  <span className='text-primary-green'>L&apos;IA</span>
+                </h1>
+                <p className='text-base text-text-muted'>
+                  Veuillez scanner le code QR ci-dessous avec votre numéro{' '}
+                  <span className='text-text-dark'>WhatsApp Business</span>
+                </p>
+              </div>
+
+              {/* QR Code */}
+              <div className='p-8 bg-white border-2 border-gray-200 rounded-lg mb-6 shadow-sm'>
+                <QRCodeSVG value={qrCode} size={256} level='M' />
+              </div>
+
+              {/* Loading or expired indicator */}
+              {isQrExpired ? (
+                <div className='flex flex-col items-center gap-4 mt-4'>
+                  <p className='text-base text-red-600'>
+                    ⏰ Le code QR a expiré
+                  </p>
+                  <Button
+                    type='primary'
+                    onClick={handleRefreshQRCode}
+                    loading={isRefreshingQr}
+                    className='bg-primary-green border-black border hover:bg-primary-hover'
+                  >
+                    Demander un nouveau QR code
+                  </Button>
+                </div>
+              ) : (
+                <div className='flex items-center gap-3 text-text-muted'>
+                  <Spin />
+                  <span>En attente de la connexion...</span>
+                </div>
+              )}
+
+              {/* Bouton retour */}
+              <Button
+                type='text'
+                onClick={() => {
+                  setIsQrMode(false)
+                  setQrCode(null)
+                  setPairingToken(null)
+                  setLastQrTimestamp(null)
+                  setIsQrExpired(false)
+                }}
+                className='mt-6'
+              >
+                Retour
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Affichage du formulaire (desktop sans QR mode OU mobile)
   return (
     <div className='min-h-screen flex flex-col items-center bg-bg-subtle px-2 py-8'>
       <div className='w-card max-w-full my-[15vh] flex flex-col items-center'>
@@ -124,22 +424,16 @@ export default function LoginPage() {
 
             <Form
               form={form}
-              onFinish={handleSubmit}
+              onFinish={handleContinue}
               className='flex flex-col items-center gap-3'
             >
               <FormItem
                 name='phone'
-                // className='!mb-0 w-[320px]'
                 rules={[
                   { required: true, message: 'Veuillez entrer votre numéro' },
                 ]}
               >
-                <PhoneInput
-                  // size='large'
-                  enableSearch
-                  enableArrow
-                  disableParentheses
-                />
+                <PhoneInput enableSearch enableArrow disableParentheses />
               </FormItem>
 
               <FormItem className='mb-0 mt-4'>

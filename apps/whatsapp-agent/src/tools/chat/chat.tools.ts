@@ -400,9 +400,11 @@ export class ChatTools {
       {
         name: 'mark_read',
         description:
-          'Marquer une conversation comme lue et envoyer l\'événement SEEN. Utile après avoir traité des messages pour indiquer qu\'ils ont été lus.',
+          "Marquer une conversation comme lue et envoyer l'événement SEEN. Utile après avoir traité des messages pour indiquer qu'ils ont été lus.",
         schema: z.object({
-          chatId: z.string().describe('ID de la conversation à marquer comme lue'),
+          chatId: z
+            .string()
+            .describe('ID de la conversation à marquer comme lue'),
         }),
       },
     );

@@ -149,6 +149,40 @@ export class WhatsAppController {
     };
   }
 
+  @Post('restart')
+  @ApiOperation({
+    summary: 'Redémarrer le client WhatsApp',
+    description:
+      'Force le redémarrage du client WhatsApp pour générer un nouveau QR code. Utile quand le QR code a expiré.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Client redémarré avec succès',
+  })
+  @ApiResponse({
+    status: 500,
+    description: 'Erreur lors du redémarrage',
+  })
+  async restartClient() {
+    try {
+      await this.whatsappClientService.restartClient();
+
+      return {
+        success: true,
+        message:
+          'WhatsApp client restarted successfully. New QR code will be emitted via webhook.',
+      };
+    } catch (error: any) {
+      throw new HttpException(
+        {
+          success: false,
+          error: error.message,
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
   @Get('webhooks')
   @ApiOperation({
     summary: 'Récupérer la liste des webhooks configurés',

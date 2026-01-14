@@ -5,6 +5,8 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { firstValueFrom } from 'rxjs';
 
+import { BaseWebhookPayload } from './types/webhook-events.types';
+
 @Injectable()
 export class WebhookService {
   private readonly logger = new Logger(WebhookService.name);
@@ -40,7 +42,7 @@ export class WebhookService {
   /**
    * Envoie un événement à tous les webhooks configurés
    */
-  async sendEvent(eventName: string, data: any) {
+  async sendEvent<T = unknown>(eventName: string, data: T): Promise<void> {
     if (this.webhookUrls.length === 0) {
       this.logger.debug(
         `Event "${eventName}" - No webhooks configured, skipping`,
@@ -48,7 +50,7 @@ export class WebhookService {
       return;
     }
 
-    const payload = {
+    const payload: BaseWebhookPayload<T> = {
       event: eventName,
       timestamp: new Date().toISOString(),
       data,
@@ -57,10 +59,20 @@ export class WebhookService {
     this.logger.debug(
       `Sending event "${eventName}" to ${this.webhookUrls.length} webhook(s)`,
     );
+    this.logger.debug(
+      `Payload structure: ${JSON.stringify({
+        event: payload.event,
+        timestamp: payload.timestamp,
+        dataType: Array.isArray(payload.data) ? 'array' : typeof payload.data,
+        dataLength: Array.isArray(payload.data)
+          ? payload.data.length
+          : 'not array',
+      })}`,
+    );
 
     // Envoyer à tous les webhooks en parallèle (sans attendre)
     const promises = this.webhookUrls.map((url) =>
-      this.sendToWebhook(url, payload).catch((error) => {
+      this.sendToWebhook(url, payload).catch((error: Error) => {
         // Log l'erreur mais ne bloque pas les autres webhooks
         this.logger.error(
           `Failed to send event "${eventName}" to ${url}:`,
@@ -78,7 +90,7 @@ export class WebhookService {
   /**
    * Génère une signature HMAC-SHA256 pour le payload
    */
-  private generateSignature(payload: any): string | null {
+  private generateSignature(payload: BaseWebhookPayload): string | null {
     const connectorSecret = this.configService.get<string>('CONNECTOR_SECRET');
 
     if (!connectorSecret) {
@@ -95,9 +107,12 @@ export class WebhookService {
   /**
    * Envoie un payload à un webhook spécifique
    */
-  private async sendToWebhook(url: string, payload: any): Promise<void> {
+  private async sendToWebhook(
+    url: string,
+    payload: BaseWebhookPayload,
+  ): Promise<void> {
     try {
-      const headers: any = {
+      const headers: Record<string, string> = {
         'Content-Type': 'application/json',
         'User-Agent': 'WhatsApp-Connector/1.0',
       };
@@ -116,12 +131,19 @@ export class WebhookService {
       );
 
       this.logger.debug(`Event sent to ${url} - Status: ${response.status}`);
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Si c'est une erreur HTTP, on log le status code
-      if (error.response) {
-        throw new Error(
-          `HTTP ${error.response.status}: ${error.response.statusText}`,
-        );
+      if (
+        error &&
+        typeof error === 'object' &&
+        'response' in error &&
+        error.response
+      ) {
+        const response = error.response as {
+          status: number;
+          statusText: string;
+        };
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
       throw error;
     }

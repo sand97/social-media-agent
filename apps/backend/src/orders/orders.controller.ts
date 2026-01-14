@@ -1,4 +1,3 @@
-import { OrderStatus } from '@prisma/client';
 import {
   Controller,
   Get,
@@ -20,6 +19,7 @@ import {
   ApiParam,
   ApiQuery,
 } from '@nestjs/swagger';
+import { OrderStatus } from '@prisma/client';
 
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 

@@ -1,10 +1,10 @@
-import { User } from '@prisma/client';
 import {
   Injectable,
   NotFoundException,
   Logger,
   InternalServerErrorException,
 } from '@nestjs/common';
+import { User } from '@prisma/client';
 
 import { PrismaService } from '../prisma/prisma.service';
 import { UserSyncService } from '../whatsapp-agent/user-sync.service';

@@ -44,7 +44,8 @@ export class MessagesTools {
             },
           );
 
-          const { result: messages } = await this.connectorClient.executeScript(script);
+          const { result: messages } =
+            await this.connectorClient.executeScript(script);
 
           return JSON.stringify({
             success: true,

@@ -159,7 +159,8 @@ export class CatalogSearchService {
       },
     );
 
-    const { result: products } = await this.connectorClient.executeScript(script);
+    const { result: products } =
+      await this.connectorClient.executeScript(script);
 
     this.logger.debug(
       `✅ Found ${products?.length || 0} results via direct WhatsApp search`,

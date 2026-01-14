@@ -55,19 +55,17 @@ export class ConnectorClientService {
   /**
    * Request a pairing code for WhatsApp authentication
    * @param connectorUrl The URL of the WhatsApp connector
-   * @param sessionName The session name (user ID)
+   * @param phoneNumber The session name (user ID)
    */
   async requestPairingCode(
     connectorUrl: string,
-    sessionName: string,
+    phoneNumber: string,
   ): Promise<any> {
-    this.logger.log(
-      `[CONNECTOR] Requesting pairing code for session: ${sessionName}`,
-    );
+    this.logger.log(`[CONNECTOR] Requesting pairing code for: ${phoneNumber}`);
 
     const instance = this.getAxiosInstance(connectorUrl);
     const response = await instance.post('/whatsapp/request-pairing-code', {
-      sessionName,
+      phoneNumber,
     });
 
     return response.data;
@@ -139,5 +137,41 @@ export class ConnectorClientService {
     const result = await this.executeScript(connectorUrl, script);
 
     return result;
+  }
+
+  /**
+   * Get QR code for WhatsApp authentication
+   * @param connectorUrl The URL of the WhatsApp connector
+   */
+  async getQRCode(connectorUrl: string): Promise<{
+    success: boolean;
+    qrCode?: string;
+    message?: string;
+  }> {
+    this.logger.debug(`[CONNECTOR] Requesting QR code from: ${connectorUrl}`);
+
+    const instance = this.getAxiosInstance(connectorUrl);
+    const response = await instance.get('/whatsapp/qr');
+
+    return response.data;
+  }
+
+  /**
+   * Restart WhatsApp client to generate a new QR code
+   * @param connectorUrl The URL of the WhatsApp connector
+   */
+  async restartClient(connectorUrl: string): Promise<{
+    success: boolean;
+    message?: string;
+    error?: string;
+  }> {
+    this.logger.log(
+      `[CONNECTOR] Restarting client to get new QR code: ${connectorUrl}`,
+    );
+
+    const instance = this.getAxiosInstance(connectorUrl);
+    const response = await instance.post('/whatsapp/restart');
+
+    return response.data;
   }
 }

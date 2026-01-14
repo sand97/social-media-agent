@@ -786,8 +786,8 @@
     "/auth/request-pairing": {
       "post": {
         "operationId": "AuthController_requestPairingCode",
-        "summary": "Request pairing code",
-        "description": "Request a pairing code to link WhatsApp account with the application",
+        "summary": "Request pairing code or check connection",
+        "description": "Request a pairing code to link WhatsApp account with the application. If the account is already connected, an OTP will be sent instead. For desktop devices, returns a QR scenario.",
         "parameters": [],
         "requestBody": {
           "required": true,
@@ -801,19 +801,32 @@
         },
         "responses": {
           "201": {
-            "description": "Pairing code sent successfully",
+            "description": "Pairing initiated successfully",
             "content": {
               "application/json": {
                 "schema": {
                   "type": "object",
                   "properties": {
+                    "scenario": {
+                      "type": "string",
+                      "enum": [
+                        "otp",
+                        "pairing",
+                        "qr"
+                      ],
+                      "example": "otp"
+                    },
                     "code": {
                       "type": "string",
                       "example": "12345678"
                     },
+                    "pairingToken": {
+                      "type": "string",
+                      "example": "token123..."
+                    },
                     "message": {
                       "type": "string",
-                      "example": "Pairing code sent successfully"
+                      "example": "Un code de vérification a été envoyé"
                     }
                   }
                 }
@@ -821,7 +834,97 @@
             }
           },
           "400": {
-            "description": "Bad request - User is already paired"
+            "description": "Bad request - Invalid parameters"
+          }
+        },
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/auth/request-qr": {
+      "post": {
+        "operationId": "AuthController_requestQRCode",
+        "summary": "Request QR code",
+        "description": "Request a QR code to link WhatsApp account with the application (desktop)",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RequestPairingDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "QR code generated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "qrCode": {
+                      "type": "string",
+                      "example": "1@abc123..."
+                    },
+                    "pairingToken": {
+                      "type": "string",
+                      "example": "token123..."
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Scannez le code QR avec WhatsApp"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request - QR code not available"
+          }
+        },
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/auth/refresh-qr": {
+      "post": {
+        "operationId": "AuthController_refreshQRCode",
+        "summary": "Refresh QR code",
+        "description": "Request a new QR code when the current one expires. This will restart the connector to generate a fresh QR code.",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "QR code refreshed successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "qrCode": {
+                      "type": "string",
+                      "example": "1@abc123..."
+                    },
+                    "pairingToken": {
+                      "type": "string",
+                      "example": "token123..."
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Nouveau code QR généré"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request - Invalid pairing token"
           }
         },
         "tags": [
@@ -2034,6 +2137,32 @@
           "webhooks"
         ]
       }
+    },
+    "/webhooks/whatsapp/events": {
+      "post": {
+        "operationId": "WebhooksController_whatsappEvents",
+        "summary": "Webhook pour tous les events WhatsApp",
+        "description": "Endpoint appelé par le whatsapp-connector pour tous les events (qr, authenticated, etc.)",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WhatsAppEventDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Event traité avec succès"
+          }
+        },
+        "tags": [
+          "webhooks"
+        ]
+      }
     }
   },
   "info": {
@@ -2363,6 +2492,15 @@
             "type": "string",
             "description": "Phone number in E.164 format",
             "example": "+15551234567"
+          },
+          "deviceType": {
+            "type": "string",
+            "description": "Device type (mobile or desktop)",
+            "example": "mobile",
+            "enum": [
+              "mobile",
+              "desktop"
+            ]
           }
         },
         "required": [
@@ -2887,6 +3025,10 @@
         ]
       },
       "WhatsAppConnectedDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "WhatsAppEventDto": {
         "type": "object",
         "properties": {}
       }

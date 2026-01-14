@@ -8,6 +8,7 @@
     "dev:backend": "pnpm --filter backend start:dev",
     "dev:frontend": "pnpm --filter frontend dev",
     "dev:whatsapp-agent": "pnpm --filter whatsapp-agent start:dev",
+    "dev:whatsapp-connector": "pnpm --filter whatsapp-connector start:dev",
     "build": "pnpm -r build",
     "build:backend": "pnpm --filter backend build",
     "build:frontend": "pnpm --filter frontend build",

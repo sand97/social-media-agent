@@ -1,4 +1,3 @@
-import { WhatsAppAgent } from '@prisma/client';
 import {
   Controller,
   Get,
@@ -17,6 +16,7 @@ import {
   ApiBearerAuth,
   ApiParam,
 } from '@nestjs/swagger';
+import { WhatsAppAgent } from '@prisma/client';
 
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 

@@ -9,7 +9,6 @@ import {
   OnModuleInit,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import * as qrcodeTerminal from 'qrcode-terminal';
 import { Client, LocalAuth } from 'whatsapp-web.js';
 
 import { WebhookService } from './webhook.service';
@@ -108,10 +107,15 @@ export class WhatsAppClientService implements OnModuleInit, OnModuleDestroy {
     this.client.on('qr', (...args) => {
       const [qr] = args;
       this.qrCode = qr;
-      this.logger.log('QR Code received. Scan it to authenticate.');
-      qrcodeTerminal.generate(qr, { small: true });
+      this.logger.log(
+        `🔐 QR Code received (length: ${qr?.length || 0}, args count: ${args.length})`,
+      );
+      // qrcodeTerminal.generate(qr, { small: true });
 
       // Envoyer tous les paramètres bruts au webhook
+      this.logger.debug(
+        `Sending QR event to webhook - args type: ${Array.isArray(args) ? 'array' : typeof args}, length: ${args.length}`,
+      );
       this.webhookService.sendEvent('qr', args);
     });
 
@@ -483,6 +487,32 @@ export class WhatsAppClientService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
+   * Restart the WhatsApp client to force a new QR code generation
+   * This is useful when the QR code expires and needs to be refreshed
+   */
+  async restartClient(): Promise<void> {
+    this.logger.log('🔄 Restarting WhatsApp client to generate new QR code...');
+
+    try {
+      // Destroy the current client
+      await this.destroy();
+
+      // Wait a bit to ensure cleanup is complete
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      // Re-initialize the client (will trigger new QR code generation)
+      await this.initialize();
+
+      this.logger.log(
+        '✅ WhatsApp client restarted successfully, new QR code will be emitted via webhook',
+      );
+    } catch (error) {
+      this.logger.error('❌ Failed to restart WhatsApp client:', error);
+      throw new Error('Failed to restart WhatsApp client');
+    }
+  }
+
+  /**
    * Retourne l'instance du client (à utiliser avec précaution)
    */
   getClient(): Client {
@@ -501,6 +531,13 @@ export class WhatsAppClientService implements OnModuleInit, OnModuleDestroy {
       this.logger.log(
         `Requesting pairing code for phone number: ${phoneNumber}`,
       );
+
+      // await this.client.destroy();
+      //
+      // await sleep(10000);
+      //
+      // await this.initialize(phoneNumber);
+
       const code = await this.client.requestPairingCode(
         phoneNumber.replace('+', ''),
       );
@@ -508,7 +545,10 @@ export class WhatsAppClientService implements OnModuleInit, OnModuleDestroy {
       return code;
     } catch (error) {
       this.logger.error('Error requesting pairing code:', error);
-      throw error;
+      // Si le pairing code échoue (limite WhatsApp atteinte), on suggère d'utiliser le QR code
+      throw new Error(
+        'La demande de code de jumelage a échoué. WhatsApp a une limite stricte sur cette fonctionnalité. Si vous êtes sur mobile, veuillez vous connecter depuis un ordinateur ou une tablette pour scanner le code QR.',
+      );
     }
   }
 
@@ -554,11 +594,18 @@ export class WhatsAppClientService implements OnModuleInit, OnModuleDestroy {
 
       // Send custom event "pairing_success" to agent webhooks with all info
       this.logger.log(
-        `Sending pairing_success event to webhooks for ${phoneNumber}`,
+        `🎉 Sending pairing_success event to webhooks for ${phoneNumber}`,
+      );
+      this.logger.debug(
+        `Connection data: ${JSON.stringify({
+          phoneNumber: connectionData.phoneNumber,
+          hasProfile: !!connectionData.profile,
+          id: connectionData.id,
+        })}`,
       );
       await this.webhookService.sendEvent('pairing_success', connectionData);
 
-      this.logger.log('Pairing success event sent to webhooks');
+      this.logger.log('✅ Pairing success event sent to webhooks successfully');
     } catch (error: any) {
       this.logger.error('Failed to notify of connection:', error.message);
       // Don't throw - this is not critical

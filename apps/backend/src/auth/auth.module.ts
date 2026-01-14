@@ -9,6 +9,7 @@ import { PassportModule } from '@nestjs/passport';
 import { OnboardingModule } from '../onboarding/onboarding.module';
 
 import { AuthController } from './auth.controller';
+import { AuthGateway } from './auth.gateway';
 import { AuthService } from './auth.service';
 import { JwtStrategy } from './strategies/jwt.strategy';
 
@@ -30,8 +31,8 @@ import { JwtStrategy } from './strategies/jwt.strategy';
     ConnectorClientModule,
     forwardRef(() => OnboardingModule),
   ],
-  providers: [AuthService, JwtStrategy],
+  providers: [AuthService, JwtStrategy, AuthGateway],
   controllers: [AuthController],
-  exports: [AuthService],
+  exports: [AuthService, AuthGateway],
 })
 export class AuthModule {}

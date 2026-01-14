@@ -17,7 +17,6 @@ import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 
 import { AuthService } from './auth.service';
 import { ConfirmPairingDto } from './dto/confirm-pairing.dto';
-import { LoginDto } from './dto/login.dto';
 import { RequestPairingDto } from './dto/request-pairing.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { VerifyPairingDto } from './dto/verify-pairing.dto';
@@ -29,27 +28,97 @@ export class AuthController {
 
   @Post('request-pairing')
   @ApiOperation({
-    summary: 'Request pairing code',
+    summary: 'Request pairing code or check connection',
     description:
-      'Request a pairing code to link WhatsApp account with the application',
+      'Request a pairing code to link WhatsApp account with the application. If the account is already connected, an OTP will be sent instead. For desktop devices, returns a QR scenario.',
   })
   @ApiResponse({
     status: 201,
-    description: 'Pairing code sent successfully',
+    description: 'Pairing initiated successfully',
     schema: {
       type: 'object',
       properties: {
+        scenario: {
+          type: 'string',
+          enum: ['otp', 'pairing', 'qr'],
+          example: 'otp',
+        },
         code: { type: 'string', example: '12345678' },
-        message: { type: 'string', example: 'Pairing code sent successfully' },
+        pairingToken: { type: 'string', example: 'token123...' },
+        message: {
+          type: 'string',
+          example: 'Un code de vérification a été envoyé',
+        },
       },
     },
   })
   @ApiResponse({
     status: 400,
-    description: 'Bad request - User is already paired',
+    description: 'Bad request - Invalid parameters',
   })
   async requestPairingCode(@Body() dto: RequestPairingDto) {
-    return this.authService.requestPairingCode(dto.phoneNumber);
+    return this.authService.requestPairingCode(
+      dto.phoneNumber,
+      dto.deviceType || 'mobile',
+    );
+  }
+
+  @Post('request-qr')
+  @ApiOperation({
+    summary: 'Request QR code',
+    description:
+      'Request a QR code to link WhatsApp account with the application (desktop)',
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'QR code generated successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        qrCode: { type: 'string', example: '1@abc123...' },
+        pairingToken: { type: 'string', example: 'token123...' },
+        message: {
+          type: 'string',
+          example: 'Scannez le code QR avec WhatsApp',
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Bad request - QR code not available',
+  })
+  async requestQRCode(@Body() dto: RequestPairingDto) {
+    return this.authService.requestCodeQR(dto.phoneNumber);
+  }
+
+  @Post('refresh-qr')
+  @ApiOperation({
+    summary: 'Refresh QR code',
+    description:
+      'Request a new QR code when the current one expires. This will restart the connector to generate a fresh QR code.',
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'QR code refreshed successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        qrCode: { type: 'string', example: '1@abc123...' },
+        pairingToken: { type: 'string', example: 'token123...' },
+        message: {
+          type: 'string',
+          example: 'Nouveau code QR généré',
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Bad request - Invalid pairing token',
+  })
+  async refreshQRCode(@Body() body: { pairingToken: string }) {
+    return this.authService.refreshCodeQR(body.pairingToken);
   }
 
   @Post('verify-pairing')
