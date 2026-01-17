@@ -41,30 +41,32 @@
     } else {
       // Phone number - verify it exists and get the proper WID
       console.log(`Verifying contact exists: ${to}`);
-      const contact = await window.WPP.contact.queryExists(to);
+      const contact = await window.WPP.contact.get(to);
 
       if (!contact) {
         throw new Error(`Contact not found: ${to}`);
       }
 
-      chatId = contact.wid._serialized;
+      chatId = contact.id._serialized;
       console.log(`Contact verified: ${chatId}`);
     }
 
     // Simulate natural typing if enabled
-    if (useTyping) {
-      // Calculate delay: 80 WPM = 75ms per character
-      const baseDelay = message.length * 75;
-      const delay = Math.max(500, Math.min(5000, baseDelay));
-
-      console.log(`Simulating typing for ${delay}ms...`);
-
-      // Show "typing..." indicator
-      await window.WPP.chat.markIsComposing(chatId, delay);
-
-      // Wait for the calculated delay
-      await new Promise((resolve) => setTimeout(resolve, delay));
-    }
+    // ⚠️ This code generate error because
+    // window.WPP.chat.markIsComposing; // create exception
+    // if (useTyping) {
+    //   // Calculate delay: 80 WPM = 75ms per character
+    //   const baseDelay = message.length * 75;
+    //   const delay = Math.max(500, Math.min(5000, baseDelay));
+    //
+    //   console.log(`Simulating typing for ${delay}ms...`);
+    //
+    //   // Show "typing..." indicator
+    //   await window.WPP.chat.markIsComposing(chatId, delay);
+    //
+    //   // Wait for the calculated delay
+    //   await new Promise((resolve) => setTimeout(resolve, delay));
+    // }
 
     // Send the message
     const result = await window.WPP.chat.sendTextMessage(chatId, message);

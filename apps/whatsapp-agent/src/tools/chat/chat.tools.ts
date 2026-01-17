@@ -48,7 +48,7 @@ export class ChatTools {
             'Full config structure:',
             JSON.stringify(config, null, 2),
           );
-          const chatId = config?.configurable?.context?.chatId;
+          const chatId = config?.context?.chatId;
           console.log('send message', chatId);
 
           if (!chatId) {
@@ -103,7 +103,7 @@ export class ChatTools {
         try {
           // SECURITY: Only send to the configured managementGroupId from runtime context
           const managementGroupId =
-            config?.configurable?.context?.managementGroupId;
+            config?.context?.managementGroupId;
 
           if (!managementGroupId) {
             return JSON.stringify({
