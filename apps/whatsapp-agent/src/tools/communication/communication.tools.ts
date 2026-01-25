@@ -4,6 +4,8 @@ import { tool } from '@langchain/core/tools';
 import { Injectable } from '@nestjs/common';
 import { z } from 'zod';
 
+import { ContactResolverService } from '../contact/contact-resolver.service';
+
 import { ProductSendService } from './product-send.service';
 
 /**
@@ -16,6 +18,7 @@ export class CommunicationTools {
     private readonly connectorClient: ConnectorClientService,
     private readonly scriptService: PageScriptService,
     private readonly productSendService: ProductSendService,
+    private readonly contactResolver: ContactResolverService,
   ) {}
 
   /**
@@ -57,7 +60,10 @@ export class CommunicationTools {
           }
 
           // Send via connector (uses connector's built-in sendMessage)
-          const result = await this.connectorClient.sendMessage(chatId, message);
+          const result = await this.connectorClient.sendMessage(
+            chatId,
+            message,
+          );
 
           return JSON.stringify({
             success: true,
@@ -75,6 +81,7 @@ export class CommunicationTools {
         name: 'send_message',
         description:
           'Send a SHORT text message (max 500 characters) to the current conversation. If longer, split it into multiple messages.',
+        returnDirect: true,
         schema: z.object({
           message: z
             .string()
@@ -296,7 +303,9 @@ export class CommunicationTools {
           }
 
           // Send notification message to management group
-          const notificationMessage = `🔔 Nouvelle conversation transférée\n\nDe: ${chatId}\nRaison: ${reason}\n\nMerci de prendre en charge cette conversation.`;
+          const formattedContact =
+            await this.contactResolver.resolveContactNumber(config?.context);
+          const notificationMessage = `🔔 Nouvelle conversation transférée\n\nDe: ${formattedContact}\nRaison: ${reason}\n\nMerci de prendre en charge cette conversation.`;
 
           await this.connectorClient.sendMessage(
             managementGroupId,

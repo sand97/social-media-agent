@@ -36,6 +36,7 @@ import { SystemPromptService } from './system-prompt.service';
  */
 const contextSchema = z.object({
   chatId: z.string(),
+  contactId: z.string().optional(),
   agentId: z.string().optional(),
   managementGroupId: z.string().optional(),
   agentContext: z.string().optional(),
@@ -202,6 +203,11 @@ export class WhatsAppAgentService implements OnModuleInit {
         runLimit: 6,
         exitBehavior: 'end',
       }),
+      // Global tool call limit (per run) to prevent excessive tool usage
+      toolCallLimitMiddleware({
+        runLimit: 8,
+        exitBehavior: 'error',
+      }),
       // Prevent duplicate side-effect tool calls in a single run
       ...sideEffectToolLimiters,
       // Tool execution tracking middleware
@@ -363,11 +369,12 @@ export class WhatsAppAgentService implements OnModuleInit {
 
       const userMessage = message?.body || '';
       const messageId = message?.id?._serialized || message?.id || '';
-      // Get chatId from message.contactId (added by connector)
-      // Fallback to message.from for backward compatibility
+      // chatId is the conversation ID (contact or group)
+      // contactId is the real contact ID (not @lid), added by connector
       // For individual chats: "33765538022@c.us"
       // For group chats: "123456@g.us"
       const chatId = message?.from || '';
+      const contactId = message?.contactId || '';
 
       // Log what the agent receives
       this.logger.log(
@@ -471,6 +478,7 @@ export class WhatsAppAgentService implements OnModuleInit {
         systemPrompt,
         conversationHistory,
         {
+          contactId,
           agentId: canProcess.agentId,
           managementGroupId: canProcess.managementGroupId,
           agentContext: canProcess.agentContext,
@@ -584,6 +592,7 @@ export class WhatsAppAgentService implements OnModuleInit {
     systemPrompt: string,
     conversationHistory: Array<{ role: string; content: string }>,
     context: {
+      contactId?: string;
       agentId?: string;
       managementGroupId?: string;
       agentContext?: string;
@@ -599,6 +608,7 @@ export class WhatsAppAgentService implements OnModuleInit {
 
     const runtimeContext: AgentContext = {
       chatId,
+      contactId: context.contactId,
       agentId: context.agentId,
       managementGroupId: context.managementGroupId,
       agentContext: context.agentContext,

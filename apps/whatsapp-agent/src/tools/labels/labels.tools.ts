@@ -33,7 +33,8 @@ export class LabelsTools {
     return tool(
       async (_input, config?: any) => {
         try {
-          const contactId = config?.context?.chatId;
+          const contactId =
+            config?.context?.chatId || config?.context?.contactId;
           if (!contactId) {
             return JSON.stringify({
               success: false,
@@ -79,7 +80,8 @@ export class LabelsTools {
     return tool(
       async ({ labelId }, config?: any) => {
         try {
-          const contactId = config?.context?.chatId;
+          const contactId =
+            config?.context?.chatId || config?.context?.contactId;
           if (!contactId) {
             return JSON.stringify({
               success: false,
@@ -125,7 +127,8 @@ export class LabelsTools {
     return tool(
       async ({ labelId }, config?: any) => {
         try {
-          const contactId = config?.context?.chatId;
+          const contactId =
+            config?.context?.chatId || config?.context?.contactId;
           if (!contactId) {
             return JSON.stringify({
               success: false,

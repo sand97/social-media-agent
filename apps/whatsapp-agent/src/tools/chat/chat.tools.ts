@@ -4,6 +4,7 @@ import { tool } from '@langchain/core/tools';
 import { Injectable, Logger } from '@nestjs/common';
 import { z } from 'zod';
 
+import { ContactResolverService } from '../contact/contact-resolver.service';
 /**
  * Chat tools for the WhatsApp agent
  * Provides comprehensive messaging and chat management capabilities
@@ -15,6 +16,7 @@ export class ChatTools {
   constructor(
     private readonly connectorClient: ConnectorClientService,
     private readonly scriptService: PageScriptService,
+    private readonly contactResolver: ContactResolverService,
   ) {}
 
   /**
@@ -73,6 +75,7 @@ export class ChatTools {
         name: 'reply_to_message',
         description:
           'REQUIRED: Use this tool for EVERY reply to the customer. The agent will show "typing..." for a natural delay (80 WPM). This tool is the ONLY way to communicate with the customer - NEVER reply directly without using this tool.',
+        returnDirect: true,
         schema: z.object({
           message: z.string().describe('Message content to send'),
           quotedMessageId: z
@@ -108,7 +111,9 @@ export class ChatTools {
           );
 
           // Enrich message with contact number automatically
-          const enrichedMessage = `📱 Contact: ${chatId}\n\n${message}`;
+          const formattedContact =
+            await this.contactResolver.resolveContactNumber(config?.context);
+          const enrichedMessage = `📱 Contact: ${formattedContact}\n\n${message}`;
 
           const script = this.scriptService.getScript('chat/sendTextMessage', {
             TO: managementGroupId,
@@ -145,6 +150,7 @@ export class ChatTools {
         name: 'send_to_admin_group',
         description:
           'Send a message to the admin/management group and reply to the customer. Use ONLY to escalate requests that require human intervention.',
+        returnDirect: true,
         schema: z.object({
           message: z
             .string()
@@ -198,7 +204,9 @@ export class ChatTools {
           }
 
           // Enrich message with contact number automatically
-          const enrichedMessage = `📱 Contact: ${chatId}\n\n${message}`;
+          const formattedContact =
+            await this.contactResolver.resolveContactNumber(config?.context);
+          const enrichedMessage = `📱 Contact: ${formattedContact}\n\n${message}`;
 
           const groupScript = this.scriptService.getScript(
             'chat/sendTextMessage',
@@ -209,9 +217,8 @@ export class ChatTools {
             },
           );
 
-          const groupResult = await this.connectorClient.executeScript(
-            groupScript,
-          );
+          const groupResult =
+            await this.connectorClient.executeScript(groupScript);
 
           const reply =
             replyToUser?.trim() ||
@@ -226,9 +233,8 @@ export class ChatTools {
             },
           );
 
-          const userResult = await this.connectorClient.executeScript(
-            replyScript,
-          );
+          const userResult =
+            await this.connectorClient.executeScript(replyScript);
 
           return JSON.stringify({
             success: true,
@@ -251,6 +257,7 @@ export class ChatTools {
         name: 'notify_authorized_group',
         description:
           'Send a message to an authorized group AFTER collecting all required information from the customer. The contact number is automatically added. IMPORTANT: Use your business context to identify the key information to collect BEFORE using this tool.',
+        returnDirect: true,
         schema: z.object({
           groupId: z
             .string()
@@ -359,9 +366,7 @@ export class ChatTools {
           address: z
             .string()
             .optional()
-            .describe(
-              'Full address (e.g. "123 Rue de la Paix, 75001 Paris")',
-            ),
+            .describe('Full address (e.g. "123 Rue de la Paix, 75001 Paris")'),
           url: z
             .string()
             .optional()
@@ -401,9 +406,7 @@ export class ChatTools {
         schema: z.object({
           messageId: z
             .string()
-            .describe(
-              'Message ID to edit (format: true_xxxxx@c.us_yyyy)',
-            ),
+            .describe('Message ID to edit (format: true_xxxxx@c.us_yyyy)'),
           newText: z.string().describe('New message content'),
           linkPreview: z
             .boolean()
@@ -448,8 +451,7 @@ export class ChatTools {
         name: 'mark_unread',
         description:
           'Mark the current conversation as unread. Useful to flag conversations that need human follow-up.',
-        schema: z.object({
-        }),
+        schema: z.object({}),
       },
     );
   }
@@ -491,9 +493,7 @@ export class ChatTools {
         schema: z.object({
           content: z
             .string()
-            .describe(
-              'Notes content (preferences, history, context, etc.)',
-            ),
+            .describe('Notes content (preferences, history, context, etc.)'),
         }),
       },
     );
@@ -624,10 +624,8 @@ export class ChatTools {
         name: 'mark_read',
         description:
           'Mark the current conversation as read and send the SEEN event. Useful after handling messages to indicate they were read.',
-        schema: z.object({
-        }),
+        schema: z.object({}),
       },
     );
   }
-
 }
