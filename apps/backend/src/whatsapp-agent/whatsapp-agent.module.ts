@@ -13,6 +13,8 @@ import {
   WhatsAppAgentController,
   AgentController,
 } from './whatsapp-agent.controller';
+import { WhatsAppAgentInternalController } from './whatsapp-agent-internal.controller';
+import { WhatsAppAgentInternalService } from './whatsapp-agent-internal.service';
 import { WhatsAppAgentService } from './whatsapp-agent.service';
 
 @Module({
@@ -24,11 +26,16 @@ import { WhatsAppAgentService } from './whatsapp-agent.service';
     PageScriptModule,
     forwardRef(() => OnboardingModule),
   ],
-  controllers: [WhatsAppAgentController, AgentController],
+  controllers: [
+    WhatsAppAgentController,
+    AgentController,
+    WhatsAppAgentInternalController,
+  ],
   providers: [
     WhatsAppAgentService,
     UserSyncService,
     WhatsAppAgentClientService,
+    WhatsAppAgentInternalService,
   ],
   exports: [WhatsAppAgentService, UserSyncService, WhatsAppAgentClientService],
 })

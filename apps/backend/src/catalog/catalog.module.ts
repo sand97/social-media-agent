@@ -8,7 +8,11 @@ import { CatalogController } from './catalog.controller';
 import { CatalogService } from './catalog.service';
 
 @Module({
-  imports: [MinioModule, PrismaModule, forwardRef(() => WhatsAppAgentModule)],
+  imports: [
+    MinioModule,
+    PrismaModule,
+    forwardRef(() => WhatsAppAgentModule),
+  ],
   controllers: [CatalogController],
   providers: [CatalogService],
   exports: [CatalogService],

@@ -4,7 +4,17 @@ export interface CatalogSyncResult {
   success: boolean
   backendSync?: any
   agentSync?: any
+  imageSync?: {
+    queued: boolean
+    status: 'SYNCING'
+  }
   error?: string
+}
+
+export interface ImageSyncStatus {
+  syncImageStatus: 'PENDING' | 'SYNCING' | 'DONE' | 'FAILED'
+  lastImageSyncDate?: string | null
+  lastImageSyncError?: string | null
 }
 
 export interface ProductImage {
@@ -91,6 +101,13 @@ export const catalogApi = {
    */
   async getCatalog(): Promise<CatalogData> {
     const response = await apiClient.get<CatalogData>('/catalog')
+    return response.data
+  },
+
+  async getImageSyncStatus(): Promise<ImageSyncStatus> {
+    const response = await apiClient.get<ImageSyncStatus>(
+      '/catalog/image-sync-status'
+    )
     return response.data
   },
 }

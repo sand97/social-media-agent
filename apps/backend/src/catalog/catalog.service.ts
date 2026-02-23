@@ -625,6 +625,17 @@ export class CatalogService {
     }
   }
 
+  async getImageSyncStatus(userId: string) {
+    return this.prisma.whatsAppAgent.findUnique({
+      where: { userId },
+      select: {
+        syncImageStatus: true,
+        lastImageSyncDate: true,
+        lastImageSyncError: true,
+      },
+    });
+  }
+
   /**
    * Force catalog synchronization for a user
    * Syncs both backend catalog (via connector) and whatsapp-agent local catalog
@@ -633,6 +644,7 @@ export class CatalogService {
     success: boolean;
     backendSync?: any;
     agentSync?: any;
+    imageSync?: { queued: boolean; status: 'SYNCING' };
     error?: string;
   }> {
     try {
@@ -663,13 +675,20 @@ export class CatalogService {
       // 2. Trigger whatsapp-agent local catalog sync
       this.logger.log('🧠 Triggering whatsapp-agent local catalog sync...');
       const agentUrl = `http://${agent.ipAddress}:${agent.port}`;
-      const agentSyncResult =
-        await this.whatsappAgentClient.triggerCatalogSync(agentUrl);
+      const agentSyncResult = await this.whatsappAgentClient.triggerCatalogSync(
+        agentUrl,
+        agent.id,
+      );
 
-      // 3. Update lastCatalogSyncedAt
+      // 3. Update backend timestamps / status.
+      // Image indexing is now orchestrated by whatsapp-agent inside /catalog/sync.
       await this.prisma.whatsAppAgent.update({
         where: { id: agent.id },
-        data: { lastCatalogSyncedAt: new Date() },
+        data: {
+          lastCatalogSyncedAt: new Date(),
+          syncImageStatus: 'SYNCING',
+          lastImageSyncError: null,
+        },
       });
 
       this.logger.log(
@@ -680,8 +699,22 @@ export class CatalogService {
         success: true,
         backendSync: backendSyncResult,
         agentSync: agentSyncResult,
+        imageSync: {
+          queued: agentSyncResult.imageSyncQueued ?? true,
+          status: 'SYNCING',
+        },
       };
     } catch (error: any) {
+      await this.prisma.whatsAppAgent
+        .update({
+          where: { userId },
+          data: {
+            syncImageStatus: 'FAILED',
+            lastImageSyncError: error.message,
+          },
+        })
+        .catch(() => undefined);
+
       this.logger.error(
         `❌ Catalog sync failed: ${error.message}`,
         error.stack,

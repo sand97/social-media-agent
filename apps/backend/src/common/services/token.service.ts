@@ -7,6 +7,11 @@ export interface CatalogUploadTokenPayload {
   type: 'catalog-upload';
 }
 
+export interface AgentInternalTokenPayload {
+  sub: string;
+  type: 'agent-internal';
+}
+
 @Injectable()
 export class TokenService {
   private readonly logger = new Logger(TokenService.name);
@@ -62,5 +67,48 @@ export class TokenService {
       this.logger.error(`❌ Token verification failed: ${error.message}`);
       throw error;
     }
+  }
+
+  /**
+   * Génère un token JWT interne entre backend et agent
+   * Contient l'agentId dans `sub`
+   */
+  generateAgentInternalToken(
+    agentId: string,
+    expiresIn: jwt.SignOptions['expiresIn'] = '5m',
+  ): string {
+    const secret = this.configService.get<string>('AGENT_INTERNAL_JWT_SECRET');
+
+    if (!secret) {
+      throw new Error('AGENT_INTERNAL_JWT_SECRET not configured');
+    }
+
+    const payload: AgentInternalTokenPayload = {
+      sub: agentId,
+      type: 'agent-internal',
+    };
+
+    return jwt.sign(payload, secret, {
+      expiresIn,
+    });
+  }
+
+  /**
+   * Vérifie un token interne agent/backend
+   */
+  verifyAgentInternalToken(token: string): AgentInternalTokenPayload {
+    const secret = this.configService.get<string>('AGENT_INTERNAL_JWT_SECRET');
+
+    if (!secret) {
+      throw new Error('AGENT_INTERNAL_JWT_SECRET not configured');
+    }
+
+    const payload = jwt.verify(token, secret) as AgentInternalTokenPayload;
+
+    if (payload.type !== 'agent-internal' || !payload.sub) {
+      throw new Error('Invalid internal agent token');
+    }
+
+    return payload;
   }
 }

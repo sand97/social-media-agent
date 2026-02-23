@@ -316,6 +316,29 @@ export class CatalogController {
     return result;
   }
 
+  @Get('image-sync-status')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Get image sync status',
+    description:
+      "Endpoint frontend (dashboard catalogue) pour afficher l'état de la synchronisation asynchrone des images (SYNCING/DONE/FAILED) après un force-sync.",
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Image sync status retrieved successfully',
+  })
+  async getImageSyncStatus(@Req() req: any) {
+    const userId = req.user.id;
+    const status = await this.catalogService.getImageSyncStatus(userId);
+
+    if (!status) {
+      throw new BadRequestException('WhatsApp agent not configured');
+    }
+
+    return status;
+  }
+
   @Get()
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()

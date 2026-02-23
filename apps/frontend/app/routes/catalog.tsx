@@ -9,8 +9,9 @@ import {
   catalogApi,
   type CatalogData,
   type Product,
+  type ImageSyncStatus,
 } from '@app/lib/api/catalog'
-import { Typography, Empty, Button, message, Spin } from 'antd'
+import { Typography, Empty, Button, message, Spin, Alert } from 'antd'
 import useEmblaCarousel from 'embla-carousel-react'
 import { useState, useEffect, useMemo, useCallback } from 'react'
 
@@ -182,6 +183,9 @@ export default function CatalogPage() {
   const [isSyncing, setIsSyncing] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [catalogData, setCatalogData] = useState<CatalogData | null>(null)
+  const [syncStatus, setSyncStatus] =
+    useState<ImageSyncStatus['syncImageStatus']>('PENDING')
+  const [lastSyncError, setLastSyncError] = useState<string | null>(null)
 
   // Load catalog data
   const loadCatalog = async () => {
@@ -201,9 +205,47 @@ export default function CatalogPage() {
     }
   }
 
+  const loadImageSyncStatus = async () => {
+    try {
+      const status = await catalogApi.getImageSyncStatus()
+      setSyncStatus(status.syncImageStatus)
+      setLastSyncError(status.lastImageSyncError ?? null)
+    } catch {
+      // no-op: status is non-blocking for catalog rendering
+    }
+  }
+
   useEffect(() => {
     loadCatalog()
+    loadImageSyncStatus()
   }, [])
+
+  useEffect(() => {
+    if (syncStatus !== 'SYNCING') {
+      return
+    }
+
+    const interval = setInterval(async () => {
+      try {
+        const status = await catalogApi.getImageSyncStatus()
+        setSyncStatus(status.syncImageStatus)
+        setLastSyncError(status.lastImageSyncError ?? null)
+
+        if (status.syncImageStatus === 'DONE') {
+          message.success({
+            content: 'Synchronisation des images terminée',
+            key: 'image-sync-status',
+            duration: 3,
+          })
+          await loadCatalog()
+        }
+      } catch {
+        // ignore polling errors; next tick will retry
+      }
+    }, 5000)
+
+    return () => clearInterval(interval)
+  }, [syncStatus])
 
   const handleForceSync = async () => {
     try {
@@ -214,12 +256,12 @@ export default function CatalogPage() {
 
       if (result.success) {
         message.success({
-          content: 'Synchronisation réussie !',
+          content: 'Synchronisation lancée !',
           key: 'sync',
           duration: 3,
         })
-        // Reload catalog after sync
-        await loadCatalog()
+        setSyncStatus('SYNCING')
+        setLastSyncError(null)
       } else {
         message.error({
           content: result.error || 'Échec de la synchronisation',
@@ -292,6 +334,44 @@ export default function CatalogPage() {
         }
       />
       <div className='flex flex-col gap-6 w-full py-6 px-6'>
+        {syncStatus === 'SYNCING' && (
+          <Alert
+            message='Synchronisation des images en cours'
+            description='Indexation des images produits pour la recherche visuelle.'
+            type='info'
+            showIcon
+            className='mb-4'
+            action={
+              <Button
+                size='small'
+                type='text'
+                icon={<SyncOutlined spin />}
+                onClick={loadImageSyncStatus}
+              >
+                Rafraîchir
+              </Button>
+            }
+          />
+        )}
+
+        {syncStatus === 'FAILED' && (
+          <Alert
+            message='Échec de la synchronisation des images'
+            description={
+              lastSyncError ||
+              "Certaines images n'ont pas pu être indexées. Vous pouvez relancer la synchronisation."
+            }
+            type='error'
+            showIcon
+            className='mb-4'
+            action={
+              <Button size='small' danger onClick={handleForceSync}>
+                Réessayer
+              </Button>
+            }
+          />
+        )}
+
         {hasContent ? (
           <>
             {/* Collections and their products */}

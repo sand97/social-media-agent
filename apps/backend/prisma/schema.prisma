@@ -82,6 +82,13 @@ enum SyncStatus {
   FAILED // Échec de la synchronisation
 }
 
+enum SyncImageStatus {
+  PENDING // En attente de synchronisation des images
+  SYNCING // Synchronisation des images en cours
+  DONE // Synchronisation des images terminée
+  FAILED // Échec de la synchronisation des images
+}
+
 enum MessageMetadataType {
   AUDIO
   IMAGE
@@ -149,6 +156,12 @@ model WhatsAppAgent {
   syncStatus          SyncStatus @default(PENDING)
   syncProgress        Json? // { clientInfo: { status, progress, timestamp }, catalog: { status, progress, details } }
   lastCatalogSyncedAt DateTime? // Dernière synchronisation du catalogue
+  syncImageStatus     SyncImageStatus @default(PENDING)
+  lastImageSyncDate   DateTime?
+  lastImageSyncError  String?
+  customDescriptionPrompt    String? @db.Text
+  promptGeneratedAt          DateTime?
+  promptBasedOnProductsCount Int?
 
   // Métadonnées (JSON pour flexibilité)
   metadata Json? // { containerId, vpsProvider, region, etc. }
@@ -297,6 +310,9 @@ model Product {
   // Informations de base
   name        String
   description String?
+  coverImageDescription String?
+  indexDescriptionAt DateTime?
+  indexImageAt DateTime?
   price       Float?
   currency    String?
   category    String?
