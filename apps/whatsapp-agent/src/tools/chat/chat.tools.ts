@@ -5,6 +5,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { z } from 'zod';
 
 import { ContactResolverService } from '../contact/contact-resolver.service';
+import { AdminGroupMessagingService } from './admin-group-messaging.service';
 /**
  * Chat tools for the WhatsApp agent
  * Provides comprehensive messaging and chat management capabilities
@@ -17,6 +18,7 @@ export class ChatTools {
     private readonly connectorClient: ConnectorClientService,
     private readonly scriptService: PageScriptService,
     private readonly contactResolver: ContactResolverService,
+    private readonly adminGroupMessagingService: AdminGroupMessagingService,
   ) {}
 
   /**
@@ -97,6 +99,7 @@ export class ChatTools {
           // SECURITY: Only send to the configured managementGroupId from runtime context
           const managementGroupId = config?.context?.managementGroupId;
           const chatId = config?.context?.chatId;
+          const contactId = config?.context?.contactId;
 
           if (!managementGroupId) {
             return JSON.stringify({
@@ -106,37 +109,17 @@ export class ChatTools {
             });
           }
 
-          this.logger.log(
-            `Forwarding message to management group: ${managementGroupId}`,
-          );
+          this.logger.log(`Forwarding message to management group: ${managementGroupId}`);
 
-          // Enrich message with contact number automatically
-          const formattedContact =
-            await this.contactResolver.resolveContactNumber(config?.context);
-          const enrichedMessage = `📱 Contact: ${formattedContact}\n\n${message}`;
-
-          const script = this.scriptService.getScript('chat/sendTextMessage', {
-            TO: managementGroupId,
-            MESSAGE: enrichedMessage,
-            USE_TYPING: 'true',
-          });
-
-          const result = await this.connectorClient.executeScript(script);
-
-          if (chatId) {
-            const reply =
-              replyToUser?.trim() ||
-              "Merci, je vérifie auprès de l'équipe et je reviens vers vous.";
-            const replyScript = this.scriptService.getScript(
-              'chat/sendTextMessage',
-              {
-                TO: chatId,
-                MESSAGE: reply,
-                USE_TYPING: 'true',
-              },
-            );
-            await this.connectorClient.executeScript(replyScript);
-          }
+          const result =
+            await this.adminGroupMessagingService.sendToManagementGroup({
+              managementGroupId,
+              message,
+              chatId,
+              contactId,
+              shouldReplyToUser: true,
+              replyToUser,
+            });
 
           return JSON.stringify(result);
         } catch (error: any) {

@@ -5,6 +5,7 @@ import { PrismaModule } from '@app/prisma/prisma.module';
 import { Module } from '@nestjs/common';
 
 import { CatalogTools } from './catalog/catalog.tools';
+import { AdminGroupMessagingService } from './chat/admin-group-messaging.service';
 import { ChatTools } from './chat/chat.tools';
 import { CommunicationTools } from './communication/communication.tools';
 import { ProductSendService } from './communication/product-send.service';
@@ -25,6 +26,7 @@ import { MemoryTools } from './memory/memory.tools';
     CommunicationTools,
     ProductSendService,
     ContactResolverService,
+    AdminGroupMessagingService,
     CatalogTools,
     ChatTools,
     GroupTools,
@@ -36,6 +38,7 @@ import { MemoryTools } from './memory/memory.tools';
     CommunicationTools,
     ProductSendService,
     ContactResolverService,
+    AdminGroupMessagingService,
     CatalogTools,
     ChatTools,
     GroupTools,
