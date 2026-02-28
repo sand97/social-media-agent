@@ -25,6 +25,7 @@ export interface ProductImage {
   normalized_url?: string
   image_type: string
   image_index: number
+  needsImageIndexing?: boolean
   created_at: string
 }
 
@@ -63,6 +64,7 @@ export interface Product {
   ai_suggestions?: any
   created_at: string
   updated_at: string
+  needsTextIndexing?: boolean
   images: ProductImage[]
   metadata: ProductMetadata[]
 }

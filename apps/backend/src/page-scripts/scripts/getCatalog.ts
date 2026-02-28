@@ -13,7 +13,7 @@
  *
  */
 
-/* eslint-disable no-undef */
+/* eslint-disable no-undef, @typescript-eslint/no-floating-promises, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument */
 // @ts-nocheck - Ce code s'exécute dans le navigateur, pas dans Node.js
 
 (async () => {
@@ -50,6 +50,97 @@
     return Math.abs(hash).toString(36);
   }
 
+  /**
+   * Extrait les produits d'un objet catalogue WPP (productCollection._index)
+   */
+  function extractProductsFromCatalog(catalog) {
+    if (!catalog) return [];
+
+    const productIndex = catalog.productCollection?._index;
+    if (!productIndex || typeof productIndex !== 'object') return [];
+
+    return Object.keys(productIndex)
+      .map((productId) => productIndex[productId]?.attributes)
+      .filter(Boolean);
+  }
+
+  /**
+   * Sélectionne la meilleure URL image depuis un tableau [{key, value}]
+   */
+  function pickPreferredCdnUrl(imageEntries) {
+    if (!Array.isArray(imageEntries)) return null;
+    const full = imageEntries.find((entry) => entry?.key === 'full');
+    if (full?.value) return full.value;
+    const requested = imageEntries.find((entry) => entry?.key === 'requested');
+    return requested?.value || null;
+  }
+
+  /**
+   * Construit les URLs d'images d'un produit en supportant les 2 formats WPP
+   */
+  function buildProductImageUrls(product) {
+    const imageUrls = [];
+    const seenNormalizedUrls = new Set();
+    const imageHashes = toImageHashes(product);
+
+    const pushImage = (url, type, index, whatsappImageHash = null) => {
+      if (!url) return;
+      const normalizedUrl = normalizeWhatsAppUrl(url);
+      if (!normalizedUrl || seenNormalizedUrls.has(normalizedUrl)) return;
+      seenNormalizedUrls.add(normalizedUrl);
+      imageUrls.push({
+        url,
+        normalizedUrl,
+        type,
+        index,
+        whatsappImageHash: whatsappImageHash || null,
+      });
+    };
+
+    const mainImageUrl =
+      product.imageCdnUrl ||
+      product.image_cdn_url ||
+      pickPreferredCdnUrl(product.image_cdn_urls);
+    pushImage(mainImageUrl, 'main', 0, imageHashes[0] || null);
+
+    if (Array.isArray(product.additionalImageCdnUrl)) {
+      product.additionalImageCdnUrl.forEach((url, index) => {
+        pushImage(url, 'additional', index + 1, imageHashes[index + 1] || null);
+      });
+    } else if (Array.isArray(product.additional_image_cdn_urls)) {
+      product.additional_image_cdn_urls.forEach((imageVariants, index) => {
+        const url = pickPreferredCdnUrl(imageVariants);
+        pushImage(url, 'additional', index + 1, imageHashes[index + 1] || null);
+      });
+    }
+
+    return imageUrls;
+  }
+
+  function toPriceAmount1000(product) {
+    const raw =
+      product.priceAmount1000 ??
+      product.price_amount_1000 ??
+      product.price ??
+      null;
+    if (raw === null || raw === undefined) return null;
+    const parsed = Number(raw);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  function toImageHashes(product) {
+    if (Array.isArray(product.image_hashes_for_whatsapp)) {
+      return product.image_hashes_for_whatsapp.filter(Boolean);
+    }
+
+    const hashes = [];
+    if (product.imageHash) hashes.push(product.imageHash);
+    if (Array.isArray(product.additionalImageHashes)) {
+      hashes.push(...product.additionalImageHashes.filter(Boolean));
+    }
+    return hashes;
+  }
+
   // Parser la liste des images existantes
   let initialOriginalsUrls = [];
   try {
@@ -82,19 +173,97 @@
       throw new Error('User ID not found');
     }
 
-    console.log('📦 Récupération du catalogue complet...');
+    console.log(
+      '📦 Récupération du catalogue complet (queryCatalog + CatalogStore)...',
+    );
 
-    // Récupérer le catalogue complet
-    const catalog = await window.WPP.catalog.getMyCatalog();
+    const productsById = new Map();
 
-    if (!catalog || !catalog.productCollection || !catalog.productCollection._index) {
+    const addProduct = (rawProduct) => {
+      const product = rawProduct?.attributes || rawProduct;
+      if (!product?.id) return;
+      if (!productsById.has(product.id)) {
+        productsById.set(product.id, product);
+      }
+    };
+
+    let queryCatalogCount = 0;
+    let catalogStoreCount = 0;
+    let legacyCatalogCount = 0;
+
+    // 1) queryCatalog paginé (produits visibles)
+    if (window.WPP.whatsapp?.functions?.queryCatalog) {
+      try {
+        let afterToken = undefined;
+        while (true) {
+          const response = await window.WPP.whatsapp.functions.queryCatalog(
+            userId,
+            afterToken,
+          );
+          const pageProducts = Array.isArray(response?.data)
+            ? response.data
+            : [];
+          queryCatalogCount += pageProducts.length;
+          for (const product of pageProducts) {
+            addProduct(product);
+          }
+
+          const nextAfter = response?.paging?.cursors?.after;
+          if (!nextAfter || nextAfter === afterToken) {
+            break;
+          }
+          afterToken = nextAfter;
+        }
+      } catch (error) {
+        console.warn(
+          '⚠️ queryCatalog indisponible, fallback sur autres sources:',
+          error,
+        );
+      }
+    }
+
+    // 2) CatalogStore.findQuery (complément pour produits manquants/cachés)
+    if (window.WPP.whatsapp?.CatalogStore?.findQuery) {
+      try {
+        const catalogStoreResults =
+          await window.WPP.whatsapp.CatalogStore.findQuery(userId);
+
+        if (Array.isArray(catalogStoreResults)) {
+          for (const entry of catalogStoreResults) {
+            const entryProducts = extractProductsFromCatalog(entry);
+            catalogStoreCount += entryProducts.length;
+            for (const product of entryProducts) {
+              addProduct(product);
+            }
+          }
+        }
+      } catch (error) {
+        console.warn(
+          '⚠️ CatalogStore.findQuery indisponible, fallback getMyCatalog:',
+          error,
+        );
+      }
+    }
+
+    // 3) Fallback historique
+    try {
+      const catalog = await window.WPP.catalog.getMyCatalog();
+      const fallbackProducts = extractProductsFromCatalog(catalog);
+      legacyCatalogCount = fallbackProducts.length;
+      for (const product of fallbackProducts) {
+        addProduct(product);
+      }
+    } catch (error) {
+      console.warn('⚠️ getMyCatalog indisponible:', error);
+    }
+
+    if (productsById.size === 0) {
       throw new Error('Catalogue non disponible');
     }
 
-    // Extraire tous les produits depuis l'index
-    const productIndex = catalog.productCollection._index;
-    const productIds = Object.keys(productIndex);
-    console.log(`✅ ${productIds.length} produits trouvés dans le catalogue`);
+    console.log(
+      `✅ Produits récupérés - queryCatalog: ${queryCatalogCount}, CatalogStore: ${catalogStoreCount}, getMyCatalog: ${legacyCatalogCount}, uniques: ${productsById.size}`,
+    );
 
     // Récupérer les collections pour mapper les produits
     const collections = await window.WPP.catalog.getCollections(
@@ -125,41 +294,10 @@
     const currentCatalogUrls = new Set();
 
     // Traiter chaque produit
-    for (const productId of productIds) {
+    for (const product of productsById.values()) {
       try {
-        const product = productIndex[productId].attributes;
-
-        const imageUrls: Array<{
-          url: string;
-          normalizedUrl: string;
-          type: string;
-          index: number;
-        }> = [];
-
-        // 1. Image principale (imageCdnUrl) - TOUJOURS en premier (index 0)
-        if (product.imageCdnUrl) {
-          imageUrls.push({
-            url: product.imageCdnUrl,
-            normalizedUrl: normalizeWhatsAppUrl(product.imageCdnUrl),
-            type: 'main',
-            index: 0,
-          });
-        }
-
-        // 2. Images additionnelles (additionalImageCdnUrl) - Commencent à l'index 1
-        if (
-          product.additionalImageCdnUrl &&
-          Array.isArray(product.additionalImageCdnUrl)
-        ) {
-          product.additionalImageCdnUrl.forEach((url: string, index: number) => {
-            imageUrls.push({
-              url: url,
-              normalizedUrl: normalizeWhatsAppUrl(url),
-              type: 'additional',
-              index: index + 1,
-            });
-          });
-        }
+        const productId = product.id;
+        const imageUrls = buildProductImageUrls(product);
 
         // Télécharger et envoyer chaque image au backend
         const uploadedImages = [];
@@ -177,12 +315,10 @@
             if (existingImage) {
               // L'image existe déjà, on skip l'upload
               console.log(
-                `⏭️ Image ${imageInfo.index} du produit ${product.id} déjà uploadée (skip)`,
+                `⏭️ Image ${imageInfo.index} du produit ${productId} déjà uploadée (skip)`,
               );
               console.log(`   URL Minio existante: ${existingImage.url}`);
-              console.log(
-                `   URL normalisée: ${existingImage.normalized_url}`,
-              );
+              console.log(`   URL normalisée: ${existingImage.normalized_url}`);
 
               uploadedImages.push({
                 index: imageInfo.index,
@@ -190,6 +326,7 @@
                 url: existingImage.url, // URL Minio existante
                 originalUrl: imageInfo.url,
                 normalizedUrl: imageInfo.normalizedUrl,
+                whatsappImageHash: imageInfo.whatsappImageHash,
               });
               skippedImages++;
               continue;
@@ -197,7 +334,7 @@
 
             // Télécharger l'image dans le navigateur
             console.log(
-              `📥 Téléchargement image ${imageInfo.index} du produit ${product.id}`,
+              `📥 Téléchargement image ${imageInfo.index} du produit ${productId}`,
             );
             console.log(`   URL originale: ${imageInfo.url}`);
             console.log(`   URL normalisée: ${imageInfo.normalizedUrl}`);
@@ -214,7 +351,7 @@
 
             if (!response.ok) {
               console.error(
-                `❌ Erreur HTTP ${response.status} pour ${product.id} image ${imageInfo.index}`,
+                `❌ Erreur HTTP ${response.status} pour ${productId} image ${imageInfo.index}`,
               );
               console.error(`   URL: ${imageInfo.url}`);
               continue;
@@ -224,7 +361,7 @@
 
             if (blob.size === 0) {
               console.error(
-                `❌ Blob vide pour ${product.id} image ${imageInfo.index}`,
+                `❌ Blob vide pour ${productId} image ${imageInfo.index}`,
               );
               continue;
             }
@@ -241,7 +378,7 @@
             const uniqueId = generateUniqueId(imageInfo.normalizedUrl);
 
             // Déterminer l'ID de collection (peut être null)
-            const collectionInfo = productToCollectionMap.get(product.id);
+            const collectionInfo = productToCollectionMap.get(productId);
             const collectionId = collectionInfo
               ? collectionInfo.id
               : 'uncategorized';
@@ -259,8 +396,8 @@
                 },
                 body: JSON.stringify({
                   image: base64Data,
-                  filename: `${product.id}-${imageInfo.index}-${uniqueId}.jpg`,
-                  productId: product.id,
+                  filename: `${productId}-${imageInfo.index}-${uniqueId}.jpg`,
+                  productId: productId,
                   collectionId: collectionId,
                   imageIndex: imageInfo.index.toString(),
                   imageType: imageInfo.type,
@@ -280,51 +417,55 @@
                 url: minioUrl, // URL Minio retournée par le backend
                 originalUrl: imageInfo.url,
                 normalizedUrl: imageInfo.normalizedUrl,
+                whatsappImageHash: imageInfo.whatsappImageHash,
               });
               totalImages++;
               console.log(
-                `✅ Image ${imageInfo.index} du produit ${product.id} uploadée`,
+                `✅ Image ${imageInfo.index} du produit ${productId} uploadée`,
               );
               console.log(`   URL WhatsApp: ${imageInfo.url}`);
               console.log(`   URL Minio: ${minioUrl}`);
             } else {
               const errorText = await uploadResponse.text();
               console.error(
-                `❌ Erreur upload image ${imageInfo.index} du produit ${product.id}`,
+                `❌ Erreur upload image ${imageInfo.index} du produit ${productId}`,
               );
               console.error(`   Status: ${uploadResponse.status}`);
               console.error(`   Erreur: ${errorText}`);
             }
           } catch (imgError: any) {
             console.error(
-              `❌ Erreur traitement image ${imageInfo.index} du produit ${product.id}:`,
+              `❌ Erreur traitement image ${imageInfo.index} du produit ${productId}:`,
               imgError.message,
             );
           }
         }
 
         // Ajouter le produit avec ses images uploadées et convertir le prix
+        const priceAmount1000 = toPriceAmount1000(product);
         const processedProduct = {
-          id: product.id,
+          id: productId,
           name: product.name,
           description: product.description,
-          price: product.priceAmount1000 ? product.priceAmount1000 / 1000 : null,
+          price: priceAmount1000 !== null ? priceAmount1000 / 1000 : null,
           currency: product.currency,
           availability: product.availability,
-          retailer_id: product.retailerId,
-          max_available: product.maxAvailable,
-          is_hidden: product.isHidden || false,
-          is_sanctioned: product.isSanctioned || false,
+          retailer_id: product.retailerId || product.retailer_id || null,
+          max_available: product.maxAvailable ?? product.max_available ?? null,
+          is_hidden: !!(product.isHidden || product.is_hidden),
+          is_sanctioned: !!(product.isSanctioned || product.is_sanctioned),
           checkmark: product.checkmark || false,
           url: product.url || null,
-          whatsapp_product_can_appeal: product.canAppeal || false,
-          image_hashes_for_whatsapp: [product.imageHash, ...(product.additionalImageHashes || [])],
-          videos: product.videos || [],
+          whatsapp_product_can_appeal: !!(
+            product.canAppeal || product.whatsapp_product_can_appeal
+          ),
+          image_hashes_for_whatsapp: toImageHashes(product),
+          videos: Array.isArray(product.videos) ? product.videos : [],
           uploadedImages,
         };
 
         // Déterminer si le produit appartient à une collection
-        const collectionInfo = productToCollectionMap.get(product.id);
+        const collectionInfo = productToCollectionMap.get(productId);
         if (collectionInfo) {
           // Produit dans une collection
           // Trouver ou créer la collection dans processedCollections
@@ -346,7 +487,7 @@
         }
       } catch (productError: any) {
         console.error(
-          `❌ Erreur traitement produit ${productId}:`,
+          `❌ Erreur traitement produit ${product?.id || 'unknown'}:`,
           productError.message,
         );
         // Skip le produit en cas d'erreur
@@ -439,31 +580,35 @@
         '✅ Catalogue sauvegardé en base de données:',
         saveResult.stats,
       );
+      const totalProductsCount =
+        processedCollections.reduce(
+          (acc, col) => acc + (col.products?.length || 0),
+          0,
+        ) + processedUncategorizedProducts.length;
 
       return {
         success: true,
         collections: processedCollections,
         stats: {
           collectionsCount: processedCollections.length,
-          productsCount: processedCollections.reduce(
-            (acc, col) => acc + (col.products?.length || 0),
-            0,
-          ),
+          productsCount: totalProductsCount,
           imagesCount: totalImages,
         },
         dbStats: saveResult.stats,
       };
     } else {
       console.error('❌ Erreur lors de la sauvegarde du catalogue en BD');
+      const totalProductsCount =
+        processedCollections.reduce(
+          (acc, col) => acc + (col.products?.length || 0),
+          0,
+        ) + processedUncategorizedProducts.length;
       return {
         success: true, // Les images sont uploadées même si la sauvegarde en BD échoue
         collections: processedCollections,
         stats: {
           collectionsCount: processedCollections.length,
-          productsCount: processedCollections.reduce(
-            (acc, col) => acc + (col.products?.length || 0),
-            0,
-          ),
+          productsCount: totalProductsCount,
           imagesCount: totalImages,
         },
         warning: 'Catalog data not saved to database',

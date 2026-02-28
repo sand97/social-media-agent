@@ -1,59 +1,107 @@
-import {
-  ShopOutlined,
-  SyncOutlined,
-  LeftOutlined,
-  RightOutlined,
-  EyeInvisibleOutlined,
-} from '@ant-design/icons'
+import { ShopOutlined, SyncOutlined } from '@ant-design/icons'
 import { DashboardHeader } from '@app/components/layout'
 import {
   catalogApi,
   type CatalogData,
   type Product,
 } from '@app/lib/api/catalog'
-import { Typography, Empty, Button, message, Spin, Tooltip } from 'antd'
-import useEmblaCarousel from 'embla-carousel-react'
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { Alert, Button, Empty, Progress, message, Spin, Typography } from 'antd'
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react'
 
-const { Text, Paragraph } = Typography
+const { Text } = Typography
 
-function HiddenProductOverlay() {
+const LazyCatalogProductCard = lazy(
+  () => import('@app/components/catalog/CatalogProductCard')
+)
+const INDEXING_ALERT_DISMISSED_KEY = 'catalog-indexing-alert-dismissed'
+
+function ProductCardSkeleton() {
   return (
-    <div className='absolute text-white inset-0 bg-black/50 rounded-t-lg flex items-center justify-center'>
-      <Tooltip title='Produit masqué dans le catalogue'>
-        <EyeInvisibleOutlined style={{ fontSize: '32px' }} />
-      </Tooltip>
+    <div className='bg-white rounded-lg overflow-hidden shadow-card flex flex-col h-full animate-pulse'>
+      <div className='h-48 bg-gray-200 rounded-t-lg' />
+      <div className='p-4 flex flex-col gap-3 flex-1'>
+        <div className='h-4 bg-gray-200 rounded w-4/5' />
+        <div className='h-3 bg-gray-100 rounded w-2/5' />
+        <div className='h-3 bg-gray-100 rounded w-full' />
+        <div className='h-3 bg-gray-100 rounded w-4/5' />
+        <div className='mt-auto h-4 bg-gray-200 rounded w-1/3' />
+      </div>
     </div>
   )
 }
 
-function formatCatalogPrice(
-  rawPrice?: number | null,
-  rawCurrency?: string | null
-) {
-  if (rawPrice === null || rawPrice === undefined) return null
-  if (!rawCurrency) return null
+function ViewportLazyRender({
+  children,
+  placeholder,
+}: {
+  children: ReactNode
+  placeholder?: ReactNode
+}) {
+  const [isVisible, setIsVisible] = useState(false)
+  const containerId = useId()
 
-  const currencyLabel = rawCurrency.trim()
-  if (!currencyLabel) return null
+  useEffect(() => {
+    if (isVisible) return
 
-  const numericPrice = Number(rawPrice)
-  if (!Number.isFinite(numericPrice)) return null
+    const node = document.getElementById(containerId)
+    if (!node) return
 
-  const currencyUpper = currencyLabel.toUpperCase()
-  const currencyForIntl = currencyUpper === 'FCFA' ? 'XAF' : currencyUpper
+    if (typeof window === 'undefined') return
+    if (typeof window.IntersectionObserver === 'undefined') {
+      setIsVisible(true)
+      return
+    }
 
-  try {
-    return new Intl.NumberFormat('fr-FR', {
-      style: 'currency',
-      currency: currencyForIntl,
-    }).format(numericPrice)
-  } catch {
-    const formatted = new Intl.NumberFormat('fr-FR', {
-      maximumFractionDigits: 2,
-    }).format(numericPrice)
-    return `${formatted} ${currencyUpper}`
-  }
+    const observer = new window.IntersectionObserver(
+      entries => {
+        const hasVisibleEntry = entries.some(
+          entry => entry.isIntersecting || entry.intersectionRatio > 0
+        )
+
+        if (hasVisibleEntry) {
+          setIsVisible(true)
+          observer.disconnect()
+        }
+      },
+      {
+        rootMargin: '300px 0px',
+        threshold: 0.01,
+      }
+    )
+
+    observer.observe(node)
+
+    return () => {
+      observer.disconnect()
+    }
+  }, [containerId, isVisible])
+
+  return (
+    <div id={containerId} className='h-full'>
+      {isVisible ? children : placeholder || <ProductCardSkeleton />}
+    </div>
+  )
+}
+
+function LazyProductCard({ product }: { product: Product }) {
+  const fallback = <ProductCardSkeleton />
+
+  return (
+    <ViewportLazyRender placeholder={fallback}>
+      <Suspense fallback={fallback}>
+        <LazyCatalogProductCard product={product} />
+      </Suspense>
+    </ViewportLazyRender>
+  )
 }
 
 export function meta() {
@@ -66,165 +114,50 @@ export function meta() {
   ]
 }
 
-function ImageCarousel({
-  images,
-  isHidden,
-}: {
-  images: Array<{ url: string }>
-  isHidden?: boolean
-}) {
-  const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true })
-  const [hovering, setHovering] = useState(false)
-
-  const scrollPrev = useCallback(() => {
-    if (emblaApi) emblaApi.scrollPrev()
-  }, [emblaApi])
-
-  const scrollNext = useCallback(() => {
-    if (emblaApi) emblaApi.scrollNext()
-  }, [emblaApi])
-
-  if (!images || images.length === 0) {
-    return (
-      <div className='w-full h-48 bg-gray-200 rounded-t-lg flex items-center justify-center relative'>
-        <ShopOutlined className='text-5xl text-gray-400' />
-        {isHidden && <HiddenProductOverlay />}
-      </div>
-    )
-  }
-
-  if (images.length === 1) {
-    return (
-      <div className='relative'>
-        <img
-          src={images[0].url}
-          alt='Product'
-          className='w-full h-48 object-cover rounded-t-lg'
-        />
-        {isHidden && <HiddenProductOverlay />}
-      </div>
-    )
-  }
-
-  return (
-    <div
-      className='relative'
-      onMouseEnter={() => setHovering(true)}
-      onMouseLeave={() => setHovering(false)}
-    >
-      <div className='overflow-hidden rounded-t-lg' ref={emblaRef}>
-        <div className='flex'>
-          {images.map((image, index) => (
-            <div key={index} className='flex-[0_0_100%] min-w-0'>
-              <img
-                src={image.url}
-                alt={`Product ${index + 1}`}
-                className='w-full h-48 object-cover'
-              />
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {isHidden && <HiddenProductOverlay />}
-
-      {hovering && images.length > 1 && (
-        <>
-          <Button
-            onClick={scrollPrev}
-            className='!absolute left-2 top-1/2 !-translate-y-1/2 shadow-lg !z-10'
-            variant='outlined'
-            icon={<LeftOutlined />}
-            shape='circle'
-          />
-          <Button
-            onClick={scrollNext}
-            className='!absolute right-2 top-1/2 !-translate-y-1/2 shadow-lg !z-10'
-            variant='outlined'
-            icon={<RightOutlined />}
-            shape='circle'
-          />
-        </>
-      )}
-    </div>
-  )
-}
-
-function ProductCard({ product }: { product: Product }) {
-  const price = formatCatalogPrice(product.price, product.currency)
-
-  return (
-    <div className='bg-white rounded-lg  overflow-hidden shadow-card flex flex-col h-full'>
-      <ImageCarousel images={product.images} isHidden={product.is_hidden} />
-
-      <div className='p-4 flex flex-col flex-1'>
-        <Text strong className='block mb-2 text-base'>
-          {product.name}
-        </Text>
-
-        {product.retailer_id && (
-          <Text type='secondary' className='block mb-2 text-sm'>
-            #{product.retailer_id}
-          </Text>
-        )}
-
-        {product.description && (
-          <Paragraph
-            type='secondary'
-            ellipsis={{ rows: 2 }}
-            className='mb-3 text-sm flex-1'
-          >
-            {product.description}
-          </Paragraph>
-        )}
-
-        {(price || product.category) && (
-          <div className='flex items-center justify-between mt-auto gap-2'>
-            {product.category && (
-              <Text
-                type='secondary'
-                className='text-xs pr-4 truncate min-w-0 flex-1'
-              >
-                {product.category}
-              </Text>
-            )}
-            {price && (
-              <Text strong className='text-base shrink-0'>
-                {price}
-              </Text>
-            )}
-          </div>
-        )}
-      </div>
-    </div>
-  )
-}
-
 export default function CatalogPage() {
   const [isSyncing, setIsSyncing] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
+  const [isIndexingPolling, setIsIndexingPolling] = useState(false)
+  const [hasPolledAfterSync, setHasPolledAfterSync] = useState(false)
+  const [isIndexingAlertDismissed, setIsIndexingAlertDismissed] =
+    useState(false)
   const [catalogData, setCatalogData] = useState<CatalogData | null>(null)
 
-  // Load catalog data
-  const loadCatalog = async () => {
-    try {
-      setIsLoading(true)
-      const data = await catalogApi.getCatalog()
-      setCatalogData(data)
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : 'Erreur inconnue'
-      message.error({
-        content: errorMessage || 'Erreur lors du chargement du catalogue',
-        duration: 5,
-      })
-    } finally {
-      setIsLoading(false)
-    }
-  }
+  const loadCatalog = useCallback(
+    async ({ withLoader = false, showError = true } = {}) => {
+      try {
+        if (withLoader) {
+          setIsLoading(true)
+        }
+        const data = await catalogApi.getCatalog()
+        setCatalogData(data)
+      } catch (error) {
+        if (!showError) {
+          return
+        }
+        const errorMessage =
+          error instanceof Error ? error.message : 'Erreur inconnue'
+        message.error({
+          content: errorMessage || 'Erreur lors du chargement du catalogue',
+          duration: 5,
+        })
+      } finally {
+        if (withLoader) {
+          setIsLoading(false)
+        }
+      }
+    },
+    []
+  )
 
   useEffect(() => {
-    loadCatalog()
+    void loadCatalog({ withLoader: true })
+  }, [loadCatalog])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const dismissed = window.localStorage.getItem(INDEXING_ALERT_DISMISSED_KEY)
+    setIsIndexingAlertDismissed(dismissed === '1')
   }, [])
 
   const handleForceSync = async () => {
@@ -240,10 +173,14 @@ export default function CatalogPage() {
           key: 'sync',
           duration: 3,
         })
-        // Recharger le catalogue après un délai
-        setTimeout(() => {
-          loadCatalog()
-        }, 2000)
+
+        if (typeof window !== 'undefined') {
+          window.localStorage.removeItem(INDEXING_ALERT_DISMISSED_KEY)
+        }
+        setIsIndexingAlertDismissed(false)
+        setHasPolledAfterSync(false)
+        setIsIndexingPolling(true)
+        void loadCatalog({ showError: false })
       } else {
         message.error({
           content: result.error || 'Échec de la synchronisation',
@@ -264,7 +201,59 @@ export default function CatalogPage() {
     }
   }
 
-  // Calculate statistics
+  const indexingStats = useMemo(() => {
+    if (!catalogData) {
+      return {
+        indexedProducts: 0,
+        totalProducts: 0,
+        progressPercent: 0,
+      }
+    }
+
+    const allProducts = [
+      ...catalogData.collections.flatMap(collection => collection.products),
+      ...catalogData.uncategorizedProducts,
+    ]
+
+    const totalProducts = allProducts.length
+    const indexedProducts = allProducts.filter(
+      product => product.needsTextIndexing === false
+    ).length
+    const progressPercent =
+      totalProducts === 0
+        ? 100
+        : Math.min(100, Math.round((indexedProducts / totalProducts) * 100))
+
+    return {
+      indexedProducts,
+      totalProducts,
+      progressPercent,
+    }
+  }, [catalogData])
+
+  useEffect(() => {
+    if (!isIndexingPolling) return
+
+    if (hasPolledAfterSync && indexingStats.progressPercent >= 100) {
+      setIsIndexingPolling(false)
+      return
+    }
+
+    const intervalId = window.setInterval(() => {
+      setHasPolledAfterSync(true)
+      void loadCatalog({ showError: false })
+    }, 60_000)
+
+    return () => {
+      window.clearInterval(intervalId)
+    }
+  }, [
+    hasPolledAfterSync,
+    isIndexingPolling,
+    indexingStats.progressPercent,
+    loadCatalog,
+  ])
+
   const statistics = useMemo(() => {
     if (!catalogData) return { collections: 0, products: 0 }
 
@@ -291,6 +280,13 @@ export default function CatalogPage() {
     )
   }, [catalogData])
 
+  const isIndexingCompleted = indexingStats.progressPercent >= 100
+  const shouldShowIndexingAlert =
+    hasContent && !(isIndexingCompleted && isIndexingAlertDismissed)
+  const indexingAlertDescription = isIndexingCompleted
+    ? "Lorsqu'un de vos client nous enverra une image ou un terme concernant l'un de vos produits nos seront capable de l'identifier automatiquement"
+    : "Nos IA analyse vos images pour comprendre ce qu'elle contienne, et pouvoir identifier un produit quand un utilisateur envoie une de vos images."
+
   if (isLoading) {
     return (
       <div className='flex items-center justify-center w-full h-full'>
@@ -305,8 +301,8 @@ export default function CatalogPage() {
         title={headerTitle}
         right={
           <Button
-            className={'!h-9 !py-0'}
-            variant={'outlined'}
+            className='!h-9 !py-0'
+            variant='outlined'
             onClick={handleForceSync}
             loading={isSyncing}
             icon={<SyncOutlined spin={isSyncing} />}
@@ -316,14 +312,45 @@ export default function CatalogPage() {
         }
       />
       <div className='flex flex-col gap-6 w-full py-6 px-6'>
+        {shouldShowIndexingAlert && (
+          <Alert
+            type='info'
+            showIcon={false}
+            className={'bg-white! border-none! shadow-card'}
+            closable={isIndexingCompleted}
+            onClose={() => {
+              if (!isIndexingCompleted) return
+              setIsIndexingAlertDismissed(true)
+              if (typeof window !== 'undefined') {
+                window.localStorage.setItem(INDEXING_ALERT_DISMISSED_KEY, '1')
+              }
+            }}
+            message={
+              <div className='flex items-center gap-3'>
+                <Progress
+                  type='circle'
+                  percent={indexingStats.progressPercent}
+                  size={46}
+                />
+                <div className='flex flex-col'>
+                  <Text strong>Indexations du contenu</Text>
+                  <Text type='secondary' className='text-xs'>
+                    {indexingStats.indexedProducts}/
+                    {indexingStats.totalProducts} produits indexés
+                  </Text>
+                </div>
+              </div>
+            }
+            description={indexingAlertDescription}
+          />
+        )}
+
         {hasContent ? (
           <>
-            {/* Collections and their products */}
             {catalogData?.collections
               .filter(collection => collection.products.length > 0)
-              .map((collection, index) => (
-                <div key={index} className='flex flex-col gap-4'>
-                  {/* Collection Header */}
+              .map(collection => (
+                <div key={collection.id} className='flex flex-col gap-4'>
                   <div>
                     <Text className='text-lg block'>{collection.name}</Text>
                     <Text type='secondary' className='text-sm'>
@@ -332,19 +359,19 @@ export default function CatalogPage() {
                     </Text>
                   </div>
 
-                  {/* Products Grid */}
                   <div className='grid grid-cols-1 md:grid-cols-3 xl:grid-cols-4 gap-4'>
-                    {collection.products.map((product, productIndex) => (
-                      <ProductCard key={productIndex} product={product} />
+                    {collection.products.map(product => (
+                      <LazyProductCard
+                        key={`${collection.id}-${product.id}`}
+                        product={product}
+                      />
                     ))}
                   </div>
                 </div>
               ))}
 
-            {/* Uncategorized Products */}
             {catalogData && catalogData.uncategorizedProducts.length > 0 && (
               <div className='flex flex-col gap-4'>
-                {/* Uncategorized Header */}
                 <div>
                   <Text className='text-lg block'>
                     Produits non catégorisés
@@ -355,13 +382,13 @@ export default function CatalogPage() {
                   </Text>
                 </div>
 
-                {/* Products Grid */}
                 <div className='grid grid-cols-1 md:grid-cols-3 xl:grid-cols-4 gap-4'>
-                  {catalogData.uncategorizedProducts.map(
-                    (product, productIndex) => (
-                      <ProductCard key={productIndex} product={product} />
-                    )
-                  )}
+                  {catalogData.uncategorizedProducts.map(product => (
+                    <LazyProductCard
+                      key={`uncategorized-${product.id}`}
+                      product={product}
+                    />
+                  ))}
                 </div>
               </div>
             )}

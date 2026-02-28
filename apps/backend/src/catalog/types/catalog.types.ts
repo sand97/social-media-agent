@@ -20,6 +20,7 @@ export interface UploadedImage {
   url: string; // URL MinIO
   originalUrl?: string; // URL WhatsApp originale complète
   normalizedUrl?: string; // URL normalisée (sans query params) pour comparaison
+  whatsappImageHash?: string | null; // Hash WhatsApp de l'image si disponible
 }
 
 export interface CatalogProduct {

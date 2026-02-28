@@ -27,7 +27,52 @@ export class CatalogService {
    */
   private cleanClientId(clientId: string): string {
     if (!clientId) return 'unknown';
-    return clientId.replace(/@[a-z.]+$/i, '');
+    const withoutWhatsappSuffix = clientId.replace(/@[a-z.]+$/i, '');
+    const sanitized = withoutWhatsappSuffix.replace(/[^a-zA-Z0-9]/g, '');
+    return sanitized || 'unknown';
+  }
+
+  /**
+   * Résout le préfixe de stockage public à partir du clientId WhatsApp.
+   * Le préfixe doit être l'ID unique de l'agent (pas le numéro de téléphone).
+   */
+  private async resolveAgentStorageContext(clientId: string): Promise<{
+    cleanedPhoneNumber: string;
+    userId: string;
+    agentId: string;
+  }> {
+    const cleanedPhoneNumber = '+'
+      .concat(this.cleanClientId(clientId))
+      .replace('++', '+');
+
+    const user = await this.prisma.user.findUnique({
+      where: { phoneNumber: cleanedPhoneNumber },
+      select: {
+        id: true,
+        whatsappAgent: {
+          select: {
+            id: true,
+          },
+        },
+      },
+    });
+
+    if (!user) {
+      throw new Error(`User not found for phone number: ${cleanedPhoneNumber}`);
+    }
+
+    const agentId = user.whatsappAgent?.id;
+    if (!agentId) {
+      throw new Error(
+        `WhatsApp agent not found for phone number: ${cleanedPhoneNumber}`,
+      );
+    }
+
+    return {
+      cleanedPhoneNumber,
+      userId: user.id,
+      agentId,
+    };
   }
 
   /**
@@ -47,29 +92,16 @@ export class CatalogService {
     );
 
     try {
-      const cleanedClientId = '+'
-        .concat(this.cleanClientId(clientId))
-        .replace('++', '+');
-
-      // Récupérer l'userId depuis la base de données
-      const user = await this.prisma.user.findUnique({
-        where: { phoneNumber: cleanedClientId },
-        select: { id: true },
-      });
-
-      if (!user) {
-        throw new Error(`User not found for phone number: ${cleanedClientId}`);
-      }
+      const { agentId, userId } =
+        await this.resolveAgentStorageContext(clientId);
 
       // Déterminer l'extension à partir du nom de fichier original
       const extension = originalFilename
         ? originalFilename.split('.').pop() || 'jpg'
         : 'jpg';
 
-      const cleanedClientIdForPath = this.cleanClientId(clientId);
-
-      // Construire le chemin dans Minio: {clientId}/catalog/images/{collectionId}/{userId}-{productId}-{index}.{ext}
-      const objectKey = `${cleanedClientIdForPath}/catalog/images/${collectionId}/${user.id}-${productId}-${imageIndex}.${extension}`;
+      // Construire le chemin dans Minio: {agentId}/catalog/images/{collectionId}/{userId}-{productId}-{index}.{ext}
+      const objectKey = `${agentId}/catalog/images/${collectionId}/${userId}-${productId}-${imageIndex}.${extension}`;
       this.logger.debug(`[IMAGE-UPLOAD] Object key: ${objectKey}`);
 
       // Déterminer le content-type
@@ -131,15 +163,15 @@ export class CatalogService {
     this.logger.log(`[START] Uploading avatar for: ${clientId}`);
 
     try {
-      const cleanedClientId = this.cleanClientId(clientId);
+      const { agentId } = await this.resolveAgentStorageContext(clientId);
 
       // Déterminer l'extension
       const extension = originalFilename
         ? originalFilename.split('.').pop() || 'jpg'
         : 'jpg';
 
-      // Chemin: {clientId}/avatar.{ext}
-      const objectKey = `${cleanedClientId}/avatar.${extension}`;
+      // Chemin: {agentId}/avatar.{ext}
+      const objectKey = `${agentId}/avatar.${extension}`;
       this.logger.debug(`[AVATAR-UPLOAD] Object key: ${objectKey}`);
 
       // Déterminer le content-type
@@ -319,8 +351,8 @@ export class CatalogService {
       for (const image of images) {
         try {
           // Extraire l'objectKey de l'URL
-          // URL format: https://files-flemme.bedones.com/whatsapp-agent/237697020290/catalog/images/...
-          // On veut extraire: 237697020290/catalog/images/...
+          // URL format: https://files-flemme.bedones.com/whatsapp-agent/<agentId>/catalog/images/...
+          // On veut extraire: <agentId>/catalog/images/...
           const url = new URL(image.url);
           const pathParts = url.pathname.split('/');
           // Retirer le premier "/" et le bucket name
@@ -446,6 +478,321 @@ export class CatalogService {
         existingProducts.map((p) => [p.whatsapp_product_id, p]),
       );
 
+      // Récupérer toutes les images existantes pour faire un diff incrémental
+      this.logger.debug(`[CATALOG] Fetching existing product images...`);
+      const existingImages = await this.prisma.productImage.findMany({
+        where: {
+          product: {
+            user_id: user.id,
+          },
+        },
+      });
+      const imagesByProductId = new Map<string, typeof existingImages>();
+      for (const image of existingImages) {
+        const current = imagesByProductId.get(image.product_id);
+        if (current) {
+          current.push(image);
+        } else {
+          imagesByProductId.set(image.product_id, [image]);
+        }
+      }
+
+      const normalizeUploadedImages = (uploadedImages: any[] = []) =>
+        uploadedImages
+          .map((imageData) => ({
+            index: Number(imageData.index ?? 0),
+            type: imageData.type || 'main',
+            url: imageData.url,
+            originalUrl: imageData.originalUrl || null,
+            normalizedUrl: imageData.normalizedUrl || null,
+            whatsappImageHash: imageData.whatsappImageHash || null,
+          }))
+          .filter((imageData) => Boolean(imageData.url));
+
+      const getStoredImageIdentity = (image: {
+        whatsapp_image_hash?: string | null;
+        normalized_url?: string | null;
+        original_url?: string | null;
+        url: string;
+      }) =>
+        image.whatsapp_image_hash ||
+        image.normalized_url ||
+        image.original_url ||
+        image.url;
+
+      const getIncomingImageIdentity = (image: {
+        whatsappImageHash?: string | null;
+        normalizedUrl?: string | null;
+        originalUrl?: string | null;
+        url: string;
+      }) =>
+        image.whatsappImageHash ||
+        image.normalizedUrl ||
+        image.originalUrl ||
+        image.url;
+
+      const hasCoverChanged = (
+        currentImages: Array<{
+          whatsapp_image_hash?: string | null;
+          normalized_url?: string | null;
+          original_url?: string | null;
+          url: string;
+          image_index: number;
+        }>,
+        incomingImages: Array<{
+          whatsappImageHash?: string | null;
+          normalizedUrl?: string | null;
+          originalUrl?: string | null;
+          url: string;
+          index: number;
+        }>,
+      ) => {
+        const currentCover =
+          currentImages.find((image) => image.image_index === 0) ||
+          currentImages[0] ||
+          null;
+        const incomingCover =
+          incomingImages.find((image) => image.index === 0) ||
+          incomingImages[0] ||
+          null;
+
+        const currentKey = currentCover
+          ? getStoredImageIdentity(currentCover)
+          : null;
+        const incomingKey = incomingCover
+          ? getIncomingImageIdentity(incomingCover)
+          : null;
+
+        return currentKey !== incomingKey;
+      };
+
+      const syncProductImages = async (
+        productId: string,
+        incomingImages: Array<{
+          index: number;
+          type: string;
+          url: string;
+          originalUrl?: string | null;
+          normalizedUrl?: string | null;
+          whatsappImageHash?: string | null;
+        }>,
+      ) => {
+        const currentImages = imagesByProductId.get(productId) || [];
+        const coverChanged = hasCoverChanged(currentImages, incomingImages);
+        const remainingCurrent = new Map(
+          currentImages.map((image) => [image.id, image]),
+        );
+        let createdCount = 0;
+
+        for (const incomingImage of incomingImages) {
+          const matchedImage =
+            (incomingImage.whatsappImageHash
+              ? currentImages.find(
+                  (image) =>
+                    remainingCurrent.has(image.id) &&
+                    image.whatsapp_image_hash ===
+                      incomingImage.whatsappImageHash,
+                )
+              : undefined) ||
+            (incomingImage.normalizedUrl
+              ? currentImages.find(
+                  (image) =>
+                    remainingCurrent.has(image.id) &&
+                    image.normalized_url === incomingImage.normalizedUrl,
+                )
+              : undefined) ||
+            currentImages.find(
+              (image) =>
+                remainingCurrent.has(image.id) &&
+                image.url === incomingImage.url,
+            );
+
+          if (matchedImage) {
+            remainingCurrent.delete(matchedImage.id);
+
+            const contentChanged =
+              !!incomingImage.whatsappImageHash &&
+              !!matchedImage.whatsapp_image_hash &&
+              incomingImage.whatsappImageHash !==
+                matchedImage.whatsapp_image_hash;
+            const nextNeedsImageIndexing =
+              matchedImage.needsImageIndexing || contentChanged;
+            const shouldUpdateImage =
+              matchedImage.url !== incomingImage.url ||
+              (matchedImage.normalized_url || null) !==
+                (incomingImage.normalizedUrl || null) ||
+              matchedImage.image_type !== incomingImage.type ||
+              matchedImage.image_index !== incomingImage.index ||
+              (matchedImage.whatsapp_image_hash || null) !==
+                (incomingImage.whatsappImageHash || null) ||
+              matchedImage.needsImageIndexing !== nextNeedsImageIndexing;
+
+            if (shouldUpdateImage) {
+              await this.prisma.productImage.update({
+                where: { id: matchedImage.id },
+                data: {
+                  url: incomingImage.url,
+                  original_url: incomingImage.originalUrl || null,
+                  normalized_url: incomingImage.normalizedUrl || null,
+                  image_type: incomingImage.type,
+                  image_index: incomingImage.index,
+                  whatsapp_image_hash: incomingImage.whatsappImageHash || null,
+                  needsImageIndexing: nextNeedsImageIndexing,
+                },
+              });
+            }
+
+            continue;
+          }
+
+          await this.prisma.productImage.create({
+            data: {
+              product_id: productId,
+              url: incomingImage.url,
+              original_url: incomingImage.originalUrl || null,
+              normalized_url: incomingImage.normalizedUrl || null,
+              image_type: incomingImage.type,
+              image_index: incomingImage.index,
+              whatsapp_image_hash: incomingImage.whatsappImageHash || null,
+              needsImageIndexing: true,
+            },
+          });
+          createdCount++;
+        }
+
+        if (remainingCurrent.size > 0) {
+          await this.prisma.productImage.deleteMany({
+            where: {
+              id: {
+                in: Array.from(remainingCurrent.keys()),
+              },
+            },
+          });
+        }
+
+        const refreshedImages = await this.prisma.productImage.findMany({
+          where: { product_id: productId },
+        });
+        imagesByProductId.set(productId, refreshedImages);
+
+        return { createdCount, coverChanged };
+      };
+
+      const processProduct = async (
+        productData: any,
+        targetCollectionId: string | null,
+      ) => {
+        const whatsappProductId = productData.id;
+        let product = productsMap.get(whatsappProductId);
+        const normalizedPrice = normalizeWhatsAppPrice(productData.price);
+
+        const productPayload: Prisma.ProductUpdateInput = {
+          name: productData.name || 'Sans nom',
+          description: productData.description || null,
+          price: normalizedPrice,
+          currency: productData.currency || null,
+          retailer_id: productData.retailer_id || null,
+          availability: productData.availability || null,
+          max_available: productData.max_available || null,
+          is_hidden: productData.is_hidden || false,
+          is_sanctioned: productData.is_sanctioned || false,
+          checkmark: productData.checkmark || false,
+          url: productData.url || null,
+          capability_to_review_status:
+            (productData.capability_to_review_status as unknown as Prisma.InputJsonValue) ||
+            [],
+          whatsapp_product_can_appeal:
+            productData.whatsapp_product_can_appeal || false,
+          image_hashes_for_whatsapp:
+            productData.image_hashes_for_whatsapp || [],
+          videos:
+            (productData.videos as unknown as Prisma.InputJsonValue) ||
+            undefined,
+        };
+
+        const incomingImages = normalizeUploadedImages(
+          productData.uploadedImages,
+        );
+        const currentImages = product
+          ? imagesByProductId.get(product.id) || []
+          : [];
+        const coverChanged = product
+          ? hasCoverChanged(currentImages, incomingImages)
+          : incomingImages.length > 0;
+        const productTextChanged = product
+          ? product.name !== productPayload.name ||
+            (product.description || null) !==
+              (productPayload.description || null) ||
+            (product.price || null) !== (productPayload.price || null) ||
+            (product.retailer_id || null) !==
+              (productPayload.retailer_id || null) ||
+            (product.category || null) !== (productPayload.category || null)
+          : true;
+
+        const shouldNeedTextIndexing =
+          !product ||
+          product.needsTextIndexing ||
+          productTextChanged ||
+          coverChanged;
+
+        if (product) {
+          product = await this.prisma.product.update({
+            where: { id: product.id },
+            data: {
+              ...productPayload,
+              needsTextIndexing: shouldNeedTextIndexing,
+              coverImageDescription: coverChanged ? null : undefined,
+              collection: targetCollectionId
+                ? { connect: { id: targetCollectionId } }
+                : { disconnect: true },
+            },
+          });
+          productsUpdated++;
+        } else {
+          const createData: Prisma.ProductUncheckedCreateInput = {
+            user_id: user.id,
+            whatsapp_product_id: whatsappProductId,
+            collection_id: targetCollectionId,
+            name: productData.name || 'Sans nom',
+            description: productData.description || null,
+            coverImageDescription: null,
+            needsTextIndexing: true,
+            price: normalizedPrice,
+            currency: productData.currency || null,
+            retailer_id: productData.retailer_id || null,
+            availability: productData.availability || null,
+            max_available: productData.max_available || null,
+            is_hidden: productData.is_hidden || false,
+            is_sanctioned: productData.is_sanctioned || false,
+            checkmark: productData.checkmark || false,
+            url: productData.url || null,
+            capability_to_review_status:
+              (productData.capability_to_review_status as unknown as Prisma.InputJsonValue) ||
+              [],
+            whatsapp_product_can_appeal:
+              productData.whatsapp_product_can_appeal || false,
+            image_hashes_for_whatsapp:
+              productData.image_hashes_for_whatsapp || [],
+            videos:
+              (productData.videos as unknown as Prisma.InputJsonValue) ||
+              undefined,
+          };
+
+          product = await this.prisma.product.create({
+            data: createData,
+          });
+          productsCreated++;
+        }
+
+        productsMap.set(whatsappProductId, product);
+
+        const imageSyncResult = await syncProductImages(
+          product.id,
+          incomingImages,
+        );
+        imagesCreated += imageSyncResult.createdCount;
+      };
+
       // Parcourir chaque collection
       for (const collectionData of collections) {
         const whatsappCollectionId = collectionData.id;
@@ -495,123 +842,7 @@ export class CatalogService {
         );
 
         for (const productData of collectionData.products || []) {
-          const whatsappProductId = productData.id;
-          this.logger.debug(
-            `[CATALOG] Processing product: ${productData.name} (${whatsappProductId})`,
-          );
-
-          // Vérifier si le produit existe dans la Map
-          let product = productsMap.get(whatsappProductId);
-
-          // Préparer les données du produit (snake_case comme WhatsApp)
-          const normalizedPrice = normalizeWhatsAppPrice(productData.price);
-
-          const productPayload: Prisma.ProductUpdateInput = {
-            name: productData.name || 'Sans nom',
-            description: productData.description || null,
-            price: normalizedPrice,
-            currency: productData.currency || null,
-            retailer_id: productData.retailer_id || null,
-            availability: productData.availability || null,
-            max_available: productData.max_available || null,
-            is_hidden: productData.is_hidden || false,
-            is_sanctioned: productData.is_sanctioned || false,
-            checkmark: productData.checkmark || false,
-            url: productData.url || null,
-            capability_to_review_status:
-              (productData.capability_to_review_status as unknown as Prisma.InputJsonValue) ||
-              [],
-            whatsapp_product_can_appeal:
-              productData.whatsapp_product_can_appeal || false,
-            image_hashes_for_whatsapp:
-              productData.image_hashes_for_whatsapp || [],
-            videos:
-              (productData.videos as unknown as Prisma.InputJsonValue) ||
-              undefined,
-          };
-
-          // Créer ou mettre à jour le produit
-          if (product) {
-            // Mise à jour
-            this.logger.debug(
-              `[CATALOG] Updating existing product: ${product.id}`,
-            );
-            product = await this.prisma.product.update({
-              where: { id: product.id },
-              data: {
-                ...productPayload,
-                collection: collection
-                  ? {
-                      connect: { id: collection.id },
-                    }
-                  : undefined,
-              },
-            });
-            productsUpdated++;
-          } else {
-            // Création
-            this.logger.debug(
-              `[CATALOG] Creating new product: ${productData.name}`,
-            );
-            const createData: Prisma.ProductUncheckedCreateInput = {
-              user_id: user.id,
-              whatsapp_product_id: whatsappProductId,
-              collection_id: collection?.id,
-              name: productData.name || 'Sans nom',
-              description: productData.description || null,
-              price: normalizedPrice,
-              currency: productData.currency || null,
-              retailer_id: productData.retailer_id || null,
-              availability: productData.availability || null,
-              max_available: productData.max_available || null,
-              is_hidden: productData.is_hidden || false,
-              is_sanctioned: productData.is_sanctioned || false,
-              checkmark: productData.checkmark || false,
-              url: productData.url || null,
-              capability_to_review_status:
-                (productData.capability_to_review_status as unknown as Prisma.InputJsonValue) ||
-                [],
-              whatsapp_product_can_appeal:
-                productData.whatsapp_product_can_appeal || false,
-              image_hashes_for_whatsapp:
-                productData.image_hashes_for_whatsapp || [],
-              videos:
-                (productData.videos as unknown as Prisma.InputJsonValue) ||
-                undefined,
-            };
-
-            product = await this.prisma.product.create({
-              data: createData,
-            });
-            productsCreated++;
-          }
-
-          // Supprimer les anciennes images du produit
-          this.logger.debug(
-            `[CATALOG] Deleting old images for product: ${product.id}`,
-          );
-          await this.prisma.productImage.deleteMany({
-            where: { product_id: product.id },
-          });
-
-          // Créer les nouvelles images du produit en bulk
-          const uploadedImages = productData.uploadedImages || [];
-          this.logger.debug(
-            `[CATALOG] Creating ${uploadedImages.length} images for product: ${product.id}`,
-          );
-          if (uploadedImages.length > 0) {
-            await this.prisma.productImage.createMany({
-              data: uploadedImages.map((imageData) => ({
-                product_id: product.id,
-                url: imageData.url,
-                original_url: imageData.originalUrl || null,
-                normalized_url: imageData.normalizedUrl || null,
-                image_type: imageData.type || 'main',
-                image_index: imageData.index || 0,
-              })),
-            });
-            imagesCreated += uploadedImages.length;
-          }
+          await processProduct(productData, collection?.id || null);
         }
       }
 
@@ -621,121 +852,7 @@ export class CatalogService {
       );
 
       for (const productData of uncategorizedProducts) {
-        const whatsappProductId = productData.id;
-        this.logger.debug(
-          `[CATALOG] Processing uncategorized product: ${productData.name} (${whatsappProductId})`,
-        );
-
-        // Vérifier si le produit existe dans la Map
-        let product = productsMap.get(whatsappProductId);
-
-        // Préparer les données du produit
-        const normalizedPrice = normalizeWhatsAppPrice(productData.price);
-
-        const productPayload: Prisma.ProductUpdateInput = {
-          name: productData.name || 'Sans nom',
-          description: productData.description || null,
-          price: normalizedPrice,
-          currency: productData.currency || null,
-          retailer_id: productData.retailer_id || null,
-          availability: productData.availability || null,
-          max_available: productData.max_available || null,
-          is_hidden: productData.is_hidden || false,
-          is_sanctioned: productData.is_sanctioned || false,
-          checkmark: productData.checkmark || false,
-          url: productData.url || null,
-          capability_to_review_status:
-            (productData.capability_to_review_status as unknown as Prisma.InputJsonValue) ||
-            [],
-          whatsapp_product_can_appeal:
-            productData.whatsapp_product_can_appeal || false,
-          image_hashes_for_whatsapp:
-            productData.image_hashes_for_whatsapp || [],
-          videos:
-            (productData.videos as unknown as Prisma.InputJsonValue) ||
-            undefined,
-        };
-
-        // Créer ou mettre à jour le produit
-        if (product) {
-          // Mise à jour - retirer de la collection si nécessaire
-          this.logger.debug(
-            `[CATALOG] Updating existing uncategorized product: ${product.id}`,
-          );
-          product = await this.prisma.product.update({
-            where: { id: product.id },
-            data: {
-              ...productPayload,
-              collection: {
-                disconnect: true,
-              },
-            },
-          });
-          productsUpdated++;
-        } else {
-          // Création
-          this.logger.debug(
-            `[CATALOG] Creating new uncategorized product: ${productData.name}`,
-          );
-          const createData: Prisma.ProductUncheckedCreateInput = {
-            user_id: user.id,
-            whatsapp_product_id: whatsappProductId,
-            collection_id: null, // Pas de collection
-            name: productData.name || 'Sans nom',
-            description: productData.description || null,
-            price: normalizedPrice,
-            currency: productData.currency || null,
-            retailer_id: productData.retailer_id || null,
-            availability: productData.availability || null,
-            max_available: productData.max_available || null,
-            is_hidden: productData.is_hidden || false,
-            is_sanctioned: productData.is_sanctioned || false,
-            checkmark: productData.checkmark || false,
-            url: productData.url || null,
-            capability_to_review_status:
-              (productData.capability_to_review_status as unknown as Prisma.InputJsonValue) ||
-              [],
-            whatsapp_product_can_appeal:
-              productData.whatsapp_product_can_appeal || false,
-            image_hashes_for_whatsapp:
-              productData.image_hashes_for_whatsapp || [],
-            videos:
-              (productData.videos as unknown as Prisma.InputJsonValue) ||
-              undefined,
-          };
-
-          product = await this.prisma.product.create({
-            data: createData,
-          });
-          productsCreated++;
-        }
-
-        // Supprimer les anciennes images du produit
-        this.logger.debug(
-          `[CATALOG] Deleting old images for uncategorized product: ${product.id}`,
-        );
-        await this.prisma.productImage.deleteMany({
-          where: { product_id: product.id },
-        });
-
-        // Créer les nouvelles images du produit en bulk
-        const uploadedImages = productData.uploadedImages || [];
-        this.logger.debug(
-          `[CATALOG] Creating ${uploadedImages.length} images for uncategorized product: ${product.id}`,
-        );
-        if (uploadedImages.length > 0) {
-          await this.prisma.productImage.createMany({
-            data: uploadedImages.map((imageData) => ({
-              product_id: product.id,
-              url: imageData.url,
-              original_url: imageData.originalUrl || null,
-              normalized_url: imageData.normalizedUrl || null,
-              image_type: imageData.type || 'main',
-              image_index: imageData.index || 0,
-            })),
-          });
-          imagesCreated += uploadedImages.length;
-        }
+        await processProduct(productData, null);
       }
 
       this.logger.log(`✅ [END] Catalog saved successfully for ${clientId}:`);

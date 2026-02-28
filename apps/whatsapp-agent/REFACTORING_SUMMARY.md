@@ -19,7 +19,6 @@ src/page-scripts/
     │   ├── getCollections.ts
     │   ├── searchProducts.ts
     │   ├── getProductDetails.ts
-    │   └── getAllProductsForSync.ts
     ├── communication/        # Scripts pour la communication
     │   ├── sendProduct.ts
     │   ├── sendCollection.ts
@@ -31,7 +30,7 @@ src/page-scripts/
         └── getOlderMessages.ts
 ```
 
-**Total**: 11 scripts organisés en 4 catégories
+**Total**: 10 scripts organisés en 4 catégories
 
 ### 2. **Tools refactorisés**
 
@@ -86,7 +85,7 @@ Création de `TODO.md` avec documentation complète:
 ```bash
 ✔ Generated Prisma Client
 ✔ TypeScript compilation successful
-✔ 11 scripts compilés
+✔ 10 scripts compilés
 ✔ Aucune nouvelle erreur TypeScript
 ```
 

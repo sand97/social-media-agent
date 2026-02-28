@@ -311,8 +311,7 @@ model Product {
   name        String
   description String?
   coverImageDescription String?
-  indexDescriptionAt DateTime?
-  indexImageAt DateTime?
+  needsTextIndexing Boolean @default(true)
   price       Float?
   currency    String?
   category    String?
@@ -350,6 +349,7 @@ model Product {
   updated_at DateTime @updatedAt
 
   @@index([user_id])
+  @@index([user_id, needsTextIndexing])
   @@index([collection_id])
   @@index([whatsapp_product_id])
 }
@@ -363,13 +363,17 @@ model ProductImage {
   url            String // URL dans MinIO
   original_url   String? // URL originale WhatsApp complète (avec query params)
   normalized_url String? // URL normalisée (partie stable sans query params) pour comparaison
+  whatsapp_image_hash String? // Hash WhatsApp de l'image (plus stable que l'URL)
   image_type     String  @default("main") // "main" ou "additional"
   image_index    Int     @default(0) // Index de l'image
+  needsImageIndexing Boolean @default(true)
 
   // Dates
   created_at DateTime @default(now())
 
   @@index([product_id])
+  @@index([product_id, needsImageIndexing])
+  @@index([product_id, whatsapp_image_hash])
   @@index([image_type])
   @@index([normalized_url])
 }

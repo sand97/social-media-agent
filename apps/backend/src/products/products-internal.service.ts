@@ -1,3 +1,4 @@
+import { Prisma } from '@app/generated/client';
 import { Injectable } from '@nestjs/common';
 
 import { PrismaService } from '../prisma/prisma.service';
@@ -165,6 +166,8 @@ export class ProductsInternalService {
         id: image.id,
         url: image.url,
         imageIndex: image.image_index,
+        needsImageIndexing: image.needsImageIndexing,
+        whatsappImageHash: image.whatsapp_image_hash,
         createdAt: image.created_at,
       }));
 
@@ -187,10 +190,9 @@ export class ProductsInternalService {
         images,
         coverImageDescription: product.coverImageDescription,
         coverImageUrl: coverImage?.url || null,
-        coverImageCreatedAt: latestImageCreatedAt || coverImage?.created_at || null,
-        indexDescriptionAt: product.indexDescriptionAt,
-        indexImageAt: product.indexImageAt,
-        updatedAt: product.updated_at,
+        coverImageCreatedAt:
+          latestImageCreatedAt || coverImage?.created_at || null,
+        needsTextIndexing: product.needsTextIndexing,
       };
     });
   }
@@ -233,45 +235,72 @@ export class ProductsInternalService {
       };
     }
 
-    const now = new Date();
+    let appliedUpdates = 0;
     const updateOperations = normalizedUpdates.flatMap((update) => {
-      const patch: {
-        coverImageDescription?: string | null;
-        indexDescriptionAt?: Date;
-        indexImageAt?: Date;
-      } = {};
-
-      if (update.coverImageDescription !== undefined) {
-        const normalizedDescription = update.coverImageDescription.trim();
-        patch.coverImageDescription = normalizedDescription || null;
-      }
-
-      if (update.indexDescriptionAt) {
-        patch.indexDescriptionAt = new Date(update.indexDescriptionAt);
-      }
-
-      if (update.indexImageAt) {
-        patch.indexImageAt = new Date(update.indexImageAt);
-      }
+      const rawCoverDescription = update.coverImageDescription;
+      const hasCoverDescription = typeof rawCoverDescription === 'string';
+      const coverDescription = hasCoverDescription
+        ? rawCoverDescription.trim() || null
+        : undefined;
+      const textIndexed = update.textIndexed === true;
+      const indexedImageIds = Array.isArray(update.indexedImageIds)
+        ? Array.from(new Set(update.indexedImageIds.filter(Boolean)))
+        : [];
 
       if (
-        !update.indexDescriptionAt &&
-        update.coverImageDescription !== undefined
+        !hasCoverDescription &&
+        !textIndexed &&
+        indexedImageIds.length === 0
       ) {
-        patch.indexDescriptionAt = now;
-      }
-
-      if (Object.keys(patch).length === 0) {
         return [];
       }
 
-      return [
-        this.prisma.product.update({
-          where: { id: update.productId },
-          data: patch,
-          select: { id: true },
-        }),
-      ];
+      const data: {
+        coverImageDescription?: string | null;
+        needsTextIndexing?: boolean;
+      } = {};
+
+      if (hasCoverDescription) {
+        data.coverImageDescription = coverDescription;
+      }
+
+      if (textIndexed) {
+        data.needsTextIndexing = false;
+      }
+
+      const operations: Prisma.PrismaPromise<Prisma.BatchPayload>[] = [];
+
+      if (Object.keys(data).length > 0) {
+        operations.push(
+          this.prisma.product.updateMany({
+            where: {
+              id: update.productId,
+              user_id: userId,
+            },
+            data,
+          }),
+        );
+      }
+
+      if (indexedImageIds.length > 0) {
+        operations.push(
+          this.prisma.productImage.updateMany({
+            where: {
+              product_id: update.productId,
+              id: { in: indexedImageIds },
+            },
+            data: {
+              needsImageIndexing: false,
+            },
+          }),
+        );
+      }
+
+      if (operations.length > 0) {
+        appliedUpdates += 1;
+      }
+
+      return operations;
     });
 
     if (updateOperations.length > 0) {
@@ -279,8 +308,8 @@ export class ProductsInternalService {
     }
 
     return {
-      updated: updateOperations.length,
-      ignored: updates.length - updateOperations.length,
+      updated: appliedUpdates,
+      ignored: updates.length - appliedUpdates,
     };
   }
 }

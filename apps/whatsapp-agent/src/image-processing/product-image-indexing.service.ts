@@ -23,13 +23,14 @@ interface IndexProductPayload {
 }
 
 interface ProductIndexingPlan {
+  imageIdsToIndex: string[];
   shouldIndexImage: boolean;
   shouldIndexText: boolean;
   shouldGenerateCoverDescription: boolean;
 }
 
 interface ProductIndexingResult {
-  indexedImage: boolean;
+  indexedImageIds: string[];
   indexedText: boolean;
   coverDescriptionToPersist?: string;
 }
@@ -72,8 +73,7 @@ export class ProductImageIndexingService {
       {
         productId: payload.productId,
         coverImageDescription: indexed.coverDescription,
-        indexDescriptionAt: new Date().toISOString(),
-        indexImageAt: new Date().toISOString(),
+        textIndexed: true,
       },
     ]);
 
@@ -105,6 +105,19 @@ export class ProductImageIndexingService {
     const products = await this.backendClient.getProductsForImageIndexing();
     this.logger.log(`✅ Retrieved ${products.length} products from backend`);
 
+    const staleCleanup = await this.qdrantService.deleteStaleProducts(
+      products.map((product) => product.id),
+    );
+    if (staleCleanup.deleted > 0) {
+      this.logger.log(
+        `🧹 Removed ${staleCleanup.deleted} stale products from Qdrant (${staleCleanup.stale}/${staleCleanup.indexed} indexed)`,
+      );
+    } else {
+      this.logger.debug(
+        `🧹 No stale products to remove from Qdrant (${staleCleanup.indexed} indexed)`,
+      );
+    }
+
     if (products.length === 0) {
       this.logger.warn('⚠️ No products to index');
       await this.backendClient.updateAgentImageSyncStatus({ status: 'DONE' });
@@ -122,6 +135,23 @@ export class ProductImageIndexingService {
       plan: this.buildIndexingPlan(product),
     }));
 
+    const skippedProducts = plannedProducts
+      .filter(({ plan }) => !plan.shouldIndexImage && !plan.shouldIndexText)
+      .map(({ product }) => ({
+        id: product.id,
+        name: product.name,
+        needsTextIndexing: product.needsTextIndexing,
+        pendingImages: product.images.filter(
+          (image) => image.needsImageIndexing,
+        ).length,
+      }));
+
+    if (skippedProducts.length > 0) {
+      this.logger.log(
+        `⏭️ Skipped products (up-to-date): ${JSON.stringify(skippedProducts)}`,
+      );
+    }
+
     const shouldGeneratePrompt = plannedProducts.some(
       ({ plan }) => plan.shouldGenerateCoverDescription,
     );
@@ -133,7 +163,6 @@ export class ProductImageIndexingService {
     let processed = 0;
     let failed = 0;
     let skipped = 0;
-    const backendUpdates: InternalProductImageIndexingUpdate[] = [];
 
     for (let index = 0; index < plannedProducts.length; index++) {
       const { product, plan } = plannedProducts[index];
@@ -150,12 +179,13 @@ export class ProductImageIndexingService {
 
       try {
         const result = await this.indexCatalogProduct(product, plan);
-        processed += 1;
 
         const update = this.buildBackendUpdate(product.id, result);
         if (update) {
-          backendUpdates.push(update);
+          await this.backendClient.batchUpdateProductImageIndexing([update]);
         }
+
+        processed += 1;
       } catch (error: any) {
         failed += 1;
         this.logger.warn(
@@ -166,10 +196,6 @@ export class ProductImageIndexingService {
       if (job) {
         job.progress(Math.round(((index + 1) / plannedProducts.length) * 100));
       }
-    }
-
-    if (backendUpdates.length > 0) {
-      await this.backendClient.batchUpdateProductImageIndexing(backendUpdates);
     }
 
     if (failed > 0) {
@@ -190,7 +216,9 @@ export class ProductImageIndexingService {
 
     await this.backendClient.updateAgentImageSyncStatus({ status: 'DONE' });
 
-    this.logger.log(`✅ Indexing summary: ${processed} products indexed (${skipped} skipped, ${failed} failed)`);
+    this.logger.log(
+      `✅ Indexing summary: ${processed} products indexed (${skipped} skipped, ${failed} failed)`,
+    );
 
     return {
       success: true,
@@ -204,31 +232,17 @@ export class ProductImageIndexingService {
   private buildIndexingPlan(
     product: InternalProductForImageIndexing,
   ): ProductIndexingPlan {
-    const productUpdatedAt = this.parseDate(product.updatedAt);
-    const latestImageCreatedAt = this.getLatestImageCreatedAt(product);
-
-    const imageReferenceDate = this.maxDate(productUpdatedAt, latestImageCreatedAt);
-    const textReferenceDate = this.maxDate(
-      productUpdatedAt,
-      latestImageCreatedAt,
-    );
-
-    const lastImageIndexAt = this.parseDate(product.indexImageAt);
-    const lastTextIndexAt = this.parseDate(product.indexDescriptionAt);
-
-    const shouldIndexImage =
-      product.images.length > 0 &&
-      (!lastImageIndexAt ||
-        (imageReferenceDate !== null && lastImageIndexAt < imageReferenceDate));
-
-    const shouldIndexText =
-      !lastTextIndexAt ||
-      (textReferenceDate !== null && lastTextIndexAt < textReferenceDate);
+    const imageIdsToIndex = product.images
+      .filter((image) => image.needsImageIndexing)
+      .map((image) => image.id);
+    const shouldIndexImage = imageIdsToIndex.length > 0;
+    const shouldIndexText = product.needsTextIndexing;
 
     const hasCoverDescription = !!product.coverImageDescription?.trim();
     const hasCoverImage = !!this.getCoverImage(product)?.url;
 
     return {
+      imageIdsToIndex,
       shouldIndexImage,
       shouldIndexText,
       shouldGenerateCoverDescription:
@@ -241,7 +255,8 @@ export class ProductImageIndexingService {
     plan: ProductIndexingPlan,
   ): Promise<ProductIndexingResult> {
     const coverImage = this.getCoverImage(product);
-    let indexedImage = false;
+    const imageIdsToIndex = new Set(plan.imageIdsToIndex);
+    const indexedImageIds: string[] = [];
     let generatedCoverDescriptionFromImages: string | null = null;
 
     if (plan.shouldIndexImage) {
@@ -251,6 +266,10 @@ export class ProductImageIndexingService {
         );
       } else {
         for (const image of product.images) {
+          if (!imageIdsToIndex.has(image.id)) {
+            continue;
+          }
+
           if (!image.url) {
             continue;
           }
@@ -288,7 +307,7 @@ export class ProductImageIndexingService {
               generatedCoverDescriptionFromImages = imageDescription;
             }
 
-            indexedImage = true;
+            indexedImageIds.push(image.id);
           } catch (error: any) {
             this.logger.warn(
               `Failed to index image ${image.id} for product ${product.id}: ${error?.message || error}`,
@@ -296,7 +315,7 @@ export class ProductImageIndexingService {
           }
         }
 
-        if (indexedImage) {
+        if (indexedImageIds.length > 0) {
           this.logger.log(`✅ Images indexed for product ${product.id}`);
         } else {
           this.logger.warn(
@@ -309,7 +328,10 @@ export class ProductImageIndexingService {
     let coverDescription = product.coverImageDescription?.trim() || '';
     let generatedCoverDescription: string | undefined;
 
-    if (plan.shouldGenerateCoverDescription && generatedCoverDescriptionFromImages) {
+    if (
+      plan.shouldGenerateCoverDescription &&
+      generatedCoverDescriptionFromImages
+    ) {
       coverDescription = generatedCoverDescriptionFromImages;
       generatedCoverDescription = coverDescription;
     } else if (plan.shouldGenerateCoverDescription && coverImage?.url) {
@@ -334,7 +356,9 @@ export class ProductImageIndexingService {
         .filter(Boolean)
         .join(' | ');
 
-      this.logger.debug(`📝 Generating Gemini text embedding for product ${product.id}`);
+      this.logger.debug(
+        `📝 Generating Gemini text embedding for product ${product.id}`,
+      );
       const textEmbedding = await this.embeddingsService.embedText(textToEmbed);
 
       this.logger.debug(`💾 Indexing text in Qdrant collection "product-text"`);
@@ -353,7 +377,7 @@ export class ProductImageIndexingService {
     }
 
     return {
-      indexedImage,
+      indexedImageIds,
       indexedText,
       coverDescriptionToPersist: generatedCoverDescription,
     };
@@ -370,11 +394,11 @@ export class ProductImageIndexingService {
     }
 
     if (result.indexedText) {
-      update.indexDescriptionAt = new Date().toISOString();
+      update.textIndexed = true;
     }
 
-    if (result.indexedImage) {
-      update.indexImageAt = new Date().toISOString();
+    if (result.indexedImageIds.length > 0) {
+      update.indexedImageIds = result.indexedImageIds;
     }
 
     if (Object.keys(update).length === 1) {
@@ -389,7 +413,8 @@ export class ProductImageIndexingService {
   }> {
     const coverDescription =
       await this.geminiVisionService.describeProductImage(payload.imageBuffer);
-    const imageEmbedding = await this.embeddingsService.embedText(coverDescription);
+    const imageEmbedding =
+      await this.embeddingsService.embedText(coverDescription);
 
     const textToEmbed = [
       payload.productName,
@@ -419,15 +444,19 @@ export class ProductImageIndexingService {
       },
     );
 
-    await this.qdrantService.indexProductText(payload.productId, textEmbedding, {
-      product_id: payload.productId,
-      product_name: payload.productName,
-      description: payload.description || null,
-      cover_image_description: coverDescription,
-      retailer_id: payload.retailerId || null,
-      category: payload.category || null,
-      price: payload.price || null,
-    });
+    await this.qdrantService.indexProductText(
+      payload.productId,
+      textEmbedding,
+      {
+        product_id: payload.productId,
+        product_name: payload.productName,
+        description: payload.description || null,
+        cover_image_description: coverDescription,
+        retailer_id: payload.retailerId || null,
+        category: payload.category || null,
+        price: payload.price || null,
+      },
+    );
 
     return { coverDescription };
   }
@@ -441,55 +470,14 @@ export class ProductImageIndexingService {
     return Buffer.from(response.data);
   }
 
-  private parseDate(value?: string | null): Date | null {
-    if (!value) {
-      return null;
-    }
-
-    const parsedDate = new Date(value);
-    if (Number.isNaN(parsedDate.getTime())) {
-      return null;
-    }
-
-    return parsedDate;
-  }
-
-  private maxDate(first: Date | null, second: Date | null): Date | null {
-    if (!first) {
-      return second;
-    }
-
-    if (!second) {
-      return first;
-    }
-
-    return first > second ? first : second;
-  }
-
-  private getCoverImage(product: InternalProductForImageIndexing):
-    | InternalProductForImageIndexing['images'][number]
-    | null {
+  private getCoverImage(
+    product: InternalProductForImageIndexing,
+  ): InternalProductForImageIndexing['images'][number] | null {
     if (product.images.length === 0) {
       return null;
     }
 
     const byIndex = product.images.find((image) => image.imageIndex === 0);
     return byIndex || product.images[0];
-  }
-
-  private getLatestImageCreatedAt(
-    product: InternalProductForImageIndexing,
-  ): Date | null {
-    const dates = product.images
-      .map((image) => this.parseDate(image.createdAt))
-      .filter((date): date is Date => !!date);
-
-    if (dates.length === 0) {
-      return this.parseDate(product.coverImageCreatedAt);
-    }
-
-    return dates.reduce((latest, current) =>
-      current > latest ? current : latest,
-    );
   }
 }

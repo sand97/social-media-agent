@@ -180,7 +180,7 @@
                 "schema": {
                   "example": {
                     "success": true,
-                    "url": "https://files-flemme.bedones.com/whatsapp-agent/237697020290/catalog/images/849641504281228/25095720553426064-0.jpg"
+                    "url": "https://files-flemme.bedones.com/whatsapp-agent/cmd2a8ykg0004uh5f2cn5u4w1/catalog/images/849641504281228/25095720553426064-0.jpg"
                   }
                 }
               }
@@ -1769,8 +1769,8 @@
     "/agent-internal/products/cover-image-descriptions": {
       "patch": {
         "operationId": "ProductsInternalController_batchUpdateProductImageIndexing",
-        "summary": "Mettre à jour en batch les descriptions d'images et dates d'indexation",
-        "description": "Endpoint interne backend, appelé par le whatsapp-agent en fin d'indexation pour persister en une seule requête les coverImageDescription, indexDescriptionAt et indexImageAt des produits.",
+        "summary": "Mettre à jour en batch les descriptions de cover et états d'indexation",
+        "description": "Endpoint interne backend, appelé par le whatsapp-agent en fin d'indexation pour persister en une seule requête les descriptions de cover et remettre les flags d'indexation à false (produits et images).",
         "parameters": [],
         "requestBody": {
           "required": true,

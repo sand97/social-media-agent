@@ -234,6 +234,32 @@ export class QdrantService implements OnModuleInit {
     return this.client.getCollection(name);
   }
 
+  async deleteStaleProducts(activeProductIds: string[]): Promise<{
+    indexed: number;
+    stale: number;
+    deleted: number;
+  }> {
+    if (!this.isConfigured()) {
+      return { indexed: 0, stale: 0, deleted: 0 };
+    }
+
+    const activeSet = new Set(activeProductIds);
+    const indexedIds = await this.getIndexedProductIds();
+    const staleIds = indexedIds.filter((productId) => !activeSet.has(productId));
+
+    let deleted = 0;
+    for (const staleId of staleIds) {
+      await this.deleteProduct(staleId);
+      deleted += 1;
+    }
+
+    return {
+      indexed: indexedIds.length,
+      stale: staleIds.length,
+      deleted,
+    };
+  }
+
   private async searchInCollection(
     collectionName: string,
     embedding: number[],
@@ -264,6 +290,50 @@ export class QdrantService implements OnModuleInit {
         metadata: payload,
       };
     });
+  }
+
+  private async getIndexedProductIds(): Promise<string[]> {
+    const [imageIds, textIds] = await Promise.all([
+      this.collectProductIdsFromCollection(this.imageCollectionName),
+      this.collectProductIdsFromCollection(this.textCollectionName),
+    ]);
+
+    return Array.from(new Set([...imageIds, ...textIds]));
+  }
+
+  private async collectProductIdsFromCollection(
+    collectionName: string,
+  ): Promise<string[]> {
+    const productIds = new Set<string>();
+    let offset: string | number | undefined;
+
+    try {
+      do {
+        const page = await this.client.scroll(collectionName, {
+          limit: 256,
+          offset,
+          with_payload: ['product_id'],
+          with_vector: false,
+        });
+
+        for (const point of page.points || []) {
+          const payload = point.payload as Record<string, unknown> | undefined;
+          const payloadProductId = payload?.product_id;
+          if (typeof payloadProductId === 'string' && payloadProductId.length > 0) {
+            productIds.add(payloadProductId);
+          }
+        }
+
+        offset = page.next_page_offset as string | number | undefined;
+      } while (offset !== undefined && offset !== null);
+    } catch (error) {
+      if (this.isCollectionNotFoundError(error)) {
+        return [];
+      }
+      throw error;
+    }
+
+    return Array.from(productIds);
   }
 
   private async ensureCollection(

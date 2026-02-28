@@ -164,21 +164,21 @@ export interface InternalProductForImageIndexing {
     id: string;
     url: string;
     imageIndex: number;
+    needsImageIndexing: boolean;
+    whatsappImageHash?: string | null;
     createdAt?: string | null;
   }>;
   coverImageDescription?: string | null;
   coverImageUrl?: string | null;
   coverImageCreatedAt?: string | null;
-  updatedAt: string;
-  indexDescriptionAt?: string | null;
-  indexImageAt?: string | null;
+  needsTextIndexing: boolean;
 }
 
 export interface InternalProductImageIndexingUpdate {
   productId: string;
   coverImageDescription?: string;
-  indexDescriptionAt?: string;
-  indexImageAt?: string;
+  textIndexed?: boolean;
+  indexedImageIds?: string[];
 }
 
 export interface InternalAgentCore {

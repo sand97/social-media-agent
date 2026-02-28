@@ -1,7 +1,7 @@
 import { Type } from 'class-transformer';
 import {
   IsArray,
-  IsDateString,
+  IsBoolean,
   IsOptional,
   IsString,
   ValidateNested,
@@ -16,12 +16,13 @@ export class ProductImageIndexingUpdateDto {
   coverImageDescription?: string;
 
   @IsOptional()
-  @IsDateString()
-  indexDescriptionAt?: string;
+  @IsBoolean()
+  textIndexed?: boolean;
 
   @IsOptional()
-  @IsDateString()
-  indexImageAt?: string;
+  @IsArray()
+  @IsString({ each: true })
+  indexedImageIds?: string[];
 }
 
 export class BatchUpdateProductImageIndexingDto {

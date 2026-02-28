@@ -136,9 +136,9 @@ export class ProductsInternalController {
   @Patch('cover-image-descriptions')
   @ApiOperation({
     summary:
-      "Mettre à jour en batch les descriptions d'images et dates d'indexation",
+      "Mettre à jour en batch les descriptions de cover et états d'indexation",
     description:
-      "Endpoint interne backend, appelé par le whatsapp-agent en fin d'indexation pour persister en une seule requête les coverImageDescription, indexDescriptionAt et indexImageAt des produits.",
+      "Endpoint interne backend, appelé par le whatsapp-agent en fin d'indexation pour persister en une seule requête les descriptions de cover et remettre les flags d'indexation à false (produits et images).",
   })
   @ApiResponse({
     status: 200,

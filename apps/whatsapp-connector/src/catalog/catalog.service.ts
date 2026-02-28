@@ -27,8 +27,11 @@ export class CatalogService {
    */
   private cleanClientId(clientId: string): string {
     if (!clientId) return 'unknown';
-    // Enlever @c.us, @s.whatsapp.net, etc.
-    return clientId.replace(/@[a-z.]+$/i, '');
+    // Enlever le suffixe WhatsApp (@c.us, @s.whatsapp.net, etc.) puis
+    // supprimer tout caractère non alphanumérique pour des clés Minio stables.
+    const withoutWhatsappSuffix = clientId.replace(/@[a-z.]+$/i, '');
+    const sanitized = withoutWhatsappSuffix.replace(/[^a-zA-Z0-9]/g, '');
+    return sanitized || 'unknown';
   }
 
   /**
@@ -51,45 +54,107 @@ export class CatalogService {
           imageType: string;
         }>;
       }> => {
-        // Essayer d'abord avec getMyCatalog()
-        let catalog: any[] = [];
+        const userId = window.WPP.conn?.getMyUserId()?._serialized || '';
+        if (!userId) {
+          throw new Error('User ID not found');
+        }
+        const whatsappApi = window.WPP.whatsapp as any;
 
+        const productsById = new Map<string, any>();
+
+        const addProduct = (rawProduct: any) => {
+          const product = rawProduct?.attributes || rawProduct;
+          if (!product?.id) return;
+          if (!productsById.has(product.id)) {
+            productsById.set(product.id, product);
+          }
+        };
+
+        const extractProductsFromCatalog = (catalogEntry: any): any[] => {
+          if (!catalogEntry) return [];
+          const productIndex = catalogEntry.productCollection?._index;
+          if (!productIndex || typeof productIndex !== 'object') return [];
+          return Object.keys(productIndex)
+            .map((productId) => productIndex[productId]?.attributes)
+            .filter(Boolean);
+        };
+
+        // 1) queryCatalog paginé
+        if (whatsappApi?.functions?.queryCatalog) {
+          try {
+            let afterToken: string | undefined = undefined;
+            while (true) {
+              const response = await whatsappApi.functions.queryCatalog(
+                userId as any,
+                afterToken,
+              );
+              const pageProducts = Array.isArray(response?.data)
+                ? response.data
+                : [];
+              for (const product of pageProducts) {
+                addProduct(product);
+              }
+
+              const nextAfter = response?.paging?.cursors?.after;
+              if (!nextAfter || nextAfter === afterToken) break;
+              afterToken = nextAfter;
+            }
+          } catch (error) {
+            console.log('⚠️ queryCatalog indisponible:', error.message);
+          }
+        }
+
+        // 2) CatalogStore.findQuery
+        if (whatsappApi?.CatalogStore?.findQuery) {
+          try {
+            const catalogStoreResults =
+              await whatsappApi.CatalogStore.findQuery(userId as any);
+            if (Array.isArray(catalogStoreResults)) {
+              for (const entry of catalogStoreResults) {
+                const products = extractProductsFromCatalog(entry);
+                for (const product of products) {
+                  addProduct(product);
+                }
+              }
+            }
+          } catch (error) {
+            console.log(
+              '⚠️ CatalogStore.findQuery indisponible:',
+              error.message,
+            );
+          }
+        }
+
+        // 3) Fallback getMyCatalog
         try {
-          console.log('🔍 Tentative avec getMyCatalog()...');
           const myCatalog = await window.WPP.catalog.getMyCatalog();
-
-          if (myCatalog && myCatalog.productCollection) {
-            // productCollection est déjà un tableau ProductModel[]
-            catalog = Array.isArray(myCatalog.productCollection)
-              ? myCatalog.productCollection
-              : Array.from(myCatalog.productCollection);
-            console.log(
-              `✅ getMyCatalog() - ${catalog.length} produits récupérés`,
-            );
-          } else {
-            console.log(
-              '⚠️  getMyCatalog() ne contient pas de productCollection',
-            );
+          const fallbackProducts = extractProductsFromCatalog(myCatalog);
+          for (const product of fallbackProducts) {
+            addProduct(product);
           }
         } catch (error) {
-          console.log('❌ Erreur avec getMyCatalog():', error.message);
+          console.log('⚠️ getMyCatalog indisponible:', error.message);
         }
 
-        // Fallback sur getProducts() si getMyCatalog() échoue ou retourne vide
-        if (!catalog || catalog.length === 0) {
+        // 4) Dernier fallback getProducts
+        if (productsById.size === 0) {
           try {
-            console.log('🔄 Fallback sur getProducts()...');
-            const userId = window.WPP.conn?.getMyUserId()?._serialized || '';
-            catalog = await window.WPP.catalog.getProducts(userId, 999);
-            console.log(
-              `✅ getProducts() - ${catalog?.length || 0} produits récupérés`,
+            const fallbackProducts = await window.WPP.catalog.getProducts(
+              userId,
+              999,
             );
+            if (Array.isArray(fallbackProducts)) {
+              for (const product of fallbackProducts) {
+                addProduct(product);
+              }
+            }
           } catch (error) {
-            console.log('❌ Erreur avec getProducts():', error.message);
+            console.log('⚠️ getProducts indisponible:', error.message);
           }
         }
 
-        console.log(`📦 Catalogue récupéré: ${catalog?.length || 0} produits`);
+        const catalog = Array.from(productsById.values());
+        console.log(`📦 Catalogue récupéré: ${catalog.length} produits`);
 
         if (!catalog || !Array.isArray(catalog)) {
           return { catalog: [], images: [] };
@@ -112,39 +177,52 @@ export class CatalogService {
               index: number;
             }> = [];
 
-            // 1. Image principale dans image_cdn_urls
-            if (
-              product.image_cdn_urls &&
-              Array.isArray(product.image_cdn_urls)
-            ) {
-              const fullImage = product.image_cdn_urls.find(
-                (img) => img.key === 'full',
+            const pickPreferredCdnUrl = (variants: any[]): string | null => {
+              if (!Array.isArray(variants)) return null;
+              const full = variants.find((img) => img?.key === 'full');
+              if (full?.value) return full.value;
+              const requested = variants.find(
+                (img) => img?.key === 'requested',
               );
-              if (fullImage?.value) {
-                imageUrls.push({
-                  url: fullImage.value,
-                  type: 'main',
-                  index: 0,
-                });
-              }
+              return requested?.value || null;
+            };
+
+            // 1. Image principale dans image_cdn_urls
+            const mainImageUrl =
+              product.imageCdnUrl ||
+              product.image_cdn_url ||
+              pickPreferredCdnUrl(product.image_cdn_urls);
+            if (mainImageUrl) {
+              imageUrls.push({
+                url: mainImageUrl,
+                type: 'main',
+                index: 0,
+              });
             }
 
             // 2. Images additionnelles dans additional_image_cdn_urls
-            if (
+            if (Array.isArray(product.additionalImageCdnUrl)) {
+              product.additionalImageCdnUrl.forEach((url, index) => {
+                if (url) {
+                  imageUrls.push({
+                    url,
+                    type: 'additional',
+                    index: index + 1,
+                  });
+                }
+              });
+            } else if (
               product.additional_image_cdn_urls &&
               Array.isArray(product.additional_image_cdn_urls)
             ) {
               product.additional_image_cdn_urls.forEach((imgArray, index) => {
-                if (Array.isArray(imgArray)) {
-                  const fullImage = imgArray.find((img) => img.key === 'full');
-                  if (fullImage?.value) {
-                    imageUrls.push({
-                      url: fullImage.value,
-                      type: 'additional',
-                      index: index + 1,
-                    });
-                  }
-                }
+                const imageUrl = pickPreferredCdnUrl(imgArray);
+                if (!imageUrl) return;
+                imageUrls.push({
+                  url: imageUrl,
+                  type: 'additional',
+                  index: index + 1,
+                });
               });
             }
 

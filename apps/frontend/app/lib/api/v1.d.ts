@@ -783,8 +783,8 @@ export interface paths {
         options?: never;
         head?: never;
         /**
-         * Mettre à jour en batch les descriptions d'images et dates d'indexation
-         * @description Endpoint interne backend, appelé par le whatsapp-agent en fin d'indexation pour persister en une seule requête les coverImageDescription, indexDescriptionAt et indexImageAt des produits.
+         * Mettre à jour en batch les descriptions de cover et états d'indexation
+         * @description Endpoint interne backend, appelé par le whatsapp-agent en fin d'indexation pour persister en une seule requête les descriptions de cover et remettre les flags d'indexation à false (produits et images).
          */
         patch: operations["ProductsInternalController_batchUpdateProductImageIndexing"];
         trace?: never;

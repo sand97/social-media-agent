@@ -6,7 +6,6 @@ import { Prisma } from '@app/generated/client';
 import { ImageIndexingQueueService } from '@app/image-processing/image-indexing-queue.service';
 import { PageScriptService } from '@app/page-scripts/page-script.service';
 import { PrismaService } from '@app/prisma/prisma.service';
-import { normalizeWhatsAppPrice } from '@apps/common';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Cron, CronExpression } from '@nestjs/schedule';
@@ -199,8 +198,9 @@ export class CatalogSyncService {
       };
     }
 
-    void this.syncCatalogAndQueueImages().catch(async (error: any) => {
-      const errorMessage = error?.message || String(error);
+    void this.syncCatalogAndQueueImages().catch(async (error: unknown) => {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       this.logger.error(
         `Background catalog+image sync failed: ${errorMessage}`,
       );
@@ -268,7 +268,9 @@ export class CatalogSyncService {
       if (queueResult.queued) {
         this.logger.log('✅ Qdrant indexing job queued successfully');
       } else {
-        this.logger.warn(`⚠️ Qdrant indexing not queued: ${queueResult.message}`);
+        this.logger.warn(
+          `⚠️ Qdrant indexing not queued: ${queueResult.message}`,
+        );
       }
 
       this.lastSyncTime = new Date();
@@ -286,28 +288,6 @@ export class CatalogSyncService {
     } finally {
       this.isSyncing = false;
     }
-  }
-
-  /**
-   * @deprecated This method is no longer used. Products are fetched by the backend
-   * from the WhatsApp connector and stored in the database. The agent now retrieves
-   * products from the backend via backendClient.getProductsForImageIndexing().
-   *
-   * Fetch all products from WhatsApp via connector
-   */
-  private async fetchProductsFromWhatsApp(): Promise<WhatsAppProduct[]> {
-    const script = this.scriptService.getScript(
-      'catalog/getAllProductsForSync',
-      {},
-    );
-
-    const { result: products } =
-      await this.connectorClient.executeScript(script);
-
-    return (products || []).map((product: WhatsAppProduct) => ({
-      ...product,
-      price: normalizeWhatsAppPrice(product.price),
-    }));
   }
 
   /**

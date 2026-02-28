@@ -43,7 +43,7 @@ export class CatalogController {
     schema: {
       example: {
         success: true,
-        url: 'https://files-flemme.bedones.com/whatsapp-agent/237697020290/catalog/images/849641504281228/25095720553426064-0.jpg',
+        url: 'https://files-flemme.bedones.com/whatsapp-agent/cmd2a8ykg0004uh5f2cn5u4w1/catalog/images/849641504281228/25095720553426064-0.jpg',
       },
     },
   })
