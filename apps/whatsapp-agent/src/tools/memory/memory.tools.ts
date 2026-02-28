@@ -1,7 +1,9 @@
 import { PrismaService } from '@app/prisma/prisma.service';
 import { tool } from '@langchain/core/tools';
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { z } from 'zod';
+
+import { instrumentTools } from '../tool-logging.util';
 
 /**
  * Memory tools for the WhatsApp agent
@@ -9,16 +11,20 @@ import { z } from 'zod';
  */
 @Injectable()
 export class MemoryTools {
+  private readonly logger = new Logger(MemoryTools.name);
+
   constructor(private readonly prisma: PrismaService) {}
 
   /**
    * Create all memory tools
    */
   createTools() {
-    return [
+    const tools = [
       this.createSavePersistentMemoryTool(),
       this.createRetrievePersistentMemoryTool(),
     ];
+
+    return instrumentTools(this.logger, MemoryTools.name, tools);
   }
 
   /**

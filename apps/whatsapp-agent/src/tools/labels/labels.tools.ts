@@ -1,8 +1,10 @@
 import { ConnectorClientService } from '@app/connector/connector-client.service';
 import { PageScriptService } from '@app/page-scripts/page-script.service';
 import { tool } from '@langchain/core/tools';
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { z } from 'zod';
+
+import { instrumentTools } from '../tool-logging.util';
 
 /**
  * Labels (tags) tools for the WhatsApp agent
@@ -10,6 +12,8 @@ import { z } from 'zod';
  */
 @Injectable()
 export class LabelsTools {
+  private readonly logger = new Logger(LabelsTools.name);
+
   constructor(
     private readonly connectorClient: ConnectorClientService,
     private readonly scriptService: PageScriptService,
@@ -19,11 +23,13 @@ export class LabelsTools {
    * Create all labels tools
    */
   createTools() {
-    return [
+    const tools = [
       this.createGetContactLabelsTool(),
       this.createAddLabelToContactTool(),
       this.createRemoveLabelFromContactTool(),
     ];
+
+    return instrumentTools(this.logger, LabelsTools.name, tools);
   }
 
   /**
@@ -34,7 +40,7 @@ export class LabelsTools {
       async (_input, config?: any) => {
         try {
           const contactId =
-            config?.context?.chatId || config?.context?.contactId;
+            config?.context?.contactId || config?.context?.chatId;
           if (!contactId) {
             return JSON.stringify({
               success: false,
@@ -66,7 +72,7 @@ export class LabelsTools {
       {
         name: 'get_contact_labels',
         description:
-          'Retrieve labels (tags) associated with the current WhatsApp contact',
+          'Get labels (tags) of the current contact. Use only when label information is explicitly needed to decide the next action.',
         schema: z.object({}),
       },
     );

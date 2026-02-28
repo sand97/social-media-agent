@@ -2,8 +2,10 @@ import { ConnectorClientService } from '@app/connector/connector-client.service'
 import { PageScriptService } from '@app/page-scripts/page-script.service';
 import { QueueService } from '@app/queue/queue.service';
 import { tool } from '@langchain/core/tools';
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { z } from 'zod';
+
+import { instrumentTools } from '../tool-logging.util';
 
 /**
  * Messages tools for the WhatsApp agent
@@ -11,6 +13,8 @@ import { z } from 'zod';
  */
 @Injectable()
 export class MessagesTools {
+  private readonly logger = new Logger(MessagesTools.name);
+
   constructor(
     private readonly connectorClient: ConnectorClientService,
     private readonly queueService: QueueService,
@@ -21,13 +25,16 @@ export class MessagesTools {
    * Create all messages tools
    */
   createTools() {
-    return [
+    const tools = [
       this.createGetOlderMessagesTool(),
       this.createGetMessagesAdvancedTool(),
+      this.createGetMessageHistoryTool(),
       this.createScheduleIntentionTool(),
       this.createCancelIntentionTool(),
       this.createListIntentionsTool(),
     ];
+
+    return instrumentTools(this.logger, MessagesTools.name, tools);
   }
 
   /**
@@ -70,7 +77,7 @@ export class MessagesTools {
       {
         name: 'get_older_messages',
         description:
-          'Fetch older messages from the current conversation to understand context.',
+          'Fetch older messages from the current conversation only when the currently provided history is not sufficient.',
         schema: z.object({
           limit: z
             .number()
@@ -120,7 +127,7 @@ export class MessagesTools {
       {
         name: 'get_messages_advanced',
         description:
-          'Fetch messages from the current conversation with advanced options. Lets you navigate history by fetching messages before/after a reference message, or only unread messages. Useful for precise context exploration.',
+          'Fetch messages with advanced options only when precise history navigation is required to answer correctly.',
         schema: z.object({
           count: z
             .number()
@@ -186,7 +193,7 @@ export class MessagesTools {
       {
         name: 'get_message_history',
         description:
-          'Retrieve message history from the current conversation when provided context is insufficient. Supports fetching before or after a reference message ID.',
+          'Retrieve message history only when provided context is insufficient. Supports fetching before or after a reference message ID.',
         schema: z.object({
           maxTotal: z
             .number()

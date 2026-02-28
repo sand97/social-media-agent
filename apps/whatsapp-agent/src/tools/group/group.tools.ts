@@ -1,8 +1,10 @@
 import { ConnectorClientService } from '@app/connector/connector-client.service';
 import { PageScriptService } from '@app/page-scripts/page-script.service';
 import { tool } from '@langchain/core/tools';
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { z } from 'zod';
+
+import { instrumentTools } from '../tool-logging.util';
 
 /**
  * Group tools for the WhatsApp agent
@@ -10,6 +12,8 @@ import { z } from 'zod';
  */
 @Injectable()
 export class GroupTools {
+  private readonly logger = new Logger(GroupTools.name);
+
   constructor(
     private readonly connectorClient: ConnectorClientService,
     private readonly scriptService: PageScriptService,
@@ -19,7 +23,8 @@ export class GroupTools {
    * Create all group tools
    */
   createTools() {
-    return [this.createSendGroupInviteTool()];
+    const tools = [this.createSendGroupInviteTool()];
+    return instrumentTools(this.logger, GroupTools.name, tools);
   }
 
   /**

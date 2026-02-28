@@ -1,6 +1,8 @@
 import { tool } from '@langchain/core/tools';
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { z } from 'zod';
+
+import { instrumentTools } from '../tool-logging.util';
 
 /**
  * Intent detection tools for the WhatsApp agent
@@ -8,13 +10,16 @@ import { z } from 'zod';
  */
 @Injectable()
 export class IntentTools {
+  private readonly logger = new Logger(IntentTools.name);
+
   constructor() {}
 
   /**
    * Create all intent tools
    */
   createTools() {
-    return [this.createDetectIntentTool()];
+    const tools = [this.createDetectIntentTool()];
+    return instrumentTools(this.logger, IntentTools.name, tools);
   }
 
   /**

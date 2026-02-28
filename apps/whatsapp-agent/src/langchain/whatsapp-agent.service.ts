@@ -15,6 +15,7 @@ import { IntentTools } from '@app/tools/intent/intent.tools';
 import { LabelsTools } from '@app/tools/labels/labels.tools';
 import { MemoryTools } from '@app/tools/memory/memory.tools';
 import { MessagesTools } from '@app/tools/messages/messages.tools';
+import { ToolMessage } from '@langchain/core/messages';
 import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
 import { ChatOpenAI } from '@langchain/openai';
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
@@ -149,7 +150,7 @@ export class WhatsAppAgentService implements OnModuleInit {
     }
 
     // Create the agent once with all tools
-    const tools = [
+    const allTools = [
       ...this.communicationTools.createTools(),
       ...this.catalogTools.createTools(),
       ...this.chatTools.createTools(),
@@ -160,6 +161,54 @@ export class WhatsAppAgentService implements OnModuleInit {
       ...this.intentTools.createTools(),
     ];
 
+    let tools = allTools;
+
+    // Optional experiment: limit active tools to a predefined set of 5
+    const experiment5ToolsEnabled =
+      this.configService.get<string>('AGENT_EXPERIMENT_5_TOOLS') === 'true';
+    const configuredActiveTools = this.configService.get<string>(
+      'AGENT_ACTIVE_TOOLS',
+    );
+
+    let activeToolNames: Set<string> | null = null;
+    if (configuredActiveTools?.trim()) {
+      activeToolNames = new Set(
+        configuredActiveTools
+          .split(',')
+          .map((name) => name.trim())
+          .filter(Boolean),
+      );
+    } else if (experiment5ToolsEnabled) {
+      activeToolNames = new Set([
+        'reply_to_message',
+        'get_message_history',
+        'get_contact_labels',
+        'search_products',
+        'send_to_admin_group',
+      ]);
+    }
+
+    if (activeToolNames && activeToolNames.size > 0) {
+      tools = allTools.filter((tool: any) => activeToolNames!.has(tool.name));
+
+      const loadedToolNames = new Set(allTools.map((tool: any) => tool.name));
+      const missingTools = [...activeToolNames].filter(
+        (name) => !loadedToolNames.has(name),
+      );
+
+      this.logger.warn(
+        `🧪 Tool filter active: ${tools.length}/${allTools.length} tools enabled`,
+      );
+      this.logger.warn(
+        `🧪 Enabled tools: ${tools.map((tool: any) => tool.name).join(', ')}`,
+      );
+      if (missingTools.length > 0) {
+        this.logger.warn(
+          `🧪 Unknown tools in AGENT_ACTIVE_TOOLS: ${missingTools.join(', ')}`,
+        );
+      }
+    }
+
     this.logger.log(`📦 Loaded ${tools.length} tools for the agent`);
 
     const primaryModel = this.primaryModel || this.fallbackModel;
@@ -169,33 +218,98 @@ export class WhatsAppAgentService implements OnModuleInit {
     }
 
     // Build middleware array
-    const sideEffectToolLimiters = [
+    const sideEffectTools = new Set([
       'reply_to_message',
-      'send_message',
-      'send_product',
+      'send_text_message',
       'send_products',
       'send_collection',
       'send_catalog_link',
       'send_to_admin_group',
       'notify_authorized_group',
       'forward_to_management_group',
-      'send_reaction',
-      'send_location',
       'send_group_invite',
       'add_label_to_contact',
       'remove_label_from_contact',
-      'set_notes',
-      'send_scheduled_call',
+      'save_persistent_memory',
       'schedule_intention',
       'cancel_intention',
-      'save_persistent_memory',
-    ].map((toolName) =>
-      toolCallLimitMiddleware({
-        toolName,
-        runLimit: 1,
-        exitBehavior: 'continue',
+    ]);
+
+    // Single middleware to enforce "max 1 call per side-effect tool per run"
+    // This avoids creating one LangGraph node per side-effect tool limiter.
+    const sideEffectToolCallLimiter = createMiddleware({
+      name: 'SideEffectToolCallLimiter',
+      stateSchema: z.object({
+        runSideEffectToolCallCount: z.record(z.string(), z.number()).default({}),
       }),
-    );
+      afterModel: {
+        hook: (state) => {
+          const messages = Array.isArray((state as any).messages)
+            ? ((state as any).messages as any[])
+            : [];
+
+          const aiMessageWithTools = [...messages]
+            .reverse()
+            .find(
+              (message) =>
+                Array.isArray(message?.tool_calls) &&
+                message.tool_calls.length > 0,
+            );
+
+          if (!aiMessageWithTools) {
+            return undefined;
+          }
+
+          const runCounts = {
+            ...((state as any).runSideEffectToolCallCount || {}),
+          } as Record<string, number>;
+
+          const blockedToolCalls: Array<{ id?: string; name?: string }> = [];
+
+          for (const toolCall of aiMessageWithTools.tool_calls as Array<{
+            id?: string;
+            name?: string;
+          }>) {
+            const toolName = toolCall.name;
+            if (!toolName || !sideEffectTools.has(toolName)) {
+              continue;
+            }
+
+            const count = runCounts[toolName] || 0;
+            if (count >= 1) {
+              blockedToolCalls.push(toolCall);
+              continue;
+            }
+
+            runCounts[toolName] = count + 1;
+          }
+
+          if (blockedToolCalls.length === 0) {
+            return {
+              runSideEffectToolCallCount: runCounts,
+            };
+          }
+
+          const blockedMessages = blockedToolCalls.map(
+            (toolCall) =>
+              new ToolMessage({
+                content: `Tool call limit exceeded. Do not call '${toolCall.name || 'this tool'}' again in this run.`,
+                tool_call_id: toolCall.id || '',
+                name: toolCall.name || 'unknown_tool',
+                status: 'error',
+              }),
+          );
+
+          return {
+            runSideEffectToolCallCount: runCounts,
+            messages: blockedMessages,
+          };
+        },
+      },
+      afterAgent: () => ({
+        runSideEffectToolCallCount: {},
+      }),
+    });
 
     const middleware = [
       // Model call limit middleware (max 6 iterations)
@@ -205,15 +319,63 @@ export class WhatsAppAgentService implements OnModuleInit {
       }),
       // Global tool call limit (per run) to prevent excessive tool usage
       toolCallLimitMiddleware({
-        runLimit: 8,
-        exitBehavior: 'error',
+        runLimit: 6,
+        exitBehavior: 'continue',
       }),
       // Prevent duplicate side-effect tool calls in a single run
-      ...sideEffectToolLimiters,
+      sideEffectToolCallLimiter,
       // Tool execution tracking middleware
       createMiddleware({
         name: 'ToolTracking',
         contextSchema,
+        wrapModelCall: async (request, handler) => {
+          const chatId = request.runtime.context?.chatId;
+          const modelTurn =
+            Number((request.state as any)?.runModelCallCount ?? 0) + 1;
+
+          const response = await handler(request);
+
+          const toolCalls = Array.isArray((response as any)?.tool_calls)
+            ? ((response as any).tool_calls as Array<{ name?: string }>)
+            : [];
+
+          if (chatId && toolCalls.length > 0) {
+            const toolNames = toolCalls
+              .map((toolCall) => toolCall.name || 'unknown_tool')
+              .join(', ');
+            this.logger.debug(
+              `🤖 [${chatId}] Model turn #${modelTurn} proposed tools: ${toolNames}`,
+            );
+
+            const previousAiMessageWithTools = Array.isArray(
+              (request.state as any)?.messages,
+            )
+              ? [...(request.state as any).messages]
+                  .reverse()
+                  .find(
+                    (message: any) =>
+                      Array.isArray(message?.tool_calls) &&
+                      message.tool_calls.length > 0,
+                  )
+              : undefined;
+
+            if (previousAiMessageWithTools) {
+              const previousToolNames = (
+                previousAiMessageWithTools.tool_calls as Array<{ name?: string }>
+              )
+                .map((toolCall) => toolCall.name || 'unknown_tool')
+                .join(', ');
+
+              if (previousToolNames === toolNames) {
+                this.logger.warn(
+                  `⚠️ [${chatId}] Potential tool loop at model turn #${modelTurn}: repeated tools "${toolNames}"`,
+                );
+              }
+            }
+          }
+
+          return response;
+        },
         wrapToolCall: async (request, handler) => {
           const chatId = request.runtime.context?.chatId;
           const toolName = request.toolCall.name;
@@ -221,10 +383,13 @@ export class WhatsAppAgentService implements OnModuleInit {
             this.logger.log(`🛠️ [${chatId}] Executing tool: ${toolName}`);
           }
           try {
-            const result = await handler(request);
+            const result: any = await handler(request);
             let preview: string;
             try {
-              preview = String(result).substring(0, 400);
+              preview =
+                typeof result === 'string'
+                  ? result.substring(0, 400)
+                  : JSON.stringify(result).substring(0, 400);
             } catch {
               preview = '[unserializable tool result]';
             }
@@ -257,8 +422,6 @@ export class WhatsAppAgentService implements OnModuleInit {
       tools,
       middleware,
       contextSchema,
-      // Use stable routing behavior (v1) to avoid branch null destination errors seen with v2
-      version: 'v1',
     }) as ReturnType<typeof createAgent>;
 
     this.logger.log('✅ WhatsApp Agent created successfully with all tools');
@@ -687,14 +850,27 @@ export class WhatsAppAgentService implements OnModuleInit {
         `Invoking agent with ${messages.length} messages (${conversationHistory.length} from history)`,
       );
 
+      const invokeConfig: any = {
+        context: runtimeContext,
+        callbacks: [callbackHandler],
+      };
+
+      const recursionLimitRaw = this.configService.get<string>(
+        'AGENT_RECURSION_LIMIT',
+      );
+      const recursionLimit = recursionLimitRaw
+        ? Number(recursionLimitRaw)
+        : NaN;
+      if (Number.isFinite(recursionLimit) && recursionLimit > 0) {
+        invokeConfig.recursionLimit = recursionLimit;
+        this.logger.debug(`Using recursionLimit=${recursionLimit}`);
+      }
+
       const result = await this.agent.invoke(
         {
           messages,
         },
-        {
-          context: runtimeContext,
-          callbacks: [callbackHandler],
-        },
+        invokeConfig,
       );
 
       const lastMessage = result.messages[result.messages.length - 1];
@@ -722,22 +898,10 @@ export class WhatsAppAgentService implements OnModuleInit {
       // Capture error in metrics
       callbackHandler.metrics.status = 'error';
       callbackHandler.metrics.error = error.message;
-
-      // Fallback minimal response to avoid failing webhook
-      const fallback =
-        "Désolé, je n'ai pas pu générer la réponse. Je vérifie et je reviens vers vous.";
-      try {
-        await this.connectorClient.sendMessage(chatId, fallback);
-      } catch (sendErr: any) {
-        this.logger.warn(
-          `Failed to send fallback message: ${sendErr.message || sendErr}`,
-        );
-      }
-
-      callbackHandler.metrics.agentResponse = fallback;
+      callbackHandler.metrics.agentResponse = '';
 
       return {
-        response: fallback,
+        response: '',
         metrics: callbackHandler.getMetrics(),
       };
     }

@@ -53,11 +53,8 @@ export class AdminGroupMessagingService {
       const groupResult = await this.connectorClient.executeScript(groupScript);
       let userResult: unknown;
 
-      if (options.shouldReplyToUser && options.chatId) {
-        const reply =
-          options.replyToUser?.trim() ||
-          "Merci, je vérifie auprès de l'équipe et je reviens vers vous.";
-
+      const reply = options.replyToUser?.trim();
+      if (options.shouldReplyToUser && options.chatId && reply) {
         const replyScript = this.scriptService.getScript(
           'chat/sendTextMessage',
           {

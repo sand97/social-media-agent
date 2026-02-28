@@ -4,8 +4,10 @@ import { ConnectorClientService } from '@app/connector/connector-client.service'
 import { QdrantService } from '@app/image-processing/qdrant.service';
 import { PageScriptService } from '@app/page-scripts/page-script.service';
 import { tool } from '@langchain/core/tools';
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { z } from 'zod';
+
+import { instrumentTools } from '../tool-logging.util';
 
 /**
  * Catalog tools for the WhatsApp agent
@@ -14,6 +16,8 @@ import { z } from 'zod';
  */
 @Injectable()
 export class CatalogTools {
+  private readonly logger = new Logger(CatalogTools.name);
+
   constructor(
     private readonly connectorClient: ConnectorClientService,
     private readonly catalogSearch: CatalogSearchService,
@@ -26,11 +30,13 @@ export class CatalogTools {
    * Create all catalog tools
    */
   createTools() {
-    return [
+    const tools = [
       this.createListProductsTool(),
       this.createSearchProductsTool(),
       this.createGetProductDetailsTool(),
     ];
+
+    return instrumentTools(this.logger, CatalogTools.name, tools);
   }
 
   /**

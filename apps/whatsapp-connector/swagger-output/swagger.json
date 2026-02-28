@@ -237,6 +237,35 @@
         ]
       }
     },
+    "/whatsapp/send-message": {
+      "post": {
+        "operationId": "WhatsAppController_sendMessage",
+        "summary": "Envoyer un message WhatsApp",
+        "description": "Envoie un message texte à un chat WhatsApp. Compatible avec le client whatsapp-agent.",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendMessageDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Message envoyé avec succès"
+          },
+          "400": {
+            "description": "Erreur d'envoi du message"
+          }
+        },
+        "tags": [
+          "WhatsApp"
+        ]
+      }
+    },
     "/whatsapp/status": {
       "get": {
         "operationId": "WhatsAppController_getStatus",
@@ -434,6 +463,35 @@
         },
         "required": [
           "script"
+        ]
+      },
+      "SendMessageDto": {
+        "type": "object",
+        "properties": {
+          "to": {
+            "type": "string",
+            "description": "ID WhatsApp du destinataire",
+            "example": "237657888690@c.us"
+          },
+          "message": {
+            "type": "string",
+            "description": "Contenu du message texte",
+            "example": "Bonjour, comment puis-je vous aider ?"
+          },
+          "quotedMessageId": {
+            "type": "string",
+            "description": "ID du message à citer (optionnel)",
+            "example": "true_237657888690@c.us_3EB0A7E0"
+          },
+          "sessionName": {
+            "type": "string",
+            "description": "Nom de session (accepté pour compatibilité, ignoré côté connector)",
+            "example": "whatsapp-agent-session"
+          }
+        },
+        "required": [
+          "to",
+          "message"
         ]
       },
       "SetWebhooksDto": {

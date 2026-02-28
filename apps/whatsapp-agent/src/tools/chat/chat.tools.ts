@@ -5,6 +5,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { z } from 'zod';
 
 import { ContactResolverService } from '../contact/contact-resolver.service';
+import { instrumentTools } from '../tool-logging.util';
 
 import { AdminGroupMessagingService } from './admin-group-messaging.service';
 /**
@@ -26,8 +27,10 @@ export class ChatTools {
    * Create all chat tools
    */
   createTools() {
-    return [
+    const tools = [
+      this.createReplyToMessageTool(),
       this.createSendToAdminGroupTool(), // SECURED: Send to admin group only
+      this.createNotifyAuthorizedGroupTool(),
       this.createSendReactionTool(),
       this.createSendLocationTool(),
       this.createSetNotesTool(),
@@ -36,6 +39,8 @@ export class ChatTools {
       this.createMarkIsUnreadTool(),
       this.createMarkIsReadTool(),
     ];
+
+    return instrumentTools(this.logger, ChatTools.name, tools);
   }
 
   /**
@@ -46,7 +51,6 @@ export class ChatTools {
       async ({ message, quotedMessageId }, config?: any) => {
         try {
           const chatId = config?.context?.chatId;
-          console.log('send message', chatId);
 
           if (!chatId) {
             return JSON.stringify({
@@ -78,7 +82,6 @@ export class ChatTools {
         name: 'reply_to_message',
         description:
           'REQUIRED: Use this tool for EVERY reply to the customer. The agent will show "typing..." for a natural delay (80 WPM). This tool is the ONLY way to communicate with the customer - NEVER reply directly without using this tool.',
-        returnDirect: true,
         schema: z.object({
           message: z.string().describe('Message content to send'),
           quotedMessageId: z
@@ -136,7 +139,6 @@ export class ChatTools {
         name: 'send_to_admin_group',
         description:
           'Send a message to the admin/management group and reply to the customer. Use ONLY to escalate requests that require human intervention.',
-        returnDirect: true,
         schema: z.object({
           message: z
             .string()
@@ -206,21 +208,20 @@ export class ChatTools {
           const groupResult =
             await this.connectorClient.executeScript(groupScript);
 
-          const reply =
-            replyToUser?.trim() ||
-            "Merci, je vérifie auprès de l'équipe et je reviens vers vous.";
+          const reply = replyToUser?.trim();
 
-          const replyScript = this.scriptService.getScript(
-            'chat/sendTextMessage',
-            {
-              TO: chatId,
-              MESSAGE: reply,
-              USE_TYPING: 'true',
-            },
-          );
-
-          const userResult =
-            await this.connectorClient.executeScript(replyScript);
+          let userResult: any = null;
+          if (reply) {
+            const replyScript = this.scriptService.getScript(
+              'chat/sendTextMessage',
+              {
+                TO: chatId,
+                MESSAGE: reply,
+                USE_TYPING: 'true',
+              },
+            );
+            userResult = await this.connectorClient.executeScript(replyScript);
+          }
 
           return JSON.stringify({
             success: true,
@@ -243,7 +244,6 @@ export class ChatTools {
         name: 'notify_authorized_group',
         description:
           'Send a message to an authorized group AFTER collecting all required information from the customer. The contact number is automatically added. IMPORTANT: Use your business context to identify the key information to collect BEFORE using this tool.',
-        returnDirect: true,
         schema: z.object({
           groupId: z
             .string()

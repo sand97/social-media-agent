@@ -1,10 +1,11 @@
 import { ConnectorClientService } from '@app/connector/connector-client.service';
 import { PageScriptService } from '@app/page-scripts/page-script.service';
 import { tool } from '@langchain/core/tools';
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { z } from 'zod';
 
 import { ContactResolverService } from '../contact/contact-resolver.service';
+import { instrumentTools } from '../tool-logging.util';
 
 import { ProductSendService } from './product-send.service';
 
@@ -14,6 +15,8 @@ import { ProductSendService } from './product-send.service';
  */
 @Injectable()
 export class CommunicationTools {
+  private readonly logger = new Logger(CommunicationTools.name);
+
   constructor(
     private readonly connectorClient: ConnectorClientService,
     private readonly scriptService: PageScriptService,
@@ -25,12 +28,15 @@ export class CommunicationTools {
    * Create all communication tools
    */
   createTools() {
-    return [
+    const tools = [
       this.createSendTextMessageTool(),
       this.createSendProductsTool(),
       this.createSendCollectionTool(),
       this.createSendCatalogLinkTool(),
+      this.createForwardToManagementGroupTool(),
     ];
+
+    return instrumentTools(this.logger, CommunicationTools.name, tools);
   }
 
   /**
@@ -84,7 +90,6 @@ export class CommunicationTools {
         description:
           'Send a SHORT text message (max 500 characters) to the current conversation. ' +
           'Can optionally reply to a specific message. If message is longer, split it into multiple messages.',
-        returnDirect: true,
         schema: z.object({
           message: z
             .string()

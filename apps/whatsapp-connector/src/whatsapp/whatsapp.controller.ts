@@ -11,6 +11,7 @@ import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { ExecuteMethodDto } from './dto/execute-method.dto';
 import { ExecutePageScriptDto } from './dto/execute-page-script.dto';
 import { RequestPairingCodeDto } from './dto/request-pairing-code.dto';
+import { SendMessageDto } from './dto/send-message.dto';
 import { SetWebhooksDto } from './dto/set-webhooks.dto';
 import { WebhookService } from './webhook.service';
 import { WhatsAppClientService } from './whatsapp-client.service';
@@ -90,6 +91,50 @@ export class WhatsAppController {
       return {
         success: true,
         result,
+      };
+    } catch (error: any) {
+      throw new HttpException(
+        {
+          success: false,
+          error: error.message,
+        },
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
+
+  @Post('send-message')
+  @ApiOperation({
+    summary: 'Envoyer un message WhatsApp',
+    description:
+      'Envoie un message texte à un chat WhatsApp. Compatible avec le client whatsapp-agent.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Message envoyé avec succès',
+  })
+  @ApiResponse({
+    status: 400,
+    description: "Erreur d'envoi du message",
+  })
+  async sendMessage(@Body() dto: SendMessageDto) {
+    try {
+      const parameters = dto.quotedMessageId
+        ? [dto.to, dto.message, { quotedMessageId: dto.quotedMessageId }]
+        : [dto.to, dto.message];
+
+      const result = await this.whatsappClientService.executeMethod(
+        'sendMessage',
+        parameters,
+      );
+
+      return {
+        success: true,
+        result: {
+          id: result?.id?._serialized || result?.id || null,
+          to: dto.to,
+          timestamp: result?.timestamp ?? result?.t ?? null,
+        },
       };
     } catch (error: any) {
       throw new HttpException(
