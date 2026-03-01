@@ -1,0 +1,15 @@
+{
+  "moduleFileExtensions": ["js", "json", "ts"],
+  "rootDir": "..",
+  "testEnvironment": "node",
+  "testRegex": "agent\\.e2e-spec\\.ts$",
+  "setupFiles": ["<rootDir>/test/setup-agent-e2e.ts"],
+  "modulePathIgnorePatterns": ["<rootDir>/dist/", "<rootDir>/src/generated/"],
+  "moduleNameMapper": {
+    "^@app/(.*)$": "<rootDir>/src/$1",
+    "^@apps/common$": "<rootDir>/../../packages/common/dist/src"
+  },
+  "transform": {
+    "^.+\\.(t|j)s$": "ts-jest"
+  }
+}
