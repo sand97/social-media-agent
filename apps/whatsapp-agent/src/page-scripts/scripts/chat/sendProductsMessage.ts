@@ -36,6 +36,7 @@
       const opts = {};
       const cleanup = true;
       const uploadChatId = opts.uploadChatId || null;
+      const userId = WPP.whatsapp.UserPrefs.getMaybeMePnUser()._serialized;
 
       console.log('[product] start', {
         chatId,
@@ -44,11 +45,15 @@
         uploadChatId,
       });
 
-      const catalog = await WPP.catalog.getMyCatalog();
-      const product =
-        catalog && catalog.productCollection && catalog.productCollection.get
-          ? catalog.productCollection.get(productId)
-          : null;
+      // const [catalog] = await window.WPP.whatsapp.CatalogStore.findQuery(userId);
+      // const product =
+      //   catalog && catalog.productCollection && catalog.productCollection.get
+      //     ? catalog.productCollection.get(productId)
+      //     : null;
+      const product = await WPP.catalog.getProductById(
+        userId,
+        productId,
+      );
 
       console.log('[product] product', product);
       if (!product) throw new Error('product not found');
