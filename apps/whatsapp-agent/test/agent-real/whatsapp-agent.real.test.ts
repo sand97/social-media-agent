@@ -75,7 +75,6 @@ function createToolSet() {
       success: true,
       products: [],
       count: 0,
-      method: 'vector_search',
     }),
   );
   const historyHandler = vi

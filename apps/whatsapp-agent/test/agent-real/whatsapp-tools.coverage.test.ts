@@ -177,12 +177,8 @@ describe('WhatsApp tools coverage (all tools invoke at least once)', () => {
       searchProducts: vi.fn().mockResolvedValue({
         success: true,
         products: [],
-        method: 'vector_search',
       }),
     };
-
-    const embeddingsService = {};
-    const qdrantService = {};
 
     const prisma = {
       conversationMemory: {
@@ -231,8 +227,6 @@ describe('WhatsApp tools coverage (all tools invoke at least once)', () => {
         connectorClient as any,
         catalogSearch as any,
         scriptService as any,
-        embeddingsService as any,
-        qdrantService as any,
       ),
       new ChatTools(
         connectorClient as any,

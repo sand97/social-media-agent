@@ -39,6 +39,15 @@ jest.mock('@langchain/core/messages', () => ({
     name: string;
     status?: string;
 
+    static isInstance(value: unknown) {
+      return (
+        typeof value === 'object' &&
+        value !== null &&
+        'tool_call_id' in (value as Record<string, unknown>) &&
+        'name' in (value as Record<string, unknown>)
+      );
+    }
+
     constructor(input: {
       content: string;
       tool_call_id: string;
@@ -204,15 +213,16 @@ jest.mock('langchain', () => {
     const modelLimitMiddleware = middleware.find(
       (item: any) => item?.__type === 'modelCallLimit',
     );
-    const toolLimitMiddleware = middleware.find(
+    const toolLimitMiddlewares = middleware.filter(
       (item: any) => item?.__type === 'toolCallLimit',
     );
 
     const modelRunLimit = Number(modelLimitMiddleware?.runLimit || Infinity);
-    const toolRunLimit = Number(toolLimitMiddleware?.runLimit || Infinity);
-
     const customMiddlewares = middleware.filter(
       (item: any) => item?.afterModel?.hook || item?.afterAgent,
+    );
+    const wrapToolCallMiddlewares = middleware.filter(
+      (item: any) => typeof item?.wrapToolCall === 'function',
     );
 
     return {
@@ -228,6 +238,7 @@ jest.mock('langchain', () => {
 
         let modelTurn = 0;
         let totalToolCalls = 0;
+        const toolLimiterRunCounts: Record<string, number> = {};
         const toolCallsPlan: FakeToolCall[][] = Array.isArray(model?.toolCalls)
           ? model.toolCalls
           : [];
@@ -321,14 +332,39 @@ jest.mock('langchain', () => {
                 continue;
               }
 
-              if (totalToolCalls >= toolRunLimit) {
-                if (toolLimitMiddleware?.exitBehavior === 'error') {
-                  throw new Error('Tool call limit exceeded');
-                }
-                if (toolLimitMiddleware?.exitBehavior === 'continue') {
+              let blockedByLimiter = false;
+              for (const toolLimitMiddleware of toolLimitMiddlewares) {
+                const configuredToolName = toolLimitMiddleware?.toolName;
+                if (
+                  configuredToolName &&
+                  configuredToolName !== plannedToolCall.name
+                ) {
                   continue;
                 }
-                break;
+
+                const limiterKey = configuredToolName || '__all__';
+                const runLimit = Number(
+                  toolLimitMiddleware?.runLimit || Infinity,
+                );
+                const currentCount = toolLimiterRunCounts[limiterKey] || 0;
+
+                if (currentCount >= runLimit) {
+                  if (toolLimitMiddleware?.exitBehavior === 'error') {
+                    throw new Error('Tool call limit exceeded');
+                  }
+                  if (toolLimitMiddleware?.exitBehavior === 'continue') {
+                    blockedByLimiter = true;
+                    break;
+                  }
+                  blockedByLimiter = true;
+                  break;
+                }
+
+                toolLimiterRunCounts[limiterKey] = currentCount + 1;
+              }
+
+              if (blockedByLimiter) {
+                continue;
               }
 
               const currentTool = toolsMap.get(plannedToolCall.name);
@@ -346,12 +382,27 @@ jest.mock('langchain', () => {
               );
 
               try {
-                const toolResult = await currentTool.invoke(
-                  plannedToolCall.args || {},
-                  {
+                const invokeToolHandler = async (request: any) =>
+                  request.tool.invoke(request.toolCall.args || {}, {
+                    context: config?.context,
+                  });
+
+                const wrappedToolHandler = [...wrapToolCallMiddlewares].reverse().reduce(
+                  (handler, currentMiddleware) => {
+                    const wrap = currentMiddleware.wrapToolCall;
+                    return (request: any) => wrap(request, handler);
+                  },
+                  invokeToolHandler,
+                );
+
+                const toolResult = await wrappedToolHandler({
+                  toolCall: plannedToolCall,
+                  tool: currentTool,
+                  state,
+                  runtime: {
                     context: config?.context,
                   },
-                );
+                });
 
                 const output =
                   typeof toolResult === 'string'
@@ -456,7 +507,6 @@ function createTestTools() {
       products: [],
       query: 'maillot barca',
       count: 0,
-      method: 'vector_search',
     }),
   );
   const getHistoryHandler = jest.fn().mockResolvedValue(
