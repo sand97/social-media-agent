@@ -34,7 +34,8 @@ export interface ProductLinkPreviewOverride {
 export class ProductSendService {
   private readonly logger = new Logger(ProductSendService.name);
   private readonly maxConcurrentConversations = 3;
-  private readonly previewThumbnailSize = 600;
+  private readonly previewThumbnailWidth = 600;
+  private readonly previewThumbnailHeight = 600;
   private readonly previewMaxDescriptionChars = 110;
   private activeConversations = 0;
   private waitQueue: Array<() => void> = [];
@@ -179,9 +180,12 @@ export class ProductSendService {
     resolution: ProductIdResolutionResult,
   ): Promise<Record<string, ProductLinkPreviewOverride>> {
     try {
-      const products =
-        await this.backendClient.getProductsByAnyIds(resolution.resolvedIds);
-      const byInputId = new Map(products.map((entry) => [entry.inputId, entry]));
+      const products = await this.backendClient.getProductsByAnyIds(
+        resolution.resolvedIds,
+      );
+      const byInputId = new Map(
+        products.map((entry) => [entry.inputId, entry]),
+      );
       const overridesByResolvedId: Record<string, ProductLinkPreviewOverride> =
         {};
 
@@ -214,10 +218,15 @@ export class ProductSendService {
   ): Promise<ProductLinkPreviewOverride | null> {
     const baseTitle = String(product.name || '').trim() || null;
     const shortDescription = this.truncateToTwoSentences(product.description);
-    const formattedPrice = this.formatCatalogPrice(product.price, product.currency);
+    const formattedPrice = this.formatCatalogPrice(
+      product.price,
+      product.currency,
+    );
     const title = this.composePreviewTitle(baseTitle, formattedPrice);
     const description = this.truncatePreviewText(shortDescription);
-    const thumbnailData = await this.buildPreviewThumbnail(product.coverImageUrl);
+    const thumbnailData = await this.buildPreviewThumbnail(
+      product.coverImageUrl,
+    );
 
     if (!title && !description && !thumbnailData) {
       return null;
@@ -295,7 +304,9 @@ export class ProductSendService {
     title: string | null,
     formattedPrice: string | null,
   ): string | null {
-    const normalizedTitle = String(title || '').replace(/\s+/g, ' ').trim();
+    const normalizedTitle = String(title || '')
+      .replace(/\s+/g, ' ')
+      .trim();
     const normalizedPrice = String(formattedPrice || '').trim();
 
     if (!normalizedTitle && !normalizedPrice) {
@@ -313,7 +324,9 @@ export class ProductSendService {
     text: string | null,
     maxChars = this.previewMaxDescriptionChars,
   ): string | null {
-    const normalized = String(text || '').replace(/\s+/g, ' ').trim();
+    const normalized = String(text || '')
+      .replace(/\s+/g, ' ')
+      .trim();
     if (!normalized) {
       return null;
     }
@@ -331,12 +344,10 @@ export class ProductSendService {
 
   private async buildPreviewThumbnail(
     imageUrl?: string | null,
-  ): Promise<
-    Pick<
-      ProductLinkPreviewOverride,
-      'thumbnail' | 'thumbnailWidth' | 'thumbnailHeight'
-    > | null
-  > {
+  ): Promise<Pick<
+    ProductLinkPreviewOverride,
+    'thumbnail' | 'thumbnailWidth' | 'thumbnailHeight'
+  > | null> {
     const normalizedUrl = String(imageUrl || '').trim();
     if (!normalizedUrl) {
       return null;
@@ -359,7 +370,7 @@ export class ProductSendService {
       }
 
       const thumbnailBuffer = await sharp(input)
-        .resize(this.previewThumbnailSize, this.previewThumbnailSize, {
+        .resize(this.previewThumbnailWidth, this.previewThumbnailHeight, {
           fit: 'cover',
           position: 'centre',
           withoutEnlargement: false,
@@ -373,8 +384,8 @@ export class ProductSendService {
 
       return {
         thumbnail: thumbnailBuffer.toString('base64'),
-        thumbnailWidth: this.previewThumbnailSize,
-        thumbnailHeight: this.previewThumbnailSize,
+        thumbnailWidth: this.previewThumbnailWidth,
+        thumbnailHeight: this.previewThumbnailHeight,
       };
     } catch (error: any) {
       this.logger.warn(

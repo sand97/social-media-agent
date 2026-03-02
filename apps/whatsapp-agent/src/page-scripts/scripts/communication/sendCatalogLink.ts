@@ -19,8 +19,7 @@
       throw new Error('TO is required');
     }
 
-    let ownerId =
-      ownerIdRaw && !ownerIdRaw.includes('{{') ? ownerIdRaw : null;
+    let ownerId = ownerIdRaw && !ownerIdRaw.includes('{{') ? ownerIdRaw : null;
 
     if (!ownerId) {
       const me = window.WPP.conn.getMyUserId();

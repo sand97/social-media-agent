@@ -64,8 +64,8 @@ describe('ProductSendService', () => {
         PRODUCT_IDS: '25095720553426064',
       }),
     );
-    const overridesRaw = scriptService.getScript.mock.calls[0][1]
-      .PRODUCT_LINK_OVERRIDES;
+    const overridesRaw =
+      scriptService.getScript.mock.calls[0][1].PRODUCT_LINK_OVERRIDES;
     expect(typeof overridesRaw).toBe('string');
     const overrides = JSON.parse(overridesRaw);
     expect(overrides['25095720553426064']).toEqual(

@@ -55,7 +55,8 @@
       if (!widOrString) return null;
       if (typeof widOrString === 'string') return widOrString;
       if (widOrString._serialized) return widOrString._serialized;
-      if (typeof widOrString.toString === 'function') return widOrString.toString();
+      if (typeof widOrString.toString === 'function')
+        return widOrString.toString();
       return String(widOrString);
     };
 
@@ -79,15 +80,15 @@
       };
     };
 
-    const resolveWhatsAppProductId = async (inputProductId, ownerSerialized) => {
+    const resolveWhatsAppProductId = async (
+      inputProductId,
+      ownerSerialized,
+    ) => {
       try {
-        const [catalog] = await window.WPP.whatsapp.CatalogStore.findQuery(
-          ownerSerialized,
-        );
+        const [catalog] =
+          await window.WPP.whatsapp.CatalogStore.findQuery(ownerSerialized);
         const storeProduct =
-          catalog &&
-          catalog.productCollection &&
-          catalog.productCollection.get
+          catalog && catalog.productCollection && catalog.productCollection.get
             ? catalog.productCollection.get(inputProductId)
             : null;
 
@@ -152,30 +153,25 @@
         typeof rawOverride.description === 'string'
           ? rawOverride.description.trim()
           : '';
-      const thumbnail =
+      const thumbnailBase64 =
         typeof rawOverride.thumbnail === 'string'
           ? rawOverride.thumbnail
-              .replace(/^data:image\/[a-zA-Z0-9.+-]+;base64,/, '')
-              .trim()
-          : '';
-      const thumbnailHQ =
-        typeof rawOverride.thumbnailHQ === 'string'
-          ? rawOverride.thumbnailHQ
               .replace(/^data:image\/[a-zA-Z0-9.+-]+;base64,/, '')
               .trim()
           : '';
       const thumbnailWidth = Number(rawOverride.thumbnailWidth);
       const thumbnailHeight = Number(rawOverride.thumbnailHeight);
 
-      if (!title && !description && !thumbnail && !thumbnailHQ) {
+      if (!title && !description && !thumbnailBase64) {
         return null;
       }
 
+      // Use same image for both thumbnail and thumbnailHQ to preserve high quality
       return {
         ...(title ? { title } : {}),
         ...(description ? { description } : {}),
-        ...(thumbnail ? { thumbnail } : {}),
-        ...(thumbnailHQ ? { thumbnailHQ } : {}),
+        ...(thumbnailBase64 ? { thumbnail: thumbnailBase64 } : {}),
+        ...(thumbnailBase64 ? { thumbnailHQ: thumbnailBase64 } : {}),
         ...(Number.isFinite(thumbnailWidth) && thumbnailWidth > 0
           ? { thumbnailWidth }
           : {}),
@@ -185,7 +181,11 @@
       };
     };
 
-    const waitForPreviewHydration = async (messageId, maxAttempts = 8, delayMs = 500) => {
+    const waitForPreviewHydration = async (
+      messageId,
+      maxAttempts = 8,
+      delayMs = 500,
+    ) => {
       for (let attempt = 1; attempt <= maxAttempts; attempt++) {
         try {
           const msg = await window.WPP.chat.getMessageById(messageId);
@@ -235,7 +235,6 @@
         [waProductId, inputProductId],
         previewOverrides,
       );
-      const linkPreviewOption = previewOverride || true;
 
       console.log('[product-link] start', {
         toChatId,
@@ -244,29 +243,37 @@
         ownerNumber: ownerCtx.ownerNumber,
         source: productResolution.source,
         link,
+        previewOverride,
       });
 
-      let sendMode = 'text_message';
-      let sendResult;
+      // Use sendTextMessage but disable automatic preview generation if we have custom data
+      const sendMode = previewOverride
+        ? 'text_with_custom_preview'
+        : 'text_message';
 
-      if (typeof window.WPP.chat.sendTextMessage === 'function') {
+      let sendResult;
+      if (previewOverride) {
+        // Create a custom preview object that matches WhatsApp's expected format
+        const customPreview = {
+          canonicalUrl: link,
+          matchedText: link,
+          ...previewOverride,
+        };
+
+        console.log(
+          '[product-link] Sending with custom preview (600x600):',
+          customPreview,
+        );
+
         sendResult = await window.WPP.chat.sendTextMessage(toChatId, link, {
           waitForAck: true,
-          linkPreview: linkPreviewOption,
+          linkPreview: customPreview,
         });
       } else {
-        sendMode = 'raw_message_fallback';
-        sendResult = await window.WPP.chat.sendRawMessage(
-          toChatId,
-          {
-            body: link,
-            type: 'chat',
-            ...(previewOverride || {}),
-          },
-          {
-            waitForAck: true,
-          },
-        );
+        sendResult = await window.WPP.chat.sendTextMessage(toChatId, link, {
+          waitForAck: true,
+          linkPreview: true,
+        });
       }
 
       const messageId =
@@ -298,7 +305,9 @@
     };
 
     const ownerCtx = getCatalogOwnerNumber();
-    const productLinkOverrides = parseProductLinkOverrides(rawProductLinkOverrides);
+    const productLinkOverrides = parseProductLinkOverrides(
+      rawProductLinkOverrides,
+    );
     const results = [];
 
     for (const productId of productIds) {
