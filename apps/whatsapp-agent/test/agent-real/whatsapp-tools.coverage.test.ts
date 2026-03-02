@@ -123,11 +123,14 @@ function generateFromSchema(schema: ZodTypeAny, keyPath = ''): unknown {
   return null;
 }
 
-function generateToolInput(toolName: string, schema: ZodTypeAny): Record<string, unknown> {
+function generateToolInput(
+  toolName: string,
+  schema: ZodTypeAny,
+): Record<string, unknown> {
   const generated = generateFromSchema(schema);
-  const payload = (generated && typeof generated === 'object'
-    ? generated
-    : {}) as Record<string, unknown>;
+  const payload = (
+    generated && typeof generated === 'object' ? generated : {}
+  ) as Record<string, unknown>;
 
   if (toolName === 'notify_authorized_group') {
     payload.groupId = 'group-test@g.us';
@@ -139,7 +142,9 @@ function generateToolInput(toolName: string, schema: ZodTypeAny): Record<string,
   }
 
   if (toolName === 'schedule_intention') {
-    payload.scheduledFor = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString();
+    payload.scheduledFor = new Date(
+      Date.now() + 2 * 60 * 60 * 1000,
+    ).toISOString();
     payload.reason = 'Follow-up test';
     payload.conditionToCheck = 'customer_replied';
     payload.actionIfFalse = 'send reminder';
@@ -153,7 +158,9 @@ describe('WhatsApp tools coverage (all tools invoke at least once)', () => {
   it('invokes every tool implementation with mocked dependencies', async () => {
     const connectorClient = {
       executeScript: vi.fn().mockResolvedValue({ success: true, result: [] }),
-      sendMessage: vi.fn().mockResolvedValue({ success: true, messageId: 'msg1' }),
+      sendMessage: vi
+        .fn()
+        .mockResolvedValue({ success: true, messageId: 'msg1' }),
     };
 
     const scriptService = {
@@ -237,12 +244,16 @@ describe('WhatsApp tools coverage (all tools invoke at least once)', () => {
       new GroupTools(connectorClient as any, scriptService as any),
       new LabelsTools(connectorClient as any, scriptService as any),
       new MemoryTools(prisma as any),
-      new MessagesTools(connectorClient as any, queueService as any, scriptService as any),
+      new MessagesTools(
+        connectorClient as any,
+        queueService as any,
+        scriptService as any,
+      ),
       new IntentTools(),
     ];
 
-    const allTools: AnyTool[] = services.flatMap((service) =>
-      (service.createTools() as AnyTool[]) || [],
+    const allTools: AnyTool[] = services.flatMap(
+      (service) => (service.createTools() as AnyTool[]) || [],
     );
 
     expect(allTools.length).toBe(31);
@@ -263,6 +274,8 @@ describe('WhatsApp tools coverage (all tools invoke at least once)', () => {
     expect(prisma.conversationMemory.create).toHaveBeenCalledTimes(1);
     expect(prisma.getChatMemories).toHaveBeenCalledTimes(1);
     expect(catalogSearch.searchProducts).toHaveBeenCalledTimes(1);
-    expect(adminGroupMessagingService.sendToManagementGroup).toHaveBeenCalledTimes(1);
+    expect(
+      adminGroupMessagingService.sendToManagementGroup,
+    ).toHaveBeenCalledTimes(1);
   });
 });

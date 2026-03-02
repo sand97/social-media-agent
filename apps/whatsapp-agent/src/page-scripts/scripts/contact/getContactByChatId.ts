@@ -20,10 +20,7 @@
       throw new Error(`Contact not found for ${chatId}`);
     }
 
-    const user =
-      contact?.attributes?.id?.user ||
-      contact?.id?.user ||
-      '';
+    const user = contact?.attributes?.id?.user || contact?.id?.user || '';
 
     return {
       user,

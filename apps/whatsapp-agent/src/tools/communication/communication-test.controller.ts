@@ -72,9 +72,7 @@ export class CommunicationTestController {
 
     const chatId = (body.chatId || '').trim();
     if (!chatId) {
-      throw new BadRequestException(
-        'chatId is required when dryRun is false',
-      );
+      throw new BadRequestException('chatId is required when dryRun is false');
     }
 
     const sendResult = await this.productSendService.sendProducts(
@@ -92,4 +90,3 @@ export class CommunicationTestController {
     };
   }
 }
-

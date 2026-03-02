@@ -10,7 +10,7 @@ const filePath = path.join(
   'generated',
   'backend-client',
   'client',
-  'client.gen.ts'
+  'client.gen.ts',
 );
 
 // Read the file

@@ -226,10 +226,7 @@ function createConfigService(values: Record<string, string | undefined>) {
   } as unknown as ConfigService;
 }
 
-async function createService(
-  scenario: Scenario,
-  modelConfig: LiveModelConfig,
-) {
+async function createService(scenario: Scenario, modelConfig: LiveModelConfig) {
   const { callLog, handlers, toolProviders } = createToolSet();
 
   const backendClient = {
@@ -250,20 +247,28 @@ async function createService(
 
   const service = new WhatsAppAgentService(
     createConfigService(modelConfig.values),
-    { createTools: () => toolProviders.communicationTools } as unknown as CommunicationTools,
-    { createTools: () => toolProviders.catalogTools } as unknown as CatalogTools,
+    {
+      createTools: () => toolProviders.communicationTools,
+    } as unknown as CommunicationTools,
+    {
+      createTools: () => toolProviders.catalogTools,
+    } as unknown as CatalogTools,
     { createTools: () => toolProviders.chatTools } as unknown as ChatTools,
     { createTools: () => toolProviders.groupTools } as unknown as GroupTools,
     { createTools: () => toolProviders.labelsTools } as unknown as LabelsTools,
     { createTools: () => toolProviders.memoryTools } as unknown as MemoryTools,
-    { createTools: () => toolProviders.messagesTools } as unknown as MessagesTools,
+    {
+      createTools: () => toolProviders.messagesTools,
+    } as unknown as MessagesTools,
     { createTools: () => toolProviders.intentTools } as unknown as IntentTools,
     {
       sanitizeUserInput: (value: string) => value,
       validateInput: () => ({ valid: true }),
       sanitizeAgentResponse: (value: string) => value,
     } as unknown as SanitizationService,
-    { checkRateLimit: vi.fn().mockResolvedValue({ limited: false }) } as unknown as RateLimitService,
+    {
+      checkRateLimit: vi.fn().mockResolvedValue({ limited: false }),
+    } as unknown as RateLimitService,
     backendClient as unknown as BackendClientService,
     {} as ConnectorClientService,
     {} as PageScriptService,

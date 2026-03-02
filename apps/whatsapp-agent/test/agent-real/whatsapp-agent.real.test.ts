@@ -20,11 +20,14 @@ import { MemoryTools } from '../../src/tools/memory/memory.tools';
 import { MessagesTools } from '../../src/tools/messages/messages.tools';
 
 const state = vi.hoisted(() => ({
-  toolCalls: [] as Array<Array<{ id: string; name: string; args: Record<string, any> }>>,
+  toolCalls: [] as Array<
+    Array<{ id: string; name: string; args: Record<string, any> }>
+  >,
 }));
 
 vi.mock('@langchain/openai', async () => {
-  const langchain = await vi.importActual<typeof import('langchain')>('langchain');
+  const langchain =
+    await vi.importActual<typeof import('langchain')>('langchain');
 
   class ChatOpenAI extends langchain.FakeToolCallingModel {
     constructor() {
@@ -36,7 +39,8 @@ vi.mock('@langchain/openai', async () => {
 });
 
 vi.mock('@langchain/google-genai', async () => {
-  const langchain = await vi.importActual<typeof import('langchain')>('langchain');
+  const langchain =
+    await vi.importActual<typeof import('langchain')>('langchain');
 
   class ChatGoogleGenerativeAI extends langchain.FakeToolCallingModel {
     constructor() {
@@ -79,7 +83,9 @@ function createToolSet() {
   );
   const historyHandler = vi
     .fn()
-    .mockResolvedValue(JSON.stringify({ success: true, messages: [], count: 0 }));
+    .mockResolvedValue(
+      JSON.stringify({ success: true, messages: [], count: 0 }),
+    );
 
   const replyTool = tool(replyHandler, {
     name: 'reply_to_message',
@@ -118,7 +124,9 @@ function createToolSet() {
 }
 
 async function createService(
-  toolCalls: Array<Array<{ id: string; name: string; args: Record<string, any> }>>,
+  toolCalls: Array<
+    Array<{ id: string; name: string; args: Record<string, any> }>
+  >,
 ) {
   state.toolCalls = toolCalls;
 
@@ -133,7 +141,9 @@ async function createService(
       agentId: 'agent-1',
       authorizedGroups: [],
     }),
-    logOperation: vi.fn().mockResolvedValue({ success: true, operationId: 'op1' }),
+    logOperation: vi
+      .fn()
+      .mockResolvedValue({ success: true, operationId: 'op1' }),
   };
 
   const configService = {
@@ -151,24 +161,44 @@ async function createService(
 
   const service = new WhatsAppAgentService(
     configService,
-    { createTools: vi.fn(() => toolProviders.communicationTools) } as unknown as CommunicationTools,
-    { createTools: vi.fn(() => toolProviders.catalogTools) } as unknown as CatalogTools,
-    { createTools: vi.fn(() => toolProviders.chatTools) } as unknown as ChatTools,
-    { createTools: vi.fn(() => toolProviders.groupTools) } as unknown as GroupTools,
-    { createTools: vi.fn(() => toolProviders.labelsTools) } as unknown as LabelsTools,
-    { createTools: vi.fn(() => toolProviders.memoryTools) } as unknown as MemoryTools,
-    { createTools: vi.fn(() => toolProviders.messagesTools) } as unknown as MessagesTools,
-    { createTools: vi.fn(() => toolProviders.intentTools) } as unknown as IntentTools,
+    {
+      createTools: vi.fn(() => toolProviders.communicationTools),
+    } as unknown as CommunicationTools,
+    {
+      createTools: vi.fn(() => toolProviders.catalogTools),
+    } as unknown as CatalogTools,
+    {
+      createTools: vi.fn(() => toolProviders.chatTools),
+    } as unknown as ChatTools,
+    {
+      createTools: vi.fn(() => toolProviders.groupTools),
+    } as unknown as GroupTools,
+    {
+      createTools: vi.fn(() => toolProviders.labelsTools),
+    } as unknown as LabelsTools,
+    {
+      createTools: vi.fn(() => toolProviders.memoryTools),
+    } as unknown as MemoryTools,
+    {
+      createTools: vi.fn(() => toolProviders.messagesTools),
+    } as unknown as MessagesTools,
+    {
+      createTools: vi.fn(() => toolProviders.intentTools),
+    } as unknown as IntentTools,
     {
       sanitizeUserInput: vi.fn((v: string) => v),
       validateInput: vi.fn(() => ({ valid: true })),
       sanitizeAgentResponse: vi.fn((v: string) => v),
     } as unknown as SanitizationService,
-    { checkRateLimit: vi.fn().mockResolvedValue({ limited: false }) } as unknown as RateLimitService,
+    {
+      checkRateLimit: vi.fn().mockResolvedValue({ limited: false }),
+    } as unknown as RateLimitService,
     backendClient as unknown as BackendClientService,
     {} as ConnectorClientService,
     {} as PageScriptService,
-    { buildSystemPrompt: vi.fn().mockReturnValue('system prompt') } as unknown as SystemPromptService,
+    {
+      buildSystemPrompt: vi.fn().mockReturnValue('system prompt'),
+    } as unknown as SystemPromptService,
   );
 
   return {
@@ -195,12 +225,14 @@ describe('WhatsApp agent integration (real LangChain runtime)', () => {
       [],
     ]);
 
-    await service.processIncomingMessage(buildIncomingMessage('Bonjour') as any, '237675075643@c.us');
+    await service.processIncomingMessage(
+      buildIncomingMessage('Bonjour') as any,
+      '237675075643@c.us',
+    );
 
     expect(handlers.replyHandler).toHaveBeenCalledTimes(1);
     expect(handlers.searchHandler).toHaveBeenCalledTimes(0);
     expect(backendClient.logOperation).toHaveBeenCalledTimes(1);
-
   });
 
   it('runs multi-tool flow (search + reply)', async () => {
@@ -228,23 +260,32 @@ describe('WhatsApp agent integration (real LangChain runtime)', () => {
     expect(handlers.searchHandler).toHaveBeenCalledTimes(1);
     expect(handlers.replyHandler).toHaveBeenCalledTimes(1);
     expect(backendClient.logOperation).toHaveBeenCalledTimes(1);
-
   });
 
   it('guards duplicate side-effect tool call in one run', async () => {
     const { service, handlers } = await createService([
       [
-        { id: 'reply-1', name: 'reply_to_message', args: { message: 'Première réponse' } },
+        {
+          id: 'reply-1',
+          name: 'reply_to_message',
+          args: { message: 'Première réponse' },
+        },
       ],
       [
-        { id: 'reply-2', name: 'reply_to_message', args: { message: 'Seconde réponse' } },
+        {
+          id: 'reply-2',
+          name: 'reply_to_message',
+          args: { message: 'Seconde réponse' },
+        },
       ],
       [],
     ]);
 
-    await service.processIncomingMessage(buildIncomingMessage('Bonjour') as any, '237675075643@c.us');
+    await service.processIncomingMessage(
+      buildIncomingMessage('Bonjour') as any,
+      '237675075643@c.us',
+    );
 
     expect(handlers.replyHandler).toHaveBeenCalledTimes(1);
-
   });
 });

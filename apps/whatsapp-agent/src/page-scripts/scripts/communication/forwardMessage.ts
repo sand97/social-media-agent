@@ -24,11 +24,9 @@
       throw new Error('MESSAGE_ID is required');
     }
 
-    const result = await window.WPP.chat.forwardMessage(
-      to,
-      originalChatId,
-      [messageId],
-    );
+    const result = await window.WPP.chat.forwardMessage(to, originalChatId, [
+      messageId,
+    ]);
     return result;
   } catch (error) {
     console.error('Failed to forward message:', error);

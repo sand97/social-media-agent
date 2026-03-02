@@ -137,10 +137,10 @@ export class QdrantService implements OnModuleInit {
       this.toImagePointKey(productId, imageId),
       imageEmbedding,
       {
-      product_id: productId,
-      image_id: imageId,
-      ...metadata,
-      indexed_at: new Date().toISOString(),
+        product_id: productId,
+        image_id: imageId,
+        ...metadata,
+        indexed_at: new Date().toISOString(),
       },
     );
   }
@@ -245,7 +245,9 @@ export class QdrantService implements OnModuleInit {
 
     const activeSet = new Set(activeProductIds);
     const indexedIds = await this.getIndexedProductIds();
-    const staleIds = indexedIds.filter((productId) => !activeSet.has(productId));
+    const staleIds = indexedIds.filter(
+      (productId) => !activeSet.has(productId),
+    );
 
     let deleted = 0;
     for (const staleId of staleIds) {
@@ -319,7 +321,10 @@ export class QdrantService implements OnModuleInit {
         for (const point of page.points || []) {
           const payload = point.payload as Record<string, unknown> | undefined;
           const payloadProductId = payload?.product_id;
-          if (typeof payloadProductId === 'string' && payloadProductId.length > 0) {
+          if (
+            typeof payloadProductId === 'string' &&
+            payloadProductId.length > 0
+          ) {
             productIds.add(payloadProductId);
           }
         }
@@ -364,7 +369,9 @@ export class QdrantService implements OnModuleInit {
         },
       });
 
-      this.logger.log(`Created Qdrant collection "${name}" (${vectorSize} dims)`);
+      this.logger.log(
+        `Created Qdrant collection "${name}" (${vectorSize} dims)`,
+      );
     }
   }
 

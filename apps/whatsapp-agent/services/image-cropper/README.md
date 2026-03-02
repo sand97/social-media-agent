@@ -5,6 +5,7 @@ Service FastAPI pour découper intelligemment des captures d'écran de posts soc
 ## Deux stratégies disponibles
 
 ### 1. OpenCV Pure (Gratuit, Rapide ~5ms)
+
 - Analyse de la structure des bandes UI (blanches/grises) en haut et en bas
 - Détection automatique du mode clair/sombre
 - 0 coût
@@ -12,6 +13,7 @@ Service FastAPI pour découper intelligemment des captures d'écran de posts soc
 - Fonctionne bien pour les screenshots classiques
 
 ### 2. Gemini Vision API (Robuste, ~$0.001/appel)
+
 - Utilise l'IA pour détecter le bounding box de l'image produit
 - Plus robuste pour les cas complexes
 - Coût minimal (~$0.001 par appel)
@@ -43,11 +45,13 @@ Le service sera disponible sur `http://localhost:8011`
 ## Endpoints
 
 ### Health Check
+
 ```bash
 GET /health
 ```
 
 ### OpenCV Cropping
+
 ```bash
 POST /crop/opencv
 Content-Type: multipart/form-data
@@ -58,6 +62,7 @@ Content-Type: multipart/form-data
 ```
 
 **Réponse:**
+
 ```json
 {
   "success": true,
@@ -76,6 +81,7 @@ Content-Type: multipart/form-data
 ```
 
 ### Gemini Cropping (avec base64)
+
 ```bash
 POST /crop/gemini
 Content-Type: application/json
@@ -87,6 +93,7 @@ Content-Type: application/json
 ```
 
 ### Gemini Cropping (avec upload)
+
 ```bash
 POST /crop/gemini-upload
 Content-Type: multipart/form-data
@@ -127,4 +134,5 @@ cat response.json | jq -r '.image_base64' | base64 -d > cropped.jpg
 ## Documentation interactive
 
 Une fois le service lancé, accéder à la documentation Swagger:
+
 - http://localhost:8011/docs

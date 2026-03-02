@@ -10,6 +10,7 @@ export interface ScriptVariables {
   QUOTED_MESSAGE_ID?: string;
   PRODUCT_ID?: string;
   PRODUCT_IDS?: string;
+  PRODUCT_LINK_OVERRIDES?: string;
   COLLECTION_ID?: string;
   OWNER_ID?: string;
   LIMIT?: string;

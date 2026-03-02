@@ -165,9 +165,8 @@ export class WhatsAppAgentService implements OnModuleInit {
     // Optional experiment: limit active tools to a predefined set of 5
     const experiment5ToolsEnabled =
       this.configService.get<string>('AGENT_EXPERIMENT_5_TOOLS') === 'true';
-    const configuredActiveTools = this.configService.get<string>(
-      'AGENT_ACTIVE_TOOLS',
-    );
+    const configuredActiveTools =
+      this.configService.get<string>('AGENT_ACTIVE_TOOLS');
 
     let activeToolNames: Set<string> | null = null;
     if (configuredActiveTools?.trim()) {
@@ -297,7 +296,9 @@ export class WhatsAppAgentService implements OnModuleInit {
           // Anti-spam guard without graph-level routing side effects:
           // block any second reply_to_message execution in the same run.
           if (toolName === 'reply_to_message') {
-            const previousReplyCount = Array.isArray((request.state as any)?.messages)
+            const previousReplyCount = Array.isArray(
+              (request.state as any)?.messages,
+            )
               ? ((request.state as any).messages as any[]).filter(
                   (message) =>
                     ToolMessage.isInstance(message) &&

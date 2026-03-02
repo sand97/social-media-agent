@@ -769,6 +769,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/agent-internal/products/by-ids": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Trouver plusieurs produits par identifiants interne/WhatsApp/retailer
+         * @description Endpoint interne backend, appelé par le whatsapp-agent pour résoudre plusieurs identifiants produit et récupérer les données nécessaires à la construction d'une preview de lien produit.
+         */
+        get: operations["ProductsInternalController_getProductsByAnyIds"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/agent-internal/products/search-by-keywords": {
         parameters: {
             query?: never;
@@ -3235,6 +3255,38 @@ export interface operations {
                 content?: never;
             };
             /** @description productId manquant ou invalide */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description JWT inter-services invalide ou absent */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ProductsInternalController_getProductsByAnyIds: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Liste ordonnée des correspondances retournée */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Aucun identifiant valide fourni */
             400: {
                 headers: {
                     [name: string]: unknown;

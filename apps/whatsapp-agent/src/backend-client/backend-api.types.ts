@@ -160,6 +160,24 @@ export interface InternalProductIdMatch {
   whatsapp_product_id?: string | null;
 }
 
+export interface InternalProductByAnyIdsMatch {
+  id: string;
+  name: string;
+  description?: string | null;
+  price?: number | string | null;
+  currency?: string | null;
+  retailer_id?: string | null;
+  whatsapp_product_id?: string | null;
+  url?: string | null;
+  coverImageUrl?: string | null;
+}
+
+export interface InternalProductByAnyIdsEntry {
+  inputId: string;
+  matchedBy: 'id' | 'whatsapp_product_id' | 'retailer_id' | null;
+  product: InternalProductByAnyIdsMatch | null;
+}
+
 export interface InternalProductForImageIndexing {
   id: string;
   name: string;

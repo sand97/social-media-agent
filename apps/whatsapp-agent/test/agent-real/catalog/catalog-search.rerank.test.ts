@@ -50,9 +50,9 @@ describe('CatalogSearchService reranking', () => {
     expect(result.products.length).toBe(2);
     expect(result.products[0].name).toContain('Barcelone');
     expect(result.products[1].name).toContain('Barcelone');
-    expect(result.products.some((product) => product.name.includes('Réal'))).toBe(
-      false,
-    );
+    expect(
+      result.products.some((product) => product.name.includes('Réal')),
+    ).toBe(false);
   });
 
   it('uses query_en to prioritize english cover image matches', async () => {
@@ -118,7 +118,11 @@ describe('CatalogSearchService reranking', () => {
       qdrantService as any,
     );
 
-    const result = await service.searchProducts('maillot barca', 5, 'barcelona jersey');
+    const result = await service.searchProducts(
+      'maillot barca',
+      5,
+      'barcelona jersey',
+    );
 
     expect(result.success).toBe(true);
     expect(result.products.length).toBe(1);

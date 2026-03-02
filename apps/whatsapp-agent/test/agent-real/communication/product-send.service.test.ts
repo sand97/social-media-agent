@@ -11,6 +11,23 @@ describe('ProductSendService', () => {
         retailer_id: 'barcelone-domicile',
         whatsapp_product_id: '25095720553426064',
       }),
+      getProductsByAnyIds: vi.fn().mockResolvedValue([
+        {
+          inputId: '25095720553426064',
+          matchedBy: 'whatsapp_product_id',
+          product: {
+            id: 'cmm6aiemj003ys02rifs8isp2',
+            name: 'Barcelone Domicile',
+            description: 'Maillot domicile officiel. Coupe confortable.',
+            price: 15000,
+            currency: 'FCFA',
+            retailer_id: 'barcelone-domicile',
+            whatsapp_product_id: '25095720553426064',
+            url: null,
+            coverImageUrl: null,
+          },
+        },
+      ]),
     };
 
     const connectorClient = {
@@ -34,10 +51,30 @@ describe('ProductSendService', () => {
     expect(backendClient.getProductByAnyId).toHaveBeenCalledWith(
       'cmm6aiemj003ys02rifs8isp2',
     );
-    expect(scriptService.getScript).toHaveBeenCalledWith('chat/sendProductsMessage', {
-      TO: '64845667926032@lid',
-      PRODUCT_IDS: '25095720553426064',
-    });
+    expect(backendClient.getProductsByAnyIds).toHaveBeenCalledWith([
+      '25095720553426064',
+    ]);
+    expect(scriptService.getScript).toHaveBeenCalledTimes(1);
+    expect(scriptService.getScript.mock.calls[0][0]).toBe(
+      'chat/sendProductsMessage',
+    );
+    expect(scriptService.getScript.mock.calls[0][1]).toEqual(
+      expect.objectContaining({
+        TO: '64845667926032@lid',
+        PRODUCT_IDS: '25095720553426064',
+      }),
+    );
+    const overridesRaw = scriptService.getScript.mock.calls[0][1]
+      .PRODUCT_LINK_OVERRIDES;
+    expect(typeof overridesRaw).toBe('string');
+    const overrides = JSON.parse(overridesRaw);
+    expect(overrides['25095720553426064']).toEqual(
+      expect.objectContaining({
+        title: expect.stringContaining('Barcelone Domicile'),
+      }),
+    );
+    expect(overrides['25095720553426064'].title).toContain('•');
+    expect(overrides['25095720553426064'].description).not.toContain('•');
     expect(connectorClient.executeScript).toHaveBeenCalledTimes(1);
     expect(result.resolvedProductIds).toEqual(['25095720553426064']);
     expect(result.resolution[0].source).toBe('backend_whatsapp_product_id');
@@ -46,6 +83,7 @@ describe('ProductSendService', () => {
   it('keeps passthrough ids when backend has no mapping', async () => {
     const backendClient = {
       getProductByAnyId: vi.fn().mockResolvedValue(null),
+      getProductsByAnyIds: vi.fn().mockResolvedValue([]),
     };
 
     const connectorClient = {
@@ -70,4 +108,3 @@ describe('ProductSendService', () => {
     expect(resolution.mappings[0].source).toBe('passthrough');
   });
 });
-

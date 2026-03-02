@@ -151,9 +151,7 @@ export class CatalogTools {
     );
   }
 
-  private toCompactSearchProducts(
-    products: ProductSearchResult[],
-  ): Array<{
+  private toCompactSearchProducts(products: ProductSearchResult[]): Array<{
     productID: string;
     rankingScore: number;
     description: string;

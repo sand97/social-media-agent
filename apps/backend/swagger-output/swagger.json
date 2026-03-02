@@ -1766,6 +1766,33 @@
         ]
       }
     },
+    "/agent-internal/products/by-ids": {
+      "get": {
+        "operationId": "ProductsInternalController_getProductsByAnyIds",
+        "summary": "Trouver plusieurs produits par identifiants interne/WhatsApp/retailer",
+        "description": "Endpoint interne backend, appelé par le whatsapp-agent pour résoudre plusieurs identifiants produit et récupérer les données nécessaires à la construction d'une preview de lien produit.",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Liste ordonnée des correspondances retournée"
+          },
+          "400": {
+            "description": "Aucun identifiant valide fourni"
+          },
+          "401": {
+            "description": "JWT inter-services invalide ou absent"
+          }
+        },
+        "tags": [
+          "products"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
     "/agent-internal/products/search-by-keywords": {
       "get": {
         "operationId": "ProductsInternalController_searchProductsByKeywords",

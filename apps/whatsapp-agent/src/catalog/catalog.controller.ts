@@ -8,12 +8,7 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common';
-import {
-  ApiBody,
-  ApiOperation,
-  ApiResponse,
-  ApiTags,
-} from '@nestjs/swagger';
+import { ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 
 import { EmbeddingsService } from '../catalog-shared/embeddings.service';
 import { QdrantService } from '../image-processing/qdrant.service';
@@ -180,8 +175,14 @@ export class CatalogController {
         ? this.searchRawTextWithFallback(queryEn, limit).then(
             (result) => result.hits,
           )
-        : Promise.resolve([] as Awaited<ReturnType<QdrantService['searchSimilarText']>>),
-      this.catalogSearchService.searchProducts(query, limit, queryEn || undefined),
+        : Promise.resolve(
+            [] as Awaited<ReturnType<QdrantService['searchSimilarText']>>,
+          ),
+      this.catalogSearchService.searchProducts(
+        query,
+        limit,
+        queryEn || undefined,
+      ),
     ]);
 
     const mappedById = new Map(

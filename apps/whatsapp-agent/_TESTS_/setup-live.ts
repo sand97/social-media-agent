@@ -1,7 +1,11 @@
 import 'reflect-metadata';
 import { config as loadEnv } from 'dotenv';
 import { resolve } from 'node:path';
-import { ReadableStream, TransformStream, WritableStream } from 'node:stream/web';
+import {
+  ReadableStream,
+  TransformStream,
+  WritableStream,
+} from 'node:stream/web';
 import { TextDecoder, TextEncoder } from 'node:util';
 
 loadEnv({ path: resolve(process.cwd(), '.env') });

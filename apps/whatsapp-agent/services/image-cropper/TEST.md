@@ -76,6 +76,7 @@ pnpm start:dev
 Ensuite tester:
 
 **Endpoint 1 - Gemini direct depuis NestJS:**
+
 ```bash
 # Nécessite GEMINI_API_KEY dans .env
 curl -X POST http://localhost:3001/test/crop/gemini \
@@ -85,6 +86,7 @@ curl -X POST http://localhost:3001/test/crop/gemini \
 ```
 
 **Endpoint 2 - YOLOv8-Nano via service Python:**
+
 ```bash
 curl -X POST http://localhost:3001/test/crop/yolo \
   -F "image=@votre-screenshot.jpg"
@@ -93,6 +95,7 @@ curl -X POST http://localhost:3001/test/crop/yolo \
 ```
 
 **Endpoint 3 - OpenCV via service Python:**
+
 ```bash
 curl -X POST http://localhost:3001/test/crop/opencv \
   -F "image=@votre-screenshot.jpg"
@@ -104,13 +107,14 @@ curl -X POST http://localhost:3001/test/crop/opencv \
 
 Après avoir testé les trois stratégies, comparez:
 
-| Méthode | Coût | Vitesse | Précision | Use Case |
-|---------|------|---------|-----------|----------|
-| **OpenCV** | Gratuit | ~5ms ⚡⚡⚡ | Bonne pour UI simples | Screenshots classiques avec UI claire |
-| **YOLOv8-Nano** | Gratuit | ~50ms ⚡⚡ | Excellente 🎯 | Détection d'objets/produits dans toute image |
-| **Gemini** | $0.001 | ~1-2s ⚡ | Très bonne | Cas complexes, fallback |
+| Méthode         | Coût    | Vitesse     | Précision             | Use Case                                     |
+| --------------- | ------- | ----------- | --------------------- | -------------------------------------------- |
+| **OpenCV**      | Gratuit | ~5ms ⚡⚡⚡ | Bonne pour UI simples | Screenshots classiques avec UI claire        |
+| **YOLOv8-Nano** | Gratuit | ~50ms ⚡⚡  | Excellente 🎯         | Détection d'objets/produits dans toute image |
+| **Gemini**      | $0.001  | ~1-2s ⚡    | Très bonne            | Cas complexes, fallback                      |
 
 **Recommandation**:
+
 1. Tester d'abord **YOLOv8-Nano** (gratuit + précis)
 2. Utiliser **OpenCV** si vitesse critique et screenshots simples
 3. **Gemini** comme fallback si les deux autres échouent
@@ -132,6 +136,7 @@ docker compose -f docker-compose-agent-thirdparty.yml up -d image-cropper
 ## Exemples de screenshots à tester
 
 Le système fonctionne bien avec:
+
 - ✅ Posts Facebook (light/dark mode)
 - ✅ Stories Instagram
 - ✅ Posts TikTok

@@ -240,7 +240,8 @@ export class CatalogSearchService {
         normalizedQueryEn && coverImageDescription.includes(normalizedQueryEn),
       );
       const tokenMatchesEnInCover = queryEnTokensForCover.reduce(
-        (count, token) => count + (coverImageDescription.includes(token) ? 1 : 0),
+        (count, token) =>
+          count + (coverImageDescription.includes(token) ? 1 : 0),
         0,
       );
       const tokenMatchesEnInDescription = queryEnTokensForCover.reduce(
@@ -274,12 +275,11 @@ export class CatalogSearchService {
         );
       const hasEnglishLexicalSignal =
         fullQueryEnInCover || tokenMatchesEnInCover > 0;
-      const lexicalPenalty =
-        hasLexicalMatch
-          ? queryEnTokens.length > 0 && !hasEnglishLexicalSignal
-            ? 0.18
-            : 0
-          : 0.2;
+      const lexicalPenalty = hasLexicalMatch
+        ? queryEnTokens.length > 0 && !hasEnglishLexicalSignal
+          ? 0.18
+          : 0
+        : 0.2;
       const primarySemanticScore = hit.primaryScore ?? 0;
       const englishSemanticScore = hit.englishScore ?? 0;
       // query_en has priority only when english lexical signals are present.
@@ -299,7 +299,10 @@ export class CatalogSearchService {
         primarySemanticScore + englishSemanticScore * englishSemanticWeight;
 
       const rankingScore =
-        semanticScore + primaryLexicalBoost + englishLexicalBoost - lexicalPenalty;
+        semanticScore +
+        primaryLexicalBoost +
+        englishLexicalBoost -
+        lexicalPenalty;
 
       return {
         ...hit,
@@ -325,10 +328,7 @@ export class CatalogSearchService {
     return reranked;
   }
 
-  private async searchByTextQuery(
-    queryText: string,
-    limit: number,
-  ) {
+  private async searchByTextQuery(queryText: string, limit: number) {
     const embedding = await this.embeddings.embedText(queryText);
     let hits = await this.qdrantService.searchSimilarText(
       embedding,
@@ -359,7 +359,10 @@ export class CatalogSearchService {
     }
 
     const topRankingScore = hits[0].__rankingScore;
-    if (typeof topRankingScore !== 'number' || !Number.isFinite(topRankingScore)) {
+    if (
+      typeof topRankingScore !== 'number' ||
+      !Number.isFinite(topRankingScore)
+    ) {
       return hits.slice(0, limit);
     }
 
@@ -409,10 +412,7 @@ export class CatalogSearchService {
     primaryHits: Awaited<ReturnType<QdrantService['searchSimilarText']>>,
     englishHits: Awaited<ReturnType<QdrantService['searchSimilarText']>>,
   ): CatalogSearchHit[] {
-    const merged = new Map<
-      string,
-      CatalogSearchHit
-    >();
+    const merged = new Map<string, CatalogSearchHit>();
 
     for (const hit of primaryHits) {
       merged.set(hit.productId, {

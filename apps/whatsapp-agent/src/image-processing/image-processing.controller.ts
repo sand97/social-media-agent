@@ -198,8 +198,7 @@ export class ImageProcessingController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Create Qdrant collection',
-    description:
-      'Create a Qdrant collection for storing image embeddings',
+    description: 'Create a Qdrant collection for storing image embeddings',
   })
   @ApiResponse({
     status: 200,

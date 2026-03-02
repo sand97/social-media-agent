@@ -22,6 +22,7 @@ import {
   InternalProductSample,
   InternalProductMatch,
   InternalProductIdMatch,
+  InternalProductByAnyIdsEntry,
   InternalProductForImageIndexing,
   InternalProductImageIndexingUpdate,
   InternalAgentSnapshotResponse,
@@ -333,6 +334,25 @@ export class BackendClientService {
     const encodedProductId = encodeURIComponent(productId);
     return this.internalGet<InternalProductIdMatch | null>(
       `/agent-internal/products/by-id/${encodedProductId}`,
+    );
+  }
+
+  async getProductsByAnyIds(
+    productIds: string[],
+  ): Promise<InternalProductByAnyIdsEntry[]> {
+    const ids = Array.from(
+      new Set((productIds || []).map((id) => String(id || '').trim())),
+    ).filter(Boolean);
+
+    if (ids.length === 0) {
+      return [];
+    }
+
+    return this.internalGet<InternalProductByAnyIdsEntry[]>(
+      '/agent-internal/products/by-ids',
+      {
+        ids: ids.join(','),
+      },
     );
   }
 

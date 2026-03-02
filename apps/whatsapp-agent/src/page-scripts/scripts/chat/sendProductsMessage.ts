@@ -1,10 +1,11 @@
 /**
- * Send multiple catalog products to a chat
+ * Send multiple product links to a chat (wa.me/p format)
  * Executed in WhatsApp Web context
  *
  * Variables:
- * - TO: Recipient chat ID (format: 123456789@c.us)
+ * - TO: Recipient chat ID (format: 123456789@c.us or 123456789@lid)
  * - PRODUCT_IDS: Comma-separated product IDs
+ * - PRODUCT_LINK_OVERRIDES: JSON object keyed by product id with title/description overrides
  */
 
 // @ts-nocheck
@@ -14,6 +15,7 @@
   try {
     const chatId = '{{TO}}';
     const rawProductIds = '{{PRODUCT_IDS}}';
+    const rawProductLinkOverrides = '{{PRODUCT_LINK_OVERRIDES}}';
 
     if (!chatId || chatId.includes('{{')) {
       throw new Error('TO is required');
@@ -32,173 +34,293 @@
       throw new Error('PRODUCT_IDS must include at least one id');
     }
 
-    const sendSingleProduct = async (chatId, productId) => {
-      const opts = {};
-      const cleanup = true;
-      const uploadChatId = opts.uploadChatId || null;
-      const userId = WPP.whatsapp.UserPrefs.getMaybeMePnUser()._serialized;
-
-      console.log('[product] start', {
-        chatId,
-        productId,
-        cleanup,
-        uploadChatId,
-      });
-
-      // const [catalog] = await window.WPP.whatsapp.CatalogStore.findQuery(userId);
-      // const product =
-      //   catalog && catalog.productCollection && catalog.productCollection.get
-      //     ? catalog.productCollection.get(productId)
-      //     : null;
-      const product = await WPP.catalog.getProductById(
-        userId,
-        productId,
-      );
-
-      console.log('[product] product', product);
-      if (!product) throw new Error('product not found');
-
-      const imageUrl =
-        product.imageCdnUrl ||
-        (product.attributes && product.attributes.imageCdnUrl);
-      console.log('[product] imageUrl', imageUrl);
-      if (!imageUrl) throw new Error('imageUrl missing');
-
-      const download = await WPP.util.downloadImage(imageUrl);
-      const dataUrl = download.data;
-      console.log('[product] download', {
-        hasData: !!dataUrl,
-        length: dataUrl && dataUrl.length,
-      });
-
-      const me = WPP.whatsapp.UserPrefs.getMaybeMePnUser();
-      const meId = me && me.toString ? me.toString() : null;
-      const uploadTo = uploadChatId || meId;
-
-      console.log('[product] uploadTo', uploadTo);
-
-      const imgSend = await WPP.chat.sendFileMessage(uploadTo, dataUrl, {
-        type: 'image',
-        caption: ' ',
-        waitForAck: true,
-      });
-
-      console.log('[product] image sent', imgSend);
-
-      function extractMedia(msg) {
-        const md = msg && msg.mediaData ? msg.mediaData : msg;
-        return {
-          directPath: (md && md.directPath) || msg.directPath,
-          mediaKey: (md && md.mediaKey) || msg.mediaKey,
-          encFilehash: (md && md.encFilehash) || msg.encFilehash,
-          filehash: (md && md.filehash) || msg.filehash,
-          size: (md && md.size) || msg.size,
-          mimetype: (md && md.mimetype) || msg.mimetype,
-          mediaKeyTimestamp:
-            (md && md.mediaKeyTimestamp) || msg.mediaKeyTimestamp,
-          width:
-            (md && (md.fullWidth || md.width)) || msg.width || msg.fullWidth,
-          height:
-            (md && (md.fullHeight || md.height)) || msg.height || msg.fullHeight,
-        };
+    const parseProductLinkOverrides = (rawValue) => {
+      if (!rawValue || rawValue.includes('{{')) {
+        return {};
       }
 
-      async function waitForMediaFields(id) {
-        for (let i = 0; i < 10; i++) {
-          const msg = await WPP.chat.getMessageById(id);
-          const fields = extractMedia(msg);
-          if (
-            fields.directPath &&
-            fields.mediaKey &&
-            fields.encFilehash &&
-            fields.size
-          ) {
-            return { msg, fields };
-          }
-          await new Promise(function (r) {
-            setTimeout(r, 500);
-          });
+      try {
+        const parsed = JSON.parse(rawValue);
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+          return parsed;
         }
-        throw new Error('media fields still missing after upload');
+      } catch (_error) {}
+
+      return {};
+    };
+
+    const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+    const toSerialized = (widOrString) => {
+      if (!widOrString) return null;
+      if (typeof widOrString === 'string') return widOrString;
+      if (widOrString._serialized) return widOrString._serialized;
+      if (typeof widOrString.toString === 'function') return widOrString.toString();
+      return String(widOrString);
+    };
+
+    const getCatalogOwnerNumber = () => {
+      const me =
+        window.WPP.conn?.getMyUserId()?._serialized ||
+        toSerialized(window.WPP.whatsapp?.UserPrefs?.getMaybeMePnUser?.());
+
+      if (!me) {
+        throw new Error('Unable to resolve current user id');
       }
 
-      const media = await waitForMediaFields(imgSend.id);
-      console.log('[product] media fields', media.fields);
+      const ownerNumber = String(me).split('@')[0];
+      if (!ownerNumber) {
+        throw new Error('Unable to resolve catalog owner number');
+      }
 
-      const owner = product.catalogWid || me;
-      const businessOwnerJid =
-        owner && owner.toJid
-          ? owner.toJid()
-          : owner
-            ? owner.toString().replace('@c.us', '@s.whatsapp.net')
+      return {
+        ownerNumber,
+        meSerialized: String(me),
+      };
+    };
+
+    const resolveWhatsAppProductId = async (inputProductId, ownerSerialized) => {
+      try {
+        const [catalog] = await window.WPP.whatsapp.CatalogStore.findQuery(
+          ownerSerialized,
+        );
+        const storeProduct =
+          catalog &&
+          catalog.productCollection &&
+          catalog.productCollection.get
+            ? catalog.productCollection.get(inputProductId)
             : null;
 
-      const body = dataUrl.split(',', 2)[1];
+        if (storeProduct && storeProduct.id) {
+          return {
+            resolvedProductId: String(storeProduct.id),
+            source: 'catalog_store',
+            product: storeProduct,
+          };
+        }
+      } catch (_error) {}
 
-      const raw = {
-        type: 'product',
-        body: body,
-        productId: product.id ? product.id.toString() : String(productId),
-        businessOwnerJid: businessOwnerJid,
-        title: product.name,
-        description: product.description || '',
-        currencyCode: product.currency || null,
-        priceAmount1000: product.priceAmount1000 || null,
-        salePriceAmount1000: product.salePriceAmount1000 || null,
-        url: product.url || '',
-        productImageCount: product.imageCount || 1,
+      try {
+        const product = await window.WPP.catalog.getProductById(
+          ownerSerialized,
+          inputProductId,
+        );
+        if (product && product.id) {
+          return {
+            resolvedProductId: String(product.id),
+            source: 'catalog_api',
+            product,
+          };
+        }
+      } catch (_error) {}
 
-        mimetype: media.fields.mimetype,
-        filehash: media.fields.filehash,
-        encFilehash: media.fields.encFilehash,
-        size: media.fields.size,
-        mediaKey: media.fields.mediaKey,
-        mediaKeyTimestamp: media.fields.mediaKeyTimestamp,
-        directPath: media.fields.directPath,
-        width: media.fields.width,
-        height: media.fields.height,
+      return {
+        resolvedProductId: String(inputProductId),
+        source: 'passthrough',
+        product: null,
       };
+    };
 
-      console.log('[product] rawMessage', raw);
+    const buildPreviewOverride = (candidateProductIds, previewOverrides) => {
+      if (!previewOverrides || typeof previewOverrides !== 'object') {
+        return null;
+      }
 
-      const result = await WPP.chat.sendRawMessage(chatId, raw);
-      console.log('[product] send result', result);
+      const candidateIds = Array.isArray(candidateProductIds)
+        ? candidateProductIds
+        : [candidateProductIds];
+      const normalizedCandidates = candidateIds
+        .map((candidateId) => String(candidateId || '').trim())
+        .filter(Boolean);
 
-      if (cleanup) {
+      let rawOverride = null;
+      for (const candidateId of normalizedCandidates) {
+        const candidateOverride = previewOverrides[candidateId];
+        if (candidateOverride && typeof candidateOverride === 'object') {
+          rawOverride = candidateOverride;
+          break;
+        }
+      }
+
+      if (!rawOverride || typeof rawOverride !== 'object') {
+        return null;
+      }
+
+      const title =
+        typeof rawOverride.title === 'string' ? rawOverride.title.trim() : '';
+      const description =
+        typeof rawOverride.description === 'string'
+          ? rawOverride.description.trim()
+          : '';
+      const thumbnail =
+        typeof rawOverride.thumbnail === 'string'
+          ? rawOverride.thumbnail
+              .replace(/^data:image\/[a-zA-Z0-9.+-]+;base64,/, '')
+              .trim()
+          : '';
+      const thumbnailHQ =
+        typeof rawOverride.thumbnailHQ === 'string'
+          ? rawOverride.thumbnailHQ
+              .replace(/^data:image\/[a-zA-Z0-9.+-]+;base64,/, '')
+              .trim()
+          : '';
+      const thumbnailWidth = Number(rawOverride.thumbnailWidth);
+      const thumbnailHeight = Number(rawOverride.thumbnailHeight);
+
+      if (!title && !description && !thumbnail && !thumbnailHQ) {
+        return null;
+      }
+
+      return {
+        ...(title ? { title } : {}),
+        ...(description ? { description } : {}),
+        ...(thumbnail ? { thumbnail } : {}),
+        ...(thumbnailHQ ? { thumbnailHQ } : {}),
+        ...(Number.isFinite(thumbnailWidth) && thumbnailWidth > 0
+          ? { thumbnailWidth }
+          : {}),
+        ...(Number.isFinite(thumbnailHeight) && thumbnailHeight > 0
+          ? { thumbnailHeight }
+          : {}),
+      };
+    };
+
+    const waitForPreviewHydration = async (messageId, maxAttempts = 8, delayMs = 500) => {
+      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
         try {
-          const del = await WPP.chat.deleteMessage(
-            uploadTo,
-            imgSend.id,
-            true,
-            false,
-          );
-          console.log('[product] cleanup', del);
-        } catch (e) {
-          console.log('[product] cleanup error', e);
+          const msg = await window.WPP.chat.getMessageById(messageId);
+          if (
+            msg &&
+            (msg.title ||
+              msg.description ||
+              msg.thumbnail ||
+              msg.thumbnailDirectPath ||
+              msg.matchedText)
+          ) {
+            return {
+              hydrated: true,
+              attempt,
+              title: msg.title || null,
+              description: msg.description || null,
+            };
+          }
+        } catch (_error) {}
+
+        if (attempt < maxAttempts) {
+          await sleep(delayMs);
         }
       }
 
       return {
-        success: true,
-        to: chatId,
-        ...result,
+        hydrated: false,
+        attempt: maxAttempts,
+        title: null,
+        description: null,
       };
     };
 
+    const sendSingleProductLink = async (
+      toChatId,
+      inputProductId,
+      ownerCtx,
+      previewOverrides,
+    ) => {
+      const productResolution = await resolveWhatsAppProductId(
+        inputProductId,
+        ownerCtx.meSerialized,
+      );
+      const waProductId = productResolution.resolvedProductId;
+      const link = `https://wa.me/p/${waProductId}/${ownerCtx.ownerNumber}`;
+      const previewOverride = buildPreviewOverride(
+        [waProductId, inputProductId],
+        previewOverrides,
+      );
+      const linkPreviewOption = previewOverride || true;
+
+      console.log('[product-link] start', {
+        toChatId,
+        inputProductId,
+        waProductId,
+        ownerNumber: ownerCtx.ownerNumber,
+        source: productResolution.source,
+        link,
+      });
+
+      let sendMode = 'text_message';
+      let sendResult;
+
+      if (typeof window.WPP.chat.sendTextMessage === 'function') {
+        sendResult = await window.WPP.chat.sendTextMessage(toChatId, link, {
+          waitForAck: true,
+          linkPreview: linkPreviewOption,
+        });
+      } else {
+        sendMode = 'raw_message_fallback';
+        sendResult = await window.WPP.chat.sendRawMessage(
+          toChatId,
+          {
+            body: link,
+            type: 'chat',
+            ...(previewOverride || {}),
+          },
+          {
+            waitForAck: true,
+          },
+        );
+      }
+
+      const messageId =
+        sendResult && sendResult.id ? String(sendResult.id) : null;
+      const previewHydration = messageId
+        ? await waitForPreviewHydration(messageId)
+        : { hydrated: false, attempt: 0, title: null, description: null };
+
+      return {
+        success: true,
+        strategyUsed: 'product_link',
+        to: toChatId,
+        inputProductId: String(inputProductId),
+        resolvedProductId: waProductId,
+        productIdSource: productResolution.source,
+        link,
+        sendMode,
+        messageId,
+        ack: typeof sendResult?.ack === 'number' ? sendResult.ack : null,
+        previewOverrideUsed: previewOverride,
+        previewHydrated: previewHydration.hydrated,
+        previewHydrationAttempt: previewHydration.attempt,
+        previewTitle: previewHydration.title,
+        previewDescription: previewHydration.description,
+        previewWarning: previewHydration.hydrated
+          ? null
+          : 'Preview not hydrated immediately on Web client (can still appear on recipient clients).',
+      };
+    };
+
+    const ownerCtx = getCatalogOwnerNumber();
+    const productLinkOverrides = parseProductLinkOverrides(rawProductLinkOverrides);
     const results = [];
 
     for (const productId of productIds) {
-      const result = await sendSingleProduct(chatId, productId);
+      const result = await sendSingleProductLink(
+        chatId,
+        productId,
+        ownerCtx,
+        productLinkOverrides,
+      );
       results.push(result);
     }
 
     return {
       success: true,
+      strategyUsed: 'product_link',
+      ownerNumber: ownerCtx.ownerNumber,
+      overridesCount: Object.keys(productLinkOverrides).length,
       count: results.length,
       results,
     };
   } catch (error) {
-    console.error('Failed to send product message:', error);
+    console.error('Failed to send product link message:', error);
     return {
       success: false,
       error: error.message,

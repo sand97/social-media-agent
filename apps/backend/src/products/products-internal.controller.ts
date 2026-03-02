@@ -130,6 +130,41 @@ export class ProductsInternalController {
     );
   }
 
+  @Get('by-ids')
+  @ApiOperation({
+    summary:
+      'Trouver plusieurs produits par identifiants interne/WhatsApp/retailer',
+    description:
+      "Endpoint interne backend, appelé par le whatsapp-agent pour résoudre plusieurs identifiants produit et récupérer les données nécessaires à la construction d'une preview de lien produit.",
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Liste ordonnée des correspondances retournée',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Aucun identifiant valide fourni',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'JWT inter-services invalide ou absent',
+  })
+  async getProductsByAnyIds(
+    @AgentContext() context: AgentRequestContext,
+    @Query('ids') ids: string | string[],
+  ) {
+    const parsedIds = parseKeywordsQuery(ids);
+
+    if (parsedIds.length === 0) {
+      throw new BadRequestException('At least one id is required');
+    }
+
+    return this.productsInternalService.getProductsByAnyIds(
+      context.userId,
+      parsedIds,
+    );
+  }
+
   @Get('search-by-keywords')
   @ApiOperation({
     summary: 'Rechercher des produits par mots-clés',

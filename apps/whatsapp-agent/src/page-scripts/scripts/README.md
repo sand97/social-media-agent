@@ -45,9 +45,12 @@ Créez un nouveau fichier dans le dossier approprié, par exemple `catalog/getPr
 Le service PageScriptService charge automatiquement les scripts et remplace les variables.
 
 ```typescript
-const script = await this.pageScriptService.getScript('catalog/getProductDetails', {
-  PRODUCT_ID: '123456'
-});
+const script = await this.pageScriptService.getScript(
+  'catalog/getProductDetails',
+  {
+    PRODUCT_ID: '123456',
+  },
+);
 
 const result = await this.connectorClient.executeScript(script);
 ```
@@ -59,10 +62,11 @@ Les placeholders suivants sont remplacés automatiquement par le service :
 - `{{VARIABLE_NAME}}` : Toute variable passée via l'objet de variables
 
 Exemple :
+
 ```typescript
 const script = await this.pageScriptService.getScript('myScript', {
   CHAT_ID: '5521999999999@c.us',
-  LIMIT: '50'
+  LIMIT: '50',
 });
 ```
 

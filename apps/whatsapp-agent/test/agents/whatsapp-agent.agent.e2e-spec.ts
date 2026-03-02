@@ -166,7 +166,8 @@ jest.mock('@langchain/openai', () => ({
     toolCalls: FakeToolCall[][];
 
     constructor() {
-      this.toolCalls = ((globalThis as any).__WA_MODEL_STATE__?.toolCalls || []) as FakeToolCall[][];
+      this.toolCalls = ((globalThis as any).__WA_MODEL_STATE__?.toolCalls ||
+        []) as FakeToolCall[][];
     }
   },
 }));
@@ -259,7 +260,12 @@ jest.mock('langchain', () => {
 
             const plannedToolCalls = toolCallsPlan[modelTurn] || [];
 
-            await callCallbacks('handleLLMStart', { id: ['mock', 'model'] }, [], 'run-id');
+            await callCallbacks(
+              'handleLLMStart',
+              { id: ['mock', 'model'] },
+              [],
+              'run-id',
+            );
 
             await callCallbacks(
               'handleLLMEnd',
@@ -387,13 +393,12 @@ jest.mock('langchain', () => {
                     context: config?.context,
                   });
 
-                const wrappedToolHandler = [...wrapToolCallMiddlewares].reverse().reduce(
-                  (handler, currentMiddleware) => {
+                const wrappedToolHandler = [...wrapToolCallMiddlewares]
+                  .reverse()
+                  .reduce((handler, currentMiddleware) => {
                     const wrap = currentMiddleware.wrapToolCall;
                     return (request: any) => wrap(request, handler);
-                  },
-                  invokeToolHandler,
-                );
+                  }, invokeToolHandler);
 
                 const toolResult = await wrappedToolHandler({
                   toolCall: plannedToolCall,
@@ -616,7 +621,9 @@ async function buildServiceWithScenario(toolCalls: FakeToolCall[][]) {
       { provide: ConfigService, useValue: configService },
       {
         provide: CommunicationTools,
-        useValue: { createTools: jest.fn(() => toolsByService.communicationTools) },
+        useValue: {
+          createTools: jest.fn(() => toolsByService.communicationTools),
+        },
       },
       {
         provide: CatalogTools,
@@ -716,7 +723,7 @@ describe('WhatsAppAgentService Agent E2E (mocked langchain runtime)', () => {
             name: 'reply_to_message',
             args: {
               message:
-                "Je vérifie le catalogue et je reviens vers vous immédiatement.",
+                'Je vérifie le catalogue et je reviens vers vous immédiatement.',
             },
           },
         ],

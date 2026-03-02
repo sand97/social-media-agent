@@ -161,6 +161,94 @@ export class ProductsInternalService {
     });
   }
 
+  async getProductsByAnyIds(userId: string, ids: string[]) {
+    const normalizedIds = Array.from(
+      new Set((ids || []).map((id) => String(id || '').trim()).filter(Boolean)),
+    );
+
+    if (normalizedIds.length === 0) {
+      return [];
+    }
+
+    const products = await this.prisma.product.findMany({
+      where: {
+        user_id: userId,
+        OR: [
+          { id: { in: normalizedIds } },
+          { whatsapp_product_id: { in: normalizedIds } },
+          ...normalizedIds.map((id) => ({
+            retailer_id: {
+              equals: id,
+              mode: 'insensitive' as const,
+            },
+          })),
+        ],
+      },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        price: true,
+        currency: true,
+        retailer_id: true,
+        whatsapp_product_id: true,
+        url: true,
+        images: {
+          orderBy: { image_index: 'asc' },
+          take: 1,
+          select: {
+            url: true,
+          },
+        },
+      },
+    });
+
+    const byProductId = new Map(products.map((product) => [product.id, product]));
+    const byWhatsappProductId = new Map(
+      products
+        .filter((product) => product.whatsapp_product_id)
+        .map((product) => [String(product.whatsapp_product_id), product]),
+    );
+    const byRetailerIdLower = new Map(
+      products
+        .filter((product) => product.retailer_id)
+        .map((product) => [String(product.retailer_id).toLowerCase(), product]),
+    );
+
+    return normalizedIds.map((inputId) => {
+      const byId = byProductId.get(inputId);
+      const byWhatsApp = byWhatsappProductId.get(inputId);
+      const byRetailer = byRetailerIdLower.get(inputId.toLowerCase());
+      const product = byId || byWhatsApp || byRetailer || null;
+
+      const matchedBy = byId
+        ? 'id'
+        : byWhatsApp
+          ? 'whatsapp_product_id'
+          : byRetailer
+            ? 'retailer_id'
+            : null;
+
+      return {
+        inputId,
+        matchedBy,
+        product: product
+          ? {
+              id: product.id,
+              name: product.name,
+              description: product.description,
+              price: product.price,
+              currency: product.currency,
+              retailer_id: product.retailer_id,
+              whatsapp_product_id: product.whatsapp_product_id,
+              url: product.url,
+              coverImageUrl: product.images?.[0]?.url || null,
+            }
+          : null,
+      };
+    });
+  }
+
   async searchProductsByKeywords(
     userId: string,
     keywords: string[],

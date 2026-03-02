@@ -25,7 +25,8 @@
 
     const count = parseInt('{{COUNT}}') || 20;
     const direction = '{{DIRECTION}}' || 'before';
-    const messageId = '{{MESSAGE_ID}}' === '{{MESSAGE_ID}}' ? undefined : '{{MESSAGE_ID}}';
+    const messageId =
+      '{{MESSAGE_ID}}' === '{{MESSAGE_ID}}' ? undefined : '{{MESSAGE_ID}}';
     const onlyUnread = '{{ONLY_UNREAD}}' === 'true';
 
     console.log('[GetMessagesAdvanced] Fetching messages with params:', {
@@ -53,7 +54,11 @@
     // Fetch messages using WPP API
     const rawMessages = await window.WPP.chat.getMessages(chatId, options);
 
-    console.log('[GetMessagesAdvanced] Fetched', rawMessages.length, 'messages');
+    console.log(
+      '[GetMessagesAdvanced] Fetched',
+      rawMessages.length,
+      'messages',
+    );
 
     // Map to simpler format
     const messages = rawMessages.map((m) => ({
@@ -64,10 +69,12 @@
       timestamp: m.timestamp || m.t,
       type: m.type,
       hasMedia: m.hasMedia || false,
-      quotedMsg: m.quotedMsg ? {
-        id: m.quotedMsg.id?._serialized || m.quotedMsg.id,
-        body: m.quotedMsg.body
-      } : undefined,
+      quotedMsg: m.quotedMsg
+        ? {
+            id: m.quotedMsg.id?._serialized || m.quotedMsg.id,
+            body: m.quotedMsg.body,
+          }
+        : undefined,
     }));
 
     console.log('[GetMessagesAdvanced] Returning', messages.length, 'messages');

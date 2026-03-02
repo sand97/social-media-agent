@@ -43,7 +43,9 @@ export class ImageIndexingProcessor implements OnModuleInit {
   }
 
   private async handleCatalogImageSync(job: Job): Promise<void> {
-    this.logger.log('🚀 Starting catalog indexing (images + text embeddings to Qdrant)');
+    this.logger.log(
+      '🚀 Starting catalog indexing (images + text embeddings to Qdrant)',
+    );
 
     const result =
       await this.productImageIndexingService.syncCatalogProducts(job);

@@ -1,6 +1,10 @@
 import 'reflect-metadata';
 import './setup-e2e';
-import { ReadableStream, TransformStream, WritableStream } from 'node:stream/web';
+import {
+  ReadableStream,
+  TransformStream,
+  WritableStream,
+} from 'node:stream/web';
 import { TextDecoder, TextEncoder } from 'node:util';
 
 const globalAny = globalThis as any;

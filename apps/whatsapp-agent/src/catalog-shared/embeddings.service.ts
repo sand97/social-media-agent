@@ -23,10 +23,15 @@ export class EmbeddingsService {
   constructor(private configService: ConfigService) {
     this.apiKey = this.configService.get<string>('GEMINI_API_KEY') || null;
     const configuredModel =
-      this.configService
-        .get<string>('GEMINI_EMBEDDING_MODEL')
-        ?.trim() || 'text-embedding-004';
-    this.modelCandidates = [...new Set([configuredModel, 'text-embedding-004', 'gemini-embedding-001'])];
+      this.configService.get<string>('GEMINI_EMBEDDING_MODEL')?.trim() ||
+      'text-embedding-004';
+    this.modelCandidates = [
+      ...new Set([
+        configuredModel,
+        'text-embedding-004',
+        'gemini-embedding-001',
+      ]),
+    ];
 
     if (!this.apiKey) {
       this.logger.warn(
@@ -37,9 +42,7 @@ export class EmbeddingsService {
 
     this.activeModelName = this.modelCandidates[0];
     this.embeddings = this.createEmbeddings(this.activeModelName);
-    this.logger.log(
-      `Using Gemini embedding model: ${this.activeModelName}`,
-    );
+    this.logger.log(`Using Gemini embedding model: ${this.activeModelName}`);
   }
 
   /**
