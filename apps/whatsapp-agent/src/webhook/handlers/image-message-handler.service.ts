@@ -1,11 +1,5 @@
-import { InternalProductMatch } from '@app/backend-client/backend-api.types';
 import { BackendClientService } from '@app/backend-client/backend-client.service';
-import { EmbeddingsService } from '@app/catalog-shared/embeddings.service';
-import { GeminiVisionService } from '@app/image-processing/gemini-vision.service';
-import { ImageEmbeddingsService } from '@app/image-processing/image-embeddings.service';
-import { OcrService } from '@app/image-processing/ocr.service';
-import { QdrantService } from '@app/image-processing/qdrant.service';
-import { SmartCropService } from '@app/image-processing/smart-crop.service';
+import { ImageProductMatchingService } from '@app/image-processing/image-product-matching.service';
 import { WhatsAppAgentService } from '@app/langchain/whatsapp-agent.service';
 import { MessageMetadataService } from '@app/message-metadata/message-metadata.service';
 import { AdminGroupMessagingService } from '@app/tools/chat/admin-group-messaging.service';
@@ -13,26 +7,14 @@ import { Injectable, Logger } from '@nestjs/common';
 
 import { stripAndSanitizeWaId } from '../utils/wa-id.utils';
 
-type ImageSearchMethod =
-  | 'ocr_keywords'
-  | 'qdrant_image'
-  | 'qdrant_text'
-  | 'none'
-  | 'error';
-
 @Injectable()
 export class ImageMessageHandlerService {
   private readonly logger = new Logger(ImageMessageHandlerService.name);
 
   constructor(
     private readonly backendClient: BackendClientService,
+    private readonly imageProductMatchingService: ImageProductMatchingService,
     private readonly messageMetadata: MessageMetadataService,
-    private readonly ocrService: OcrService,
-    private readonly qdrantService: QdrantService,
-    private readonly imageEmbeddings: ImageEmbeddingsService,
-    private readonly textEmbeddings: EmbeddingsService,
-    private readonly smartCropService: SmartCropService,
-    private readonly geminiVisionService: GeminiVisionService,
     private readonly agentService: WhatsAppAgentService,
     private readonly adminGroupMessagingService: AdminGroupMessagingService,
   ) {}
@@ -70,161 +52,57 @@ export class ImageMessageHandlerService {
       message.downloadedMedia.data,
       'base64',
     );
-    let imageToProcess: Buffer<ArrayBufferLike> = originalImageBuffer;
-    let croppedSuccessfully = false;
-    let ocrText = '';
-    let keywords: string[] = [];
-    let geminiDescription = '';
-    let searchMethod: ImageSearchMethod = 'none';
-    let confidence: number | null = null;
-    let matchedKeywords: string[] = [];
-    let matchedProduct: InternalProductMatch | null = null;
 
-    try {
-      imageToProcess =
-        await this.smartCropService.cropOpenCV(originalImageBuffer);
-      croppedSuccessfully = imageToProcess !== originalImageBuffer;
-
-      ocrText = await this.ocrService.extractText(imageToProcess);
-      keywords = this.extractWords(ocrText);
-
-      if (keywords.length > 0) {
-        const ocrSearch = await this.backendClient.searchProductsByKeywords({
-          keywords,
-        });
-
-        if (ocrSearch.products.length > 0) {
-          matchedProduct = ocrSearch.products[0];
-          matchedKeywords = ocrSearch.matchedKeywords;
-          searchMethod = 'ocr_keywords';
-          confidence = 1;
-        }
-      }
-
-      if (
-        !matchedProduct &&
-        this.qdrantService.isConfigured() &&
-        this.imageEmbeddings.isReady()
-      ) {
-        const imageThreshold = this.getThreshold('QDRANT_IMAGE_THRESHOLD', 0.8);
-        const imageEmbedding =
-          await this.imageEmbeddings.generateEmbedding(imageToProcess);
-        const qdrantImageMatches = await this.qdrantService.searchSimilarImages(
-          imageEmbedding,
-          1,
-          imageThreshold,
-        );
-
-        if (qdrantImageMatches.length > 0) {
-          const bestMatch = qdrantImageMatches[0];
-          matchedProduct = {
-            id: bestMatch.productId,
-            name:
-              this.toOptionalString(bestMatch.metadata.product_name) ||
-              'Produit identifié',
-            description: this.toOptionalString(bestMatch.metadata.description),
-            retailer_id: this.toOptionalString(bestMatch.metadata.retailer_id),
-            coverImageDescription: this.toOptionalString(
-              bestMatch.metadata.cover_image_description,
-            ),
-            category: this.toOptionalString(bestMatch.metadata.category),
-            price:
-              typeof bestMatch.metadata.price === 'number'
-                ? bestMatch.metadata.price
-                : null,
-          };
-          searchMethod = 'qdrant_image';
-          confidence = bestMatch.score;
-        }
-      }
-
-      if (!matchedProduct && this.qdrantService.isConfigured()) {
-        geminiDescription =
-          await this.geminiVisionService.describeProductImage(imageToProcess);
-
-        const textEmbedding =
-          await this.textEmbeddings.embedText(geminiDescription);
-        const textThreshold = this.getThreshold('QDRANT_TEXT_THRESHOLD', 0.8);
-        const qdrantTextMatches = await this.qdrantService.searchSimilarText(
-          textEmbedding,
-          1,
-          textThreshold,
-        );
-
-        if (qdrantTextMatches.length > 0) {
-          const bestMatch = qdrantTextMatches[0];
-          matchedProduct = {
-            id: bestMatch.productId,
-            name:
-              this.toOptionalString(bestMatch.metadata.product_name) ||
-              'Produit identifié',
-            description: this.toOptionalString(bestMatch.metadata.description),
-            retailer_id: this.toOptionalString(bestMatch.metadata.retailer_id),
-            coverImageDescription: this.toOptionalString(
-              bestMatch.metadata.cover_image_description,
-            ),
-            category: this.toOptionalString(bestMatch.metadata.category),
-            price:
-              typeof bestMatch.metadata.price === 'number'
-                ? bestMatch.metadata.price
-                : null,
-          };
-          searchMethod = 'qdrant_text';
-          confidence = bestMatch.score;
-        }
-      }
-    } catch (error: any) {
-      searchMethod = 'error';
-      this.logger.error(
-        `Image pipeline failed for ${messageId}: ${error?.message}`,
-      );
-    }
-
-    const matchedProducts = matchedProduct ? [matchedProduct] : [];
-    const imageContextBlock = this.buildImageContextBlock({
-      searchMethod,
-      matchedProduct,
-      confidence,
-      ocrText,
-      geminiDescription,
-    });
+    const pipelineResult =
+      await this.imageProductMatchingService.matchIncomingImage({
+        imageBuffer: originalImageBuffer,
+        messageBody: message?.body,
+        context: {
+          messageId,
+          chatId,
+        },
+      });
 
     await this.messageMetadata.upsertMetadata({
       messageId,
       type: 'IMAGE',
       metadata: {
-        searchMethod,
-        confidence,
-        ocrText,
-        keywords,
-        matchedKeywords,
-        matchedProducts,
-        geminiDescription,
-        croppedSuccessfully,
-        productsFound: matchedProducts.length,
+        searchMethod: pipelineResult.searchMethod,
+        confidence: pipelineResult.confidence,
+        similarity: pipelineResult.similarity,
+        ocrText: pipelineResult.ocrText,
+        keywords: pipelineResult.keywords,
+        matchedKeywords: pipelineResult.matchedKeywords,
+        matchedProducts: pipelineResult.matchedProducts,
+        geminiDescription: pipelineResult.geminiDescription,
+        croppedSuccessfully: pipelineResult.croppedSuccessfully,
+        cropMethod: pipelineResult.cropMethod,
+        productsFound: pipelineResult.productsFound,
+        error: pipelineResult.error,
         mediaUrl: upload.url,
         objectKey: upload.objectKey,
       },
     });
 
-    if (!matchedProduct) {
+    if (pipelineResult.matchedProducts.length === 0) {
       await this.notifyAdminImageFailure({
         messageId,
         chatId,
         contactId: message?.contactId,
-        ocrText,
-        geminiDescription,
+        ocrText: pipelineResult.ocrText,
+        geminiDescription: pipelineResult.geminiDescription,
       });
     }
 
-    (message as any).imageProducts = matchedProducts;
-    (message as any).imageSearchMethod = searchMethod;
-    (message as any).imageOcrText = ocrText;
-    (message as any).imageGeminiDescription = geminiDescription;
-    (message as any).body = this.mergeImageContextIntoMessage(
-      message?.body,
-      imageContextBlock,
-    );
+    (message as any).imageProducts = pipelineResult.agentPayload.imageProducts;
+    (message as any).imageSearchMethod =
+      pipelineResult.agentPayload.imageSearchMethod;
+    (message as any).imageOcrText = pipelineResult.agentPayload.imageOcrText;
+    (message as any).imageGeminiDescription =
+      pipelineResult.agentPayload.imageGeminiDescription;
+    (message as any).imageContextBlock =
+      pipelineResult.agentPayload.imageContextBlock;
+    (message as any).body = pipelineResult.agentPayload.body;
 
     if (upload.objectKey) {
       try {
@@ -241,59 +119,6 @@ export class ImageMessageHandlerService {
     (message as any).mediaKind = 'image';
 
     await this.agentService.processIncomingMessage(messageData, userId);
-  }
-
-  private extractWords(text: string): string[] {
-    if (!text) {
-      return [];
-    }
-
-    return text
-      .split(/[^a-zA-Z0-9_-]+/)
-      .map((token) => token.trim())
-      .filter((token) => token.length > 0);
-  }
-
-  private buildImageContextBlock(data: {
-    searchMethod: ImageSearchMethod;
-    matchedProduct: InternalProductMatch | null;
-    confidence: number | null;
-    ocrText: string;
-    geminiDescription: string;
-  }): string {
-    const confidencePercent =
-      typeof data.confidence === 'number'
-        ? `${(data.confidence * 100).toFixed(1)}%`
-        : 'N/A';
-
-    if (data.matchedProduct) {
-      return [
-        '[IMAGE_CONTEXT]',
-        `search_method=${data.searchMethod}`,
-        `product_id=${data.matchedProduct.id}`,
-        `product_name=${data.matchedProduct.name}`,
-        `confidence=${confidencePercent}`,
-        `retailer_id=${data.matchedProduct.retailer_id || 'N/A'}`,
-        `instruction=Confirme avec le contact si ce produit correspond bien à son image.`,
-      ].join('\n');
-    }
-
-    return [
-      '[IMAGE_CONTEXT]',
-      `search_method=${data.searchMethod}`,
-      'product_id=NOT_FOUND',
-      `ocr_excerpt=${data.ocrText.slice(0, 120) || 'N/A'}`,
-      `gemini_description=${data.geminiDescription || 'N/A'}`,
-      'instruction=Aucun produit identifié avec confiance suffisante. Continue la conversation normalement.',
-    ].join('\n');
-  }
-
-  private mergeImageContextIntoMessage(
-    messageBody: string | undefined,
-    imageContextBlock: string,
-  ): string {
-    const baseText = messageBody?.trim() || '[Image envoyée par le contact]';
-    return `${baseText}\n\n${imageContextBlock}`;
   }
 
   private async notifyAdminImageFailure(data: {
@@ -332,28 +157,5 @@ export class ImageMessageHandlerService {
         `Failed to notify management group for image failure: ${error?.message || error}`,
       );
     }
-  }
-
-  private getThreshold(envName: string, fallback: number): number {
-    const raw = process.env[envName];
-    if (!raw) {
-      return fallback;
-    }
-
-    const parsed = Number.parseFloat(raw);
-    if (!Number.isFinite(parsed) || parsed <= 0 || parsed > 1) {
-      return fallback;
-    }
-
-    return parsed;
-  }
-
-  private toOptionalString(value: unknown): string | null {
-    if (typeof value !== 'string') {
-      return null;
-    }
-
-    const normalized = value.trim();
-    return normalized.length > 0 ? normalized : null;
   }
 }

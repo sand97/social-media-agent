@@ -169,7 +169,7 @@ export class ProductsInternalController {
   @ApiOperation({
     summary: 'Rechercher des produits par mots-clés',
     description:
-      'Endpoint interne backend, appelé par le whatsapp-agent pour la recherche OCR textuelle. Réutilise la logique métier existante ProductsService.searchByKeywords.',
+      'Endpoint interne backend, appelé par le whatsapp-agent pour la recherche OCR textuelle. Le matching est strictement effectué sur retailer_id.',
   })
   @ApiResponse({
     status: 200,
@@ -186,7 +186,6 @@ export class ProductsInternalController {
   async searchProductsByKeywords(
     @AgentContext() context: AgentRequestContext,
     @Query('keywords') keywords: string | string[],
-    @Query('retailer_id') retailerId?: string,
   ) {
     const parsedKeywords = parseKeywordsQuery(keywords);
 
@@ -197,7 +196,6 @@ export class ProductsInternalController {
     return this.productsInternalService.searchProductsByKeywords(
       context.userId,
       parsedKeywords,
-      retailerId,
     );
   }
 

@@ -146,7 +146,6 @@ export class ProductsController {
     return this.productsService.searchByKeywords(
       searchDto.user_id,
       searchDto.keywords,
-      searchDto.retailer_id,
     );
   }
 }

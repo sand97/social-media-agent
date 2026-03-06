@@ -356,10 +356,7 @@ export class BackendClientService {
     );
   }
 
-  async searchProductsByKeywords(params: {
-    keywords: string[];
-    retailerId?: string;
-  }): Promise<{
+  async searchProductsByKeywords(params: { keywords: string[] }): Promise<{
     products: InternalProductMatch[];
     matchedKeywords: string[];
   }> {
@@ -368,7 +365,6 @@ export class BackendClientService {
       matchedKeywords: string[];
     }>('/agent-internal/products/search-by-keywords', {
       keywords: params.keywords.join(','),
-      retailer_id: params.retailerId,
     });
   }
 

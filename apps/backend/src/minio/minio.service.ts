@@ -75,6 +75,183 @@ export class MinioService implements OnModuleInit {
     }
   }
 
+  private formatMinioError(error: any): string {
+    const details = {
+      name: error?.name,
+      message: error?.message,
+      code: error?.code,
+      statusCode: error?.statusCode,
+      resource: error?.resource,
+      bucketName: error?.bucketName,
+      objectName: error?.objectName,
+      region: error?.region || error?.amzBucketRegion,
+      amzRequestId: error?.amzRequestid || error?.amzRequestId,
+      amzId2: error?.amzId2,
+      cause: error?.cause,
+    };
+
+    try {
+      return JSON.stringify(details);
+    } catch {
+      return String(error?.message || error);
+    }
+  }
+
+  private buildPublicObjectUrl(objectKey: string): string {
+    return `${this.publicUrl}/${this.bucket}/${objectKey}`;
+  }
+
+  private async checkPublicObjectAvailability(objectKey: string): Promise<{
+    exists: boolean | null;
+    method: 'HEAD' | 'GET';
+    statusCode?: number;
+    details?: string;
+    url: string;
+  }> {
+    const url = this.buildPublicObjectUrl(objectKey);
+
+    try {
+      const headResponse = await fetch(url, {
+        method: 'HEAD',
+        signal: AbortSignal.timeout(5000),
+      });
+
+      if (headResponse.ok) {
+        return {
+          exists: true,
+          method: 'HEAD',
+          statusCode: headResponse.status,
+          url,
+        };
+      }
+
+      if (headResponse.status === 404) {
+        return {
+          exists: false,
+          method: 'HEAD',
+          statusCode: headResponse.status,
+          url,
+        };
+      }
+
+      this.logger.warn(
+        `[MINIO] Public HEAD inconclusive objectKey=${objectKey} status=${headResponse.status}, retrying with ranged GET`,
+      );
+    } catch (error: any) {
+      this.logger.warn(
+        `[MINIO] Public HEAD failed objectKey=${objectKey} error=${error.message}, retrying with ranged GET`,
+      );
+    }
+
+    try {
+      const getResponse = await fetch(url, {
+        method: 'GET',
+        headers: {
+          Range: 'bytes=0-0',
+        },
+        signal: AbortSignal.timeout(5000),
+      });
+
+      if (getResponse.ok || getResponse.status === 206) {
+        return {
+          exists: true,
+          method: 'GET',
+          statusCode: getResponse.status,
+          url,
+        };
+      }
+
+      if (getResponse.status === 404) {
+        return {
+          exists: false,
+          method: 'GET',
+          statusCode: getResponse.status,
+          url,
+        };
+      }
+
+      return {
+        exists: null,
+        method: 'GET',
+        statusCode: getResponse.status,
+        details: `Unexpected public GET status ${getResponse.status}`,
+        url,
+      };
+    } catch (error: any) {
+      return {
+        exists: null,
+        method: 'GET',
+        details: error.message,
+        url,
+      };
+    }
+  }
+
+  /**
+   * Extrait la clé objet MinIO depuis une URL publique.
+   * Format attendu: {publicUrl}/{bucket}/{objectKey}
+   */
+  getObjectKeyFromUrl(fileUrl: string): string | null {
+    if (!fileUrl) {
+      return null;
+    }
+
+    try {
+      const parsedUrl = new URL(fileUrl);
+      const pathSegments = parsedUrl.pathname
+        .split('/')
+        .filter((segment) => segment.length > 0);
+      const bucketIndex = pathSegments.indexOf(this.bucket);
+
+      if (bucketIndex === -1) {
+        return null;
+      }
+
+      const objectKey = pathSegments.slice(bucketIndex + 1).join('/');
+      return objectKey ? decodeURIComponent(objectKey) : null;
+    } catch (error: any) {
+      this.logger.warn(
+        `⚠️  Impossible d'extraire la clé objet depuis l'URL ${fileUrl}: ${error.message}`,
+      );
+      return null;
+    }
+  }
+
+  /**
+   * Vérifie si un fichier existe dans MinIO.
+   * Retourne:
+   * - true: objet présent
+   * - false: objet absent
+   * - null: état non vérifiable (MinIO indisponible/erreur réseau)
+   */
+  async fileExists(objectKey: string): Promise<boolean | null> {
+    if (!this.minioClient) {
+      this.logger.warn('Minio non configuré, vérification ignorée');
+      return null;
+    }
+
+    const availability = await this.checkPublicObjectAvailability(objectKey);
+
+    if (availability.exists === true) {
+      this.logger.debug(
+        `[MINIO] Public availability verified objectKey=${objectKey} method=${availability.method} status=${availability.statusCode} url=${availability.url}`,
+      );
+      return true;
+    }
+
+    if (availability.exists === false) {
+      this.logger.warn(
+        `[MINIO] Public object missing objectKey=${objectKey} method=${availability.method} status=${availability.statusCode} url=${availability.url}`,
+      );
+      return false;
+    }
+
+    this.logger.error(
+      `❌ [MINIO] Public availability check inconclusive objectKey=${objectKey} method=${availability.method} status=${availability.statusCode || 'n/a'} url=${availability.url} details=${availability.details || 'none'}`,
+    );
+    return null;
+  }
+
   /**
    * Upload un buffer (image depuis une requête HTTP)
    */
@@ -82,13 +259,17 @@ export class MinioService implements OnModuleInit {
     buffer: Buffer,
     objectKey: string,
     contentType: string = 'application/octet-stream',
-  ): Promise<{ success: boolean; url?: string }> {
+  ): Promise<{ success: boolean; url?: string; error?: string }> {
     if (!this.minioClient) {
       this.logger.warn('Minio non configuré, upload ignoré');
-      return { success: false };
+      return { success: false, error: 'Minio not configured' };
     }
 
     try {
+      this.logger.debug(
+        `[MINIO] putObject start bucket=${this.bucket} objectKey=${objectKey} contentType=${contentType} bytes=${buffer.length}`,
+      );
+
       await this.minioClient.putObject(
         this.bucket,
         objectKey,
@@ -98,17 +279,40 @@ export class MinioService implements OnModuleInit {
           'Content-Type': contentType,
         },
       );
+      this.logger.debug(
+        `[MINIO] putObject success bucket=${this.bucket} objectKey=${objectKey} bytes=${buffer.length}`,
+      );
 
-      const url = `${this.publicUrl}/${this.bucket}/${objectKey}`;
+      const availability = await this.checkPublicObjectAvailability(objectKey);
+      if (availability.exists !== true) {
+        this.logger.error(
+          `❌ [MINIO] Public verification failed right after putObject bucket=${this.bucket} objectKey=${objectKey} method=${availability.method} status=${availability.statusCode || 'n/a'} url=${availability.url} details=${availability.details || 'none'}`,
+        );
+        return {
+          success: false,
+          error: `public verification failed after putObject: method=${availability.method} status=${availability.statusCode || 'n/a'} details=${availability.details || 'none'}`,
+        };
+      }
+
+      const url = availability.url;
 
       this.logger.log(
         `✅ Buffer uploadé: ${objectKey} (${Math.round(buffer.length / 1024)}KB)`,
       );
+      this.logger.debug(
+        `[MINIO] Public verification succeeded bucket=${this.bucket} objectKey=${objectKey} method=${availability.method} status=${availability.statusCode} url=${url}`,
+      );
 
       return { success: true, url };
     } catch (error: any) {
-      this.logger.error(`❌ Erreur upload ${objectKey}: ${error.message}`);
-      return { success: false };
+      const formattedError = this.formatMinioError(error);
+      this.logger.error(
+        `❌ [MINIO] putObject failed bucket=${this.bucket} objectKey=${objectKey} contentType=${contentType} bytes=${buffer.length} details=${formattedError}`,
+      );
+      return {
+        success: false,
+        error: `putObject failed: ${formattedError}`,
+      };
     }
   }
 

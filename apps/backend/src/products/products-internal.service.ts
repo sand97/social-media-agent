@@ -254,9 +254,8 @@ export class ProductsInternalService {
   async searchProductsByKeywords(
     userId: string,
     keywords: string[],
-    retailerId?: string,
   ) {
-    return this.productsService.searchByKeywords(userId, keywords, retailerId);
+    return this.productsService.searchByKeywords(userId, keywords);
   }
 
   async getProductsForImageIndexing(userId: string) {

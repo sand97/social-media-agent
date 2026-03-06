@@ -141,6 +141,15 @@
     return hashes;
   }
 
+  async function safeReadResponseText(response) {
+    try {
+      const text = await response.text();
+      return text || '[empty response body]';
+    } catch (error) {
+      return `[unreadable response body: ${error?.message || 'unknown error'}]`;
+    }
+  }
+
   // Parser la liste des images existantes
   let initialOriginalsUrls = [];
   try {
@@ -289,6 +298,7 @@
     const processedUncategorizedProducts = [];
     let totalImages = 0;
     let skippedImages = 0;
+    const imageWarnings = [];
 
     // Collecter toutes les URLs du catalogue actuel
     const currentCatalogUrls = new Set();
@@ -350,18 +360,36 @@
             });
 
             if (!response.ok) {
-              console.error(
-                `❌ Erreur HTTP ${response.status} pour ${productId} image ${imageInfo.index}`,
+              const warning = `HTTP ${response.status} while downloading product ${productId} image ${imageInfo.index}`;
+              imageWarnings.push({
+                productId,
+                imageIndex: imageInfo.index,
+                stage: 'download',
+                reason: warning,
+                normalizedUrl: imageInfo.normalizedUrl,
+              });
+              console.warn(`⚠️ ${warning}`);
+              console.warn(`   URL: ${imageInfo.url}`);
+              console.warn(
+                `   Cette image sera ignorée pour ce sync et retentée plus tard`,
               );
-              console.error(`   URL: ${imageInfo.url}`);
               continue;
             }
 
             const blob = await response.blob();
 
             if (blob.size === 0) {
-              console.error(
-                `❌ Blob vide pour ${productId} image ${imageInfo.index}`,
+              const warning = `Empty blob for product ${productId} image ${imageInfo.index}`;
+              imageWarnings.push({
+                productId,
+                imageIndex: imageInfo.index,
+                stage: 'download',
+                reason: warning,
+                normalizedUrl: imageInfo.normalizedUrl,
+              });
+              console.warn(`⚠️ ${warning}`);
+              console.warn(
+                `   Cette image sera ignorée pour ce sync et retentée plus tard`,
               );
               continue;
             }
@@ -376,12 +404,6 @@
 
             // Générer un ID unique intemporel basé sur l'URL normalisée
             const uniqueId = generateUniqueId(imageInfo.normalizedUrl);
-
-            // Déterminer l'ID de collection (peut être null)
-            const collectionInfo = productToCollectionMap.get(productId);
-            const collectionId = collectionInfo
-              ? collectionInfo.id
-              : 'uncategorized';
 
             // Envoyer l'image au backend via nodeFetch (contourne la CSP)
             // Note: clientId n'est PAS envoyé pour des raisons de sécurité
@@ -398,7 +420,6 @@
                   image: base64Data,
                   filename: `${productId}-${imageInfo.index}-${uniqueId}.jpg`,
                   productId: productId,
-                  collectionId: collectionId,
                   imageIndex: imageInfo.index.toString(),
                   imageType: imageInfo.type,
                   originalUrl: imageInfo.url,
@@ -410,6 +431,22 @@
             if (uploadResponse.ok) {
               const uploadResult = await uploadResponse.json();
               const minioUrl = uploadResult.data?.url || uploadResult.url;
+
+              if (!minioUrl) {
+                const warning = `Backend returned no MinIO URL for product ${productId} image ${imageInfo.index}`;
+                imageWarnings.push({
+                  productId,
+                  imageIndex: imageInfo.index,
+                  stage: 'upload',
+                  reason: warning,
+                  normalizedUrl: imageInfo.normalizedUrl,
+                });
+                console.warn(`⚠️ ${warning}`);
+                console.warn(
+                  `   Cette image sera ignorée pour ce sync et retentée plus tard`,
+                );
+                continue;
+              }
 
               uploadedImages.push({
                 index: imageInfo.index,
@@ -426,17 +463,35 @@
               console.log(`   URL WhatsApp: ${imageInfo.url}`);
               console.log(`   URL Minio: ${minioUrl}`);
             } else {
-              const errorText = await uploadResponse.text();
-              console.error(
-                `❌ Erreur upload image ${imageInfo.index} du produit ${productId}`,
+              const errorText = await safeReadResponseText(uploadResponse);
+              const warning = `Upload failed for product ${productId} image ${imageInfo.index}`;
+              imageWarnings.push({
+                productId,
+                imageIndex: imageInfo.index,
+                stage: 'upload',
+                reason: `HTTP ${uploadResponse.status}: ${errorText}`,
+                normalizedUrl: imageInfo.normalizedUrl,
+              });
+              console.warn(`⚠️ ${warning}`);
+              console.warn(`   Status: ${uploadResponse.status}`);
+              console.warn(`   Erreur: ${errorText}`);
+              console.warn(
+                `   Cette image sera ignorée pour ce sync et retentée plus tard`,
               );
-              console.error(`   Status: ${uploadResponse.status}`);
-              console.error(`   Erreur: ${errorText}`);
             }
           } catch (imgError: any) {
-            console.error(
-              `❌ Erreur traitement image ${imageInfo.index} du produit ${productId}:`,
-              imgError.message,
+            imageWarnings.push({
+              productId,
+              imageIndex: imageInfo.index,
+              stage: 'processing',
+              reason: imgError.message,
+              normalizedUrl: imageInfo.normalizedUrl,
+            });
+            console.warn(
+              `⚠️ Erreur traitement image ${imageInfo.index} du produit ${productId}: ${imgError.message}`,
+            );
+            console.warn(
+              `   Cette image sera ignorée pour ce sync et retentée plus tard`,
             );
           }
         }
@@ -497,6 +552,11 @@
     console.log(
       `✅ Traitement terminé - ${totalImages} nouvelles images, ${skippedImages} images existantes`,
     );
+    if (imageWarnings.length > 0) {
+      console.warn(
+        `⚠️ ${imageWarnings.length} image(s) ont échoué mais la synchronisation continue`,
+      );
+    }
 
     // Déterminer les images à supprimer (présentes dans initialOriginalsUrls mais pas dans currentCatalogUrls)
     // IMPORTANT: Ne supprimer que si initialOriginalsUrls n'est pas vide (sinon c'est l'initialisation)
@@ -593,8 +653,16 @@
           collectionsCount: processedCollections.length,
           productsCount: totalProductsCount,
           imagesCount: totalImages,
+          imageWarningsCount: imageWarnings.length,
         },
         dbStats: saveResult.stats,
+        warnings:
+          imageWarnings.length > 0
+            ? {
+                count: imageWarnings.length,
+                samples: imageWarnings.slice(0, 10),
+              }
+            : undefined,
       };
     } else {
       console.error('❌ Erreur lors de la sauvegarde du catalogue en BD');
@@ -610,8 +678,16 @@
           collectionsCount: processedCollections.length,
           productsCount: totalProductsCount,
           imagesCount: totalImages,
+          imageWarningsCount: imageWarnings.length,
         },
         warning: 'Catalog data not saved to database',
+        warnings:
+          imageWarnings.length > 0
+            ? {
+                count: imageWarnings.length,
+                samples: imageWarnings.slice(0, 10),
+              }
+            : undefined,
       };
     }
   } catch (error: any) {

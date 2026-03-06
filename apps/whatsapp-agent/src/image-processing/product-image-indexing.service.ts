@@ -10,6 +10,7 @@ import axios from 'axios';
 import type { Job } from 'bull';
 
 import { GeminiVisionService } from './gemini-vision.service';
+import { ImageEmbeddingsService } from './image-embeddings.service';
 import { QdrantService } from './qdrant.service';
 
 interface IndexProductPayload {
@@ -29,6 +30,11 @@ interface ProductIndexingPlan {
   shouldGenerateCoverDescription: boolean;
 }
 
+interface SyncReindexContext {
+  forceImageReindex: boolean;
+  forceTextReindex: boolean;
+}
+
 interface ProductIndexingResult {
   indexedImageIds: string[];
   indexedText: boolean;
@@ -42,6 +48,7 @@ export class ProductImageIndexingService {
 
   constructor(
     private readonly geminiVisionService: GeminiVisionService,
+    private readonly imageEmbeddingsService: ImageEmbeddingsService,
     private readonly embeddingsService: EmbeddingsService,
     private readonly qdrantService: QdrantService,
     private readonly backendClient: BackendClientService,
@@ -95,7 +102,7 @@ export class ProductImageIndexingService {
     await this.backendClient.getAgentSnapshot(true);
 
     this.logger.log(
-      '✅ Using Gemini Vision + Gemini embeddings for image/text indexing',
+      '✅ Using local CLIP image embeddings + Gemini text embeddings',
     );
 
     this.logger.log('📡 Updating sync status to SYNCING...');
@@ -130,9 +137,24 @@ export class ProductImageIndexingService {
       };
     }
 
+    const [imagePoints, textPoints] = await Promise.all([
+      this.qdrantService.getCollectionPointsCount('image'),
+      this.qdrantService.getCollectionPointsCount('text'),
+    ]);
+    const reindexContext: SyncReindexContext = {
+      forceImageReindex: imagePoints === 0,
+      forceTextReindex: textPoints === 0,
+    };
+
+    if (reindexContext.forceImageReindex || reindexContext.forceTextReindex) {
+      this.logger.warn(
+        `Qdrant collection(s) empty detected (image_points=${imagePoints}, text_points=${textPoints}). Forcing full reindex where needed.`,
+      );
+    }
+
     const plannedProducts = products.map((product) => ({
       product,
-      plan: this.buildIndexingPlan(product),
+      plan: this.buildIndexingPlan(product, reindexContext),
     }));
 
     const skippedProducts = plannedProducts
@@ -231,12 +253,16 @@ export class ProductImageIndexingService {
 
   private buildIndexingPlan(
     product: InternalProductForImageIndexing,
+    reindexContext: SyncReindexContext,
   ): ProductIndexingPlan {
-    const imageIdsToIndex = product.images
-      .filter((image) => image.needsImageIndexing)
-      .map((image) => image.id);
+    const imageIdsToIndex = reindexContext.forceImageReindex
+      ? product.images.map((image) => image.id)
+      : product.images
+          .filter((image) => image.needsImageIndexing)
+          .map((image) => image.id);
     const shouldIndexImage = imageIdsToIndex.length > 0;
-    const shouldIndexText = product.needsTextIndexing;
+    const shouldIndexText =
+      reindexContext.forceTextReindex || product.needsTextIndexing;
 
     const hasCoverDescription = !!product.coverImageDescription?.trim();
     const hasCoverImage = !!this.getCoverImage(product)?.url;
@@ -257,7 +283,6 @@ export class ProductImageIndexingService {
     const coverImage = this.getCoverImage(product);
     const imageIdsToIndex = new Set(plan.imageIdsToIndex);
     const indexedImageIds: string[] = [];
-    let generatedCoverDescriptionFromImages: string | null = null;
 
     if (plan.shouldIndexImage) {
       if (product.images.length === 0) {
@@ -276,10 +301,8 @@ export class ProductImageIndexingService {
 
           try {
             const imageBuffer = await this.downloadImage(image.url);
-            const imageDescription =
-              await this.geminiVisionService.describeProductImage(imageBuffer);
             const imageEmbedding =
-              await this.embeddingsService.embedText(imageDescription);
+              await this.imageEmbeddingsService.generateEmbedding(imageBuffer);
 
             await this.qdrantService.indexProductImageVariant(
               product.id,
@@ -295,17 +318,9 @@ export class ProductImageIndexingService {
                 image_id: image.id,
                 image_index: image.imageIndex,
                 image_url: image.url,
-                image_description: imageDescription,
+                image_description: null,
               },
             );
-
-            if (
-              coverImage &&
-              image.id === coverImage.id &&
-              !generatedCoverDescriptionFromImages
-            ) {
-              generatedCoverDescriptionFromImages = imageDescription;
-            }
 
             indexedImageIds.push(image.id);
           } catch (error: any) {
@@ -328,13 +343,7 @@ export class ProductImageIndexingService {
     let coverDescription = product.coverImageDescription?.trim() || '';
     let generatedCoverDescription: string | undefined;
 
-    if (
-      plan.shouldGenerateCoverDescription &&
-      generatedCoverDescriptionFromImages
-    ) {
-      coverDescription = generatedCoverDescriptionFromImages;
-      generatedCoverDescription = coverDescription;
-    } else if (plan.shouldGenerateCoverDescription && coverImage?.url) {
+    if (plan.shouldGenerateCoverDescription && coverImage?.url) {
       const coverImageBuffer = await this.downloadImage(coverImage.url);
       coverDescription =
         await this.geminiVisionService.describeProductImage(coverImageBuffer);
@@ -414,7 +423,7 @@ export class ProductImageIndexingService {
     const coverDescription =
       await this.geminiVisionService.describeProductImage(payload.imageBuffer);
     const imageEmbedding =
-      await this.embeddingsService.embedText(coverDescription);
+      await this.imageEmbeddingsService.generateEmbedding(payload.imageBuffer);
 
     const textToEmbed = [
       payload.productName,
@@ -440,7 +449,7 @@ export class ProductImageIndexingService {
         image_id: 'manual',
         image_index: 0,
         image_url: null,
-        image_description: coverDescription,
+        image_description: null,
       },
     );
 

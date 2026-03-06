@@ -173,7 +173,7 @@ function CatalogProductCardComponent({ product }: { product: Product }) {
 
         {product.retailer_id && (
           <Text type='secondary' className='block mb-2 text-sm'>
-            #{product.retailer_id}
+            {'#'.concat(product.retailer_id).replaceAll('##', '#')}
           </Text>
         )}
 

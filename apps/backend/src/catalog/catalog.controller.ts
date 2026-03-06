@@ -43,7 +43,7 @@ export class CatalogController {
     schema: {
       example: {
         success: true,
-        url: 'https://files-flemme.bedones.com/whatsapp-agent/cmd2a8ykg0004uh5f2cn5u4w1/catalog/images/849641504281228/25095720553426064-0.jpg',
+        url: 'https://files-flemme.bedones.com/whatsapp-agent/cmd2a8ykg0004uh5f2cn5u4w1/catalog/images/cmd2a8ykg0004uh5f2cn5u4w1-25095720553426064-0.jpg',
       },
     },
   })
@@ -60,7 +60,6 @@ export class CatalogController {
     @Body('image') imageBase64: string,
     @Body('filename') filename: string,
     @Body('productId') productId: string,
-    @Body('collectionId') collectionId: string,
     @Body('imageIndex') imageIndex: string,
     @Body('imageType') imageType: string,
     @Body('originalUrl') originalUrl?: string,
@@ -69,23 +68,25 @@ export class CatalogController {
       throw new BadRequestException('Missing image data or filename');
     }
 
-    if (!productId || !collectionId || !imageIndex) {
+    if (!productId || !imageIndex) {
       throw new BadRequestException('Missing required fields');
     }
 
     this.logger.debug(
-      `Receiving image (base64): client=${clientId}, product=${productId}, collection=${collectionId}, index=${imageIndex}`,
+      `Receiving image (base64): client=${clientId}, product=${productId}, index=${imageIndex}, type=${imageType || 'unknown'}, filename=${filename}, originalUrl=${originalUrl || 'n/a'}`,
     );
 
     // Convertir base64 en Buffer
     // Format: "data:image/jpeg;base64,/9j/4AAQ..."
     const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, '');
     const buffer = Buffer.from(base64Data, 'base64');
+    this.logger.debug(
+      `Decoded image payload: client=${clientId}, product=${productId}, index=${imageIndex}, bytes=${buffer.length}, base64Length=${base64Data.length}`,
+    );
 
     const result = await this.catalogService.uploadProductImage(
       buffer,
       productId,
-      collectionId,
       clientId,
       parseInt(imageIndex, 10),
       imageType || 'unknown',
@@ -94,7 +95,7 @@ export class CatalogController {
 
     if (!result.success) {
       this.logger.error(
-        `❌ Upload failed for product ${productId}, index ${imageIndex}: ${result.error}`,
+        `❌ Upload failed for product ${productId}, index ${imageIndex}, client=${clientId}, filename=${filename}: ${result.error}`,
       );
       throw new BadRequestException(result.error || 'Upload failed');
     }
@@ -112,7 +113,6 @@ export class CatalogController {
       url: result.url,
       metadata: {
         productId,
-        collectionId,
         imageIndex: parseInt(imageIndex, 10),
         imageType,
         originalUrl,

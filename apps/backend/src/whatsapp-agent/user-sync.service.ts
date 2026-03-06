@@ -4,11 +4,16 @@ import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 import { TokenService } from '../common/services/token.service';
+import { MinioService } from '../minio/minio.service';
 import { OnboardingGateway } from '../onboarding/onboarding.gateway';
 import { OnboardingService } from '../onboarding/onboarding.service';
 import { PrismaService } from '../prisma/prisma.service';
 
 import { WhatsAppAgentService } from './whatsapp-agent.service';
+import {
+  normalizeStoredCatalogImageUrl,
+  partitionCatalogImagesByMinioPresence,
+} from './catalog-image-sync.utils';
 
 /**
  * Service responsible for synchronizing user data after WhatsApp connection
@@ -24,6 +29,7 @@ export class UserSyncService {
     private readonly connectorClientService: ConnectorClientService,
     private readonly configService: ConfigService,
     private readonly tokenService: TokenService,
+    private readonly minioService: MinioService,
     private readonly prisma: PrismaService,
     private readonly whatsappAgentService: WhatsAppAgentService,
     @Inject(forwardRef(() => OnboardingGateway))
@@ -329,6 +335,74 @@ export class UserSyncService {
     }
   }
 
+  private async purgeMissingMinioCatalogImages<
+    T extends {
+      id: string;
+      original_url: string | null;
+      normalized_url: string | null;
+      url: string;
+    },
+  >(
+    userId: string,
+    images: T[],
+  ): Promise<T[]> {
+    if (images.length === 0) {
+      return images;
+    }
+
+    const {
+      reusableImages,
+      missingImageIds,
+      missingImages,
+      unverifiableImages,
+      invalidUrlImages,
+    } = await partitionCatalogImagesByMinioPresence(images, {
+      getObjectKeyFromUrl: (url) => this.minioService.getObjectKeyFromUrl(url),
+      fileExists: (objectKey) => this.minioService.fileExists(objectKey),
+    });
+
+    if (missingImageIds.length > 0) {
+      for (const entry of missingImages) {
+        this.logger.warn(
+          `[CATALOG] Missing MinIO object detected for ProductImage id=${entry.image.id} userId=${userId} objectKey=${entry.objectKey || 'unknown'} minioUrl=${entry.image.url} normalizedUrl=${entry.image.normalized_url || 'null'} originalUrl=${entry.image.original_url || 'null'}`,
+        );
+      }
+
+      const deleteResult = await this.prisma.productImage.deleteMany({
+        where: {
+          id: {
+            in: missingImageIds,
+          },
+          product: {
+            user_id: userId,
+          },
+        },
+      });
+
+      this.logger.warn(
+        `[CATALOG] Removed ${deleteResult.count} ProductImage entries whose MinIO object is missing`,
+      );
+    }
+
+    for (const entry of unverifiableImages) {
+      this.logger.warn(
+        `[CATALOG] MinIO verification inconclusive for ProductImage id=${entry.image.id} userId=${userId} objectKey=${entry.objectKey || 'unknown'} minioUrl=${entry.image.url}`,
+      );
+    }
+
+    for (const entry of invalidUrlImages) {
+      this.logger.warn(
+        `[CATALOG] MinIO URL could not be parsed for ProductImage id=${entry.image.id} userId=${userId} minioUrl=${entry.image.url}`,
+      );
+    }
+
+    this.logger.debug(
+      `[CATALOG] MinIO validation finished: userId=${userId}, reusable=${reusableImages.length}, missingRemoved=${missingImageIds.length}, unverifiableKept=${unverifiableImages.length}, invalidUrlKept=${invalidUrlImages.length}`,
+    );
+
+    return reusableImages;
+  }
+
   /**
    * Synchronize catalog data (collections, products, images)
    *
@@ -386,24 +460,40 @@ export class UserSyncService {
         },
       });
 
+      const verifiedExistingImages = await this.purgeMissingMinioCatalogImages(
+        user.id,
+        existingImages,
+      );
+
       // Filtrer pour ne garder que les images avec normalized_url (ou original_url pour rétrocompatibilité)
-      initialOriginalsUrls = existingImages
-        .filter((img) => img.normalized_url || img.original_url)
-        .map((img) => ({
-          id: img.id,
-          original_url: img.original_url || '',
-          // Si normalized_url n'existe pas, on le génère à partir de original_url
-          normalized_url:
-            img.normalized_url ||
-            (img.original_url ? img.original_url.split('?')[0] : ''),
-          url: img.url,
-        }));
+      initialOriginalsUrls = verifiedExistingImages.reduce<
+        Array<{
+          id: string;
+          original_url: string;
+          normalized_url: string;
+          url: string;
+        }>
+      >((accumulator, image) => {
+        const normalizedUrl = normalizeStoredCatalogImageUrl(image);
+
+        if (!normalizedUrl) {
+          return accumulator;
+        }
+
+        accumulator.push({
+          id: image.id,
+          original_url: image.original_url || '',
+          normalized_url: normalizedUrl,
+          url: image.url,
+        });
+
+        return accumulator;
+      }, []);
 
       this.logger.debug(
         `[CATALOG] Found ${initialOriginalsUrls.length} existing images`,
       );
 
-      // Get agent to retrieve connectorUrl
       const agent = await this.whatsappAgentService.getAgentForUser(user.id);
       if (!agent) {
         throw new Error(`Agent not found for user: ${user.id}`);

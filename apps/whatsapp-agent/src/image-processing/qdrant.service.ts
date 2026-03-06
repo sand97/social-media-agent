@@ -10,6 +10,8 @@ type SearchHit = {
   metadata: Record<string, unknown>;
 };
 
+type CollectionKind = 'image' | 'text';
+
 @Injectable()
 export class QdrantService implements OnModuleInit {
   private readonly logger = new Logger(QdrantService.name);
@@ -86,7 +88,7 @@ export class QdrantService implements OnModuleInit {
 
   async createCollection(
     collectionName?: string,
-    vectorSize = 512,
+    vectorSize = this.imageVectorSize,
   ): Promise<void> {
     if (!this.isConfigured()) {
       throw new Error('Qdrant is not configured');
@@ -103,6 +105,47 @@ export class QdrantService implements OnModuleInit {
 
     const name = collectionName || this.imageCollectionName;
     await this.client.deleteCollection(name);
+  }
+
+  async resetCollections(): Promise<{
+    imageCollection: { name: string; vectorSize: number };
+    textCollection: { name: string; vectorSize: number };
+  }> {
+    if (!this.isConfigured()) {
+      throw new Error('Qdrant is not configured');
+    }
+
+    await this.deleteCollectionIfExists(this.imageCollectionName);
+    await this.deleteCollectionIfExists(this.textCollectionName);
+
+    await this.client.createCollection(this.imageCollectionName, {
+      vectors: {
+        size: this.imageVectorSize,
+        distance: 'Cosine',
+      },
+    });
+
+    await this.client.createCollection(this.textCollectionName, {
+      vectors: {
+        size: this.textVectorSize,
+        distance: 'Cosine',
+      },
+    });
+
+    this.logger.log(
+      `Reset Qdrant collections: "${this.imageCollectionName}" (${this.imageVectorSize}) and "${this.textCollectionName}" (${this.textVectorSize})`,
+    );
+
+    return {
+      imageCollection: {
+        name: this.imageCollectionName,
+        vectorSize: this.imageVectorSize,
+      },
+      textCollection: {
+        name: this.textCollectionName,
+        vectorSize: this.textVectorSize,
+      },
+    };
   }
 
   async indexImage(
@@ -232,6 +275,39 @@ export class QdrantService implements OnModuleInit {
 
     const name = collectionName || this.imageCollectionName;
     return this.client.getCollection(name);
+  }
+
+  async getCollectionPointsCount(kind: CollectionKind): Promise<number> {
+    if (!this.isConfigured()) {
+      return 0;
+    }
+
+    const name =
+      kind === 'image' ? this.imageCollectionName : this.textCollectionName;
+    const info = await this.client.getCollection(name);
+    const collection = info as {
+      points_count?: unknown;
+      vectors_count?: unknown;
+      indexed_vectors_count?: unknown;
+    };
+
+    const candidates = [
+      collection.points_count,
+      collection.vectors_count,
+      collection.indexed_vectors_count,
+    ];
+
+    for (const candidate of candidates) {
+      const parsed =
+        typeof candidate === 'number'
+          ? candidate
+          : Number.parseInt(String(candidate ?? ''), 10);
+      if (Number.isFinite(parsed)) {
+        return Math.max(0, parsed);
+      }
+    }
+
+    return 0;
   }
 
   async deleteStaleProducts(activeProductIds: string[]): Promise<{
@@ -390,6 +466,16 @@ export class QdrantService implements OnModuleInit {
     this.logger.log(
       `Recreated Qdrant collection "${name}" (${vectorSize} dims)`,
     );
+  }
+
+  private async deleteCollectionIfExists(name: string): Promise<void> {
+    try {
+      await this.client.deleteCollection(name);
+    } catch (error) {
+      if (!this.isCollectionNotFoundError(error)) {
+        throw error;
+      }
+    }
   }
 
   private async upsert(

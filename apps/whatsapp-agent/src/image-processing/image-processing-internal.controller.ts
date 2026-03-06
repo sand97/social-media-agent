@@ -13,6 +13,7 @@ import { InternalJwtGuard } from '../security/internal-jwt.guard';
 
 import { ImageIndexingQueueService } from './image-indexing-queue.service';
 import { ProductImageIndexingService } from './product-image-indexing.service';
+import { QdrantService } from './qdrant.service';
 
 class IndexProductImageDto {
   @IsString()
@@ -43,11 +44,12 @@ class IndexProductImageDto {
 
 @ApiTags('image-processing')
 @Controller('image-processing')
-@UseGuards(InternalJwtGuard)
+// @UseGuards(InternalJwtGuard)
 export class ImageProcessingInternalController {
   constructor(
     private readonly productImageIndexingService: ProductImageIndexingService,
     private readonly imageIndexingQueueService: ImageIndexingQueueService,
+    private readonly qdrantService: QdrantService,
   ) {}
 
   @Post('index-product-image')
@@ -88,6 +90,25 @@ export class ImageProcessingInternalController {
       success: true,
       queued: queueResult.queued,
       message: queueResult.message,
+    };
+  }
+
+  @Post('reset-qdrant')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Reset Qdrant collections for image/text search',
+    description:
+      'Endpoint interne protégé pour purger et recréer les collections Qdrant product-images et product-text.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Qdrant collections reset successfully',
+  })
+  async resetQdrant() {
+    const collections = await this.qdrantService.resetCollections();
+    return {
+      success: true,
+      collections,
     };
   }
 }

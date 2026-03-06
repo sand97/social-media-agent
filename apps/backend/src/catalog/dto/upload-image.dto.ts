@@ -11,14 +11,6 @@ export class UploadImageDto {
   productId: string;
 
   @ApiProperty({
-    description: 'Collection ID',
-    example: '849641504281228',
-  })
-  @IsString()
-  @IsNotEmpty()
-  collectionId: string;
-
-  @ApiProperty({
     description: 'Client ID (WhatsApp ID)',
     example: '237697020290@c.us',
   })

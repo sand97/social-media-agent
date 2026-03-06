@@ -180,7 +180,7 @@
                 "schema": {
                   "example": {
                     "success": true,
-                    "url": "https://files-flemme.bedones.com/whatsapp-agent/cmd2a8ykg0004uh5f2cn5u4w1/catalog/images/849641504281228/25095720553426064-0.jpg"
+                    "url": "https://files-flemme.bedones.com/whatsapp-agent/cmd2a8ykg0004uh5f2cn5u4w1/catalog/images/cmd2a8ykg0004uh5f2cn5u4w1-25095720553426064-0.jpg"
                   }
                 }
               }
@@ -1797,17 +1797,8 @@
       "get": {
         "operationId": "ProductsInternalController_searchProductsByKeywords",
         "summary": "Rechercher des produits par mots-clés",
-        "description": "Endpoint interne backend, appelé par le whatsapp-agent pour la recherche OCR textuelle. Réutilise la logique métier existante ProductsService.searchByKeywords.",
-        "parameters": [
-          {
-            "name": "retailer_id",
-            "required": true,
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
+        "description": "Endpoint interne backend, appelé par le whatsapp-agent pour la recherche OCR textuelle. Le matching est strictement effectué sur retailer_id.",
+        "parameters": [],
         "responses": {
           "200": {
             "description": "Produits et mots-clés matchés retournés"
@@ -3151,11 +3142,10 @@
         "type": "object",
         "properties": {
           "keywords": {
-            "description": "List of keywords to search for in products",
+            "description": "List of keywords to match against retailer_id",
             "example": [
-              "adidas",
-              "701237128001",
-              "maillot"
+              "aston-villa-domicile",
+              "24749453701396976"
             ],
             "type": "array",
             "items": {
@@ -3166,11 +3156,6 @@
             "type": "string",
             "description": "User ID to filter products",
             "example": "clx123456"
-          },
-          "retailer_id": {
-            "type": "string",
-            "description": "Optional retailer ID for exact match priority",
-            "example": "701237128001"
           }
         },
         "required": [

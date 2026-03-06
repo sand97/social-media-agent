@@ -257,33 +257,28 @@ export class ProductsService {
 
   /**
    * Search products by keywords
-   * Searches in product name, description, and retailer_id
+   * Searches only in retailer_id
    */
   async searchByKeywords(
     userId: string,
     keywords: string[],
-    retailerId?: string,
   ): Promise<{ products: Product[]; matchedKeywords: string[] }> {
     this.logger.log(
       `Searching products for user ${userId} with keywords: ${keywords.join(', ')}`,
     );
 
-    // Normalize keywords (lowercase, trim)
-    const normalizedKeywords = keywords.map((k) => k.toLowerCase().trim());
+    if (keywords.length === 0) {
+      return {
+        products: [],
+        matchedKeywords: [],
+      };
+    }
 
-    // Build OR conditions for each keyword
-    const orConditions = normalizedKeywords.map((keyword) => ({
-      OR: [
-        { name: { contains: keyword, mode: 'insensitive' as const } },
-        {
-          description: { contains: keyword, mode: 'insensitive' as const },
-        },
-        { retailer_id: { contains: keyword, mode: 'insensitive' as const } },
-        { category: { contains: keyword, mode: 'insensitive' as const } },
-      ],
+    // Build OR conditions for strict retailer_id equality only
+    const orConditions = keywords.map((keyword) => ({
+      retailer_id: { equals: keyword, mode: 'insensitive' as const },
     }));
 
-    // If retailer_id is provided, prioritize exact matches
     const products = await this.prisma.product.findMany({
       where: {
         user_id: userId,
@@ -294,38 +289,74 @@ export class ProductsService {
         images: true,
         collection: true,
       },
-      orderBy: retailerId
-        ? [
-            {
-              // Exact retailer_id match first
-              retailer_id: { sort: 'asc', nulls: 'last' as const },
-            },
-            { created_at: 'desc' },
-          ]
-        : [{ created_at: 'desc' }],
+      orderBy: [{ created_at: 'desc' }],
       take: 20, // Limit results
     });
 
-    // Find which keywords matched
+    // Keep matched keywords as strict retailer-id matches only
     const matchedKeywords = new Set<string>();
-    products.forEach((product) => {
-      const searchableText =
-        `${product.name} ${product.description || ''} ${product.retailer_id || ''} ${product.category || ''}`.toLowerCase();
-
-      normalizedKeywords.forEach((keyword) => {
-        if (searchableText.includes(keyword)) {
-          matchedKeywords.add(keyword);
-        }
-      });
+    const matchedRetailerIds = new Set(
+      products
+        .map((product) => (product.retailer_id || '').trim().toLowerCase())
+        .filter(Boolean),
+    );
+    keywords.forEach((keyword) => {
+      if (matchedRetailerIds.has(keyword)) {
+        matchedKeywords.add(keyword);
+      }
     });
 
     this.logger.log(
-      `Found ${products.length} products matching keywords: ${Array.from(matchedKeywords).join(', ')}`,
+      `Found ${products.length} products matching retailer keywords: ${Array.from(matchedKeywords).join(', ')}`,
     );
 
     return {
       products,
       matchedKeywords: Array.from(matchedKeywords),
     };
+  }
+
+  /**
+   * Build strict retailer_id candidates from OCR tokens.
+   * Examples:
+   * - "@bonjour" -> "bonjour"
+   * - "bonjour-officiel" -> "bonjour-officiel", "bonjour", "officiel"
+   */
+  private normalizeRetailerCandidates(keywords: string[]): string[] {
+    const normalized = new Set<string>();
+
+    for (const rawKeyword of keywords || []) {
+      const keyword = String(rawKeyword || '')
+        .trim()
+        .toLowerCase();
+      if (!keyword) {
+        continue;
+      }
+
+      // Keep letters/numbers plus common retailer separators.
+      const cleaned = keyword
+        .replace(/^[^a-z0-9]+/g, '')
+        .replace(/[^a-z0-9_-]+$/g, '');
+
+      if (!cleaned || !/[a-z0-9]/.test(cleaned)) {
+        continue;
+      }
+
+      // Direct candidate (exact OCR token after trim)
+      normalized.add(cleaned);
+
+      // Additional candidates for hashtags/arobase/suffix cases.
+      const segments = cleaned
+        .split(/[^a-z0-9]+/g)
+        .map((segment) => segment.trim())
+        .filter((segment) => segment.length > 0);
+
+      for (const segment of segments) {
+        normalized.add(segment);
+      }
+    }
+
+    // Bound OR size for Prisma query performance.
+    return Array.from(normalized).slice(0, 100);
   }
 }

@@ -1,10 +1,10 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsArray, IsOptional, IsString } from 'class-validator';
+import { IsArray, IsString } from 'class-validator';
 
 export class SearchByKeywordsDto {
   @ApiProperty({
-    description: 'List of keywords to search for in products',
-    example: ['adidas', '701237128001', 'maillot'],
+    description: 'List of keywords to match against retailer_id',
+    example: ['aston-villa-domicile', '24749453701396976'],
     type: [String],
   })
   @IsArray()
@@ -19,12 +19,4 @@ export class SearchByKeywordsDto {
   @IsString()
   user_id: string;
 
-  @ApiProperty({
-    description: 'Optional retailer ID for exact match priority',
-    example: '701237128001',
-    required: false,
-  })
-  @IsOptional()
-  @IsString()
-  retailer_id?: string;
 }

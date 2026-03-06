@@ -242,7 +242,7 @@ export default function CatalogPage() {
     const intervalId = window.setInterval(() => {
       setHasPolledAfterSync(true)
       void loadCatalog({ showError: false })
-    }, 60_000)
+    }, 20_000)
 
     return () => {
       window.clearInterval(intervalId)

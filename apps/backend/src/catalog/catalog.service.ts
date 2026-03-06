@@ -81,7 +81,6 @@ export class CatalogService {
   async uploadProductImage(
     imageBuffer: Buffer,
     productId: string,
-    collectionId: string,
     clientId: string,
     imageIndex: number,
     imageType: string,
@@ -94,14 +93,17 @@ export class CatalogService {
     try {
       const { agentId, userId } =
         await this.resolveAgentStorageContext(clientId);
+      this.logger.debug(
+        `[IMAGE-UPLOAD] Storage context resolved clientId=${clientId} userId=${userId} agentId=${agentId} productId=${productId} imageIndex=${imageIndex}`,
+      );
 
       // Déterminer l'extension à partir du nom de fichier original
       const extension = originalFilename
         ? originalFilename.split('.').pop() || 'jpg'
         : 'jpg';
 
-      // Construire le chemin dans Minio: {agentId}/catalog/images/{collectionId}/{userId}-{productId}-{index}.{ext}
-      const objectKey = `${agentId}/catalog/images/${collectionId}/${userId}-${productId}-${imageIndex}.${extension}`;
+      // Construire le chemin dans Minio: {agentId}/catalog/images/{userId}-{productId}-{index}.{ext}
+      const objectKey = `${agentId}/catalog/images/${userId}-${productId}-${imageIndex}.${extension}`;
       this.logger.debug(`[IMAGE-UPLOAD] Object key: ${objectKey}`);
 
       // Déterminer le content-type
@@ -114,6 +116,9 @@ export class CatalogService {
       };
       const contentType =
         contentTypeMap[extension] || 'application/octet-stream';
+      this.logger.debug(
+        `[IMAGE-UPLOAD] Prepared upload productId=${productId} imageIndex=${imageIndex} imageType=${imageType} filename=${originalFilename || 'unknown'} extension=${extension} contentType=${contentType} bytes=${imageBuffer.length}`,
+      );
 
       // Upload vers Minio
       this.logger.debug(`[IMAGE-UPLOAD] Uploading to Minio...`);
@@ -127,22 +132,25 @@ export class CatalogService {
         this.logger.log(
           `✅ [END] Image uploaded: ${productId}-${imageIndex} (${imageType})`,
         );
+        this.logger.debug(
+          `[IMAGE-UPLOAD] Upload completed productId=${productId} imageIndex=${imageIndex} objectKey=${objectKey} minioUrl=${result.url}`,
+        );
         return {
           success: true,
           url: result.url,
         };
       } else {
         this.logger.error(
-          `❌ [ERROR] Image upload failed: ${productId}-${imageIndex}`,
+          `❌ [ERROR] Image upload failed productId=${productId} imageIndex=${imageIndex} objectKey=${objectKey} userId=${userId} agentId=${agentId} details=${result.error || 'unknown'}`,
         );
         return {
           success: false,
-          error: 'Upload failed',
+          error: result.error || 'Upload failed',
         };
       }
     } catch (error: unknown) {
       this.logger.error(
-        `❌ [ERROR] Failed to upload image ${productId}-${imageIndex}:`,
+        `❌ [ERROR] Failed to upload image productId=${productId} imageIndex=${imageIndex} clientId=${clientId} bytes=${imageBuffer.length}:`,
         error,
       );
       return {
@@ -350,13 +358,14 @@ export class CatalogService {
       let deletedFromMinio = 0;
       for (const image of images) {
         try {
-          // Extraire l'objectKey de l'URL
-          // URL format: https://files-flemme.bedones.com/whatsapp-agent/<agentId>/catalog/images/...
-          // On veut extraire: <agentId>/catalog/images/...
-          const url = new URL(image.url);
-          const pathParts = url.pathname.split('/');
-          // Retirer le premier "/" et le bucket name
-          const objectKey = pathParts.slice(2).join('/'); // Skip "", "whatsapp-agent"
+          const objectKey = this.minioService.getObjectKeyFromUrl(image.url);
+
+          if (!objectKey) {
+            this.logger.warn(
+              `[DELETE-IMAGES] Unable to extract Minio object key from ${image.url}`,
+            );
+            continue;
+          }
 
           this.logger.debug(
             `[DELETE-IMAGES] Deleting from Minio: ${objectKey}`,

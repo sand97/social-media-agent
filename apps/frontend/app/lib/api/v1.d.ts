@@ -798,7 +798,7 @@ export interface paths {
         };
         /**
          * Rechercher des produits par mots-clés
-         * @description Endpoint interne backend, appelé par le whatsapp-agent pour la recherche OCR textuelle. Réutilise la logique métier existante ProductsService.searchByKeywords.
+         * @description Endpoint interne backend, appelé par le whatsapp-agent pour la recherche OCR textuelle. Le matching est strictement effectué sur retailer_id.
          */
         get: operations["ProductsInternalController_searchProductsByKeywords"];
         put?: never;
@@ -1435,11 +1435,10 @@ export interface components {
         };
         SearchByKeywordsDto: {
             /**
-             * @description List of keywords to search for in products
+             * @description List of keywords to match against retailer_id
              * @example [
-             *       "adidas",
-             *       "701237128001",
-             *       "maillot"
+             *       "aston-villa-domicile",
+             *       "24749453701396976"
              *     ]
              */
             keywords: string[];
@@ -1448,11 +1447,6 @@ export interface components {
              * @example clx123456
              */
             user_id: string;
-            /**
-             * @description Optional retailer ID for exact match priority
-             * @example 701237128001
-             */
-            retailer_id?: string;
         };
         BatchUpdateProductImageIndexingDto: Record<string, never>;
         UpdateBusinessInfoDto: {
@@ -3232,9 +3226,7 @@ export interface operations {
     };
     ProductsInternalController_searchProductsByKeywords: {
         parameters: {
-            query: {
-                retailer_id: string;
-            };
+            query?: never;
             header?: never;
             path?: never;
             cookie?: never;
