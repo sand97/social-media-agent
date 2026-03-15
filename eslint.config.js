@@ -177,6 +177,10 @@ export default [
         clearTimeout: 'readonly',
         setInterval: 'readonly',
         clearInterval: 'readonly',
+        ResizeObserver: 'readonly',
+        HTMLDivElement: 'readonly',
+        HTMLElement: 'readonly',
+        Element: 'readonly',
       },
     },
     plugins: {

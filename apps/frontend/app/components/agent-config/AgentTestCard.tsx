@@ -6,7 +6,7 @@ import {
 import TestIcon from '@app/assets/Test.svg?react'
 import { useAuth } from '@app/hooks/useAuth'
 import apiClient from '@app/lib/api/client'
-import { Button, Card, Typography, Modal, Input, message, Alert } from 'antd'
+import { App, Button, Card, Typography, Modal, Input, Alert } from 'antd'
 import Form from 'antd/es/form'
 import FormItem from 'antd/es/form/FormItem'
 import { useState, useEffect } from 'react'
@@ -19,6 +19,7 @@ interface FormValues {
 
 export function AgentTestCard() {
   const { user, checkAuth } = useAuth()
+  const { notification } = App.useApp()
   const agentConfig = user?.agentConfig
 
   const [form] = Form.useForm<FormValues>()
@@ -40,8 +41,7 @@ export function AgentTestCard() {
     setIsModalOpen(false)
   }
 
-  const handleSave = async () => {
-    const values = await form.validateFields()
+  const handleSave = async (values: FormValues) => {
     const labelName = values.labelName.trim()
 
     setLoading(true)
@@ -49,12 +49,18 @@ export function AgentTestCard() {
       await apiClient.patch('/whatsapp-agents/config', {
         testLabels: [labelName],
       })
-      message.success('Configuration sauvegardée')
+      notification.success({
+        message: 'Configuration sauvegardée',
+      })
       handleCloseModal()
       checkAuth()
     } catch (error) {
       console.error('Failed to save config:', error)
-      message.error('Erreur lors de la sauvegarde')
+      notification.error({
+        message: 'Erreur lors de la sauvegarde',
+        description:
+          error instanceof Error ? error.message : 'La configuration a échoué.',
+      })
     } finally {
       setLoading(false)
     }
@@ -105,7 +111,7 @@ export function AgentTestCard() {
             key='save'
             type='primary'
             loading={loading}
-            onClick={handleSave}
+            onClick={() => form.submit()}
           >
             Sauvegarder
           </Button>,
@@ -115,6 +121,7 @@ export function AgentTestCard() {
         <Form
           form={form}
           layout='vertical'
+          onFinish={handleSave}
           initialValues={{
             labelName: 'Test avec IA',
           }}

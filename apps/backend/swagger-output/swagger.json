@@ -1362,6 +1362,52 @@
         ]
       }
     },
+    "/users/me/support-feedback": {
+      "post": {
+        "operationId": "UserController_submitSupportFeedback",
+        "summary": "Submit support feedback for current user",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSupportFeedbackDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Support feedback submitted successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupportFeedbackResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid feedback payload"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "500": {
+            "description": "Support feedback relay failed"
+          }
+        },
+        "tags": [
+          "users"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
     "/users/me/stats": {
       "get": {
         "operationId": "UserController_getStats",
@@ -3243,6 +3289,126 @@
           "businessInfo",
           "productsImported",
           "contactsImported"
+        ]
+      },
+      "SupportFeedbackContextDto": {
+        "type": "object",
+        "properties": {
+          "appArea": {
+            "type": "string",
+            "description": "Application area"
+          },
+          "currentPlan": {
+            "type": "string",
+            "description": "Detected plan label"
+          },
+          "route": {
+            "type": "string",
+            "description": "Current route pathname"
+          },
+          "timezone": {
+            "type": "string",
+            "description": "User timezone"
+          },
+          "url": {
+            "type": "string",
+            "description": "Current page absolute URL"
+          },
+          "userId": {
+            "type": "string",
+            "description": "User identifier from frontend context"
+          },
+          "contextScore": {
+            "type": "string",
+            "description": "Context score value"
+          }
+        }
+      },
+      "SupportFeedbackSentryDto": {
+        "type": "object",
+        "properties": {
+          "dsn": {
+            "type": "string",
+            "description": "Public Sentry DSN used for support feedback",
+            "example": "https://549db520247ca4aa7f69f7e3eb5775f6@o1063428.ingest.us.sentry.io/4511042903539712"
+          },
+          "environment": {
+            "type": "string",
+            "description": "Frontend Sentry environment"
+          },
+          "release": {
+            "type": "string",
+            "description": "Frontend release identifier"
+          }
+        },
+        "required": [
+          "dsn"
+        ]
+      },
+      "CreateSupportFeedbackDto": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string",
+            "description": "Support request category",
+            "example": "bug"
+          },
+          "email": {
+            "type": "string",
+            "description": "Reply email used in Sentry feedback",
+            "example": "client@example.com"
+          },
+          "message": {
+            "type": "string",
+            "description": "Support message body",
+            "example": "Le formulaire support reste bloque apres validation."
+          },
+          "name": {
+            "type": "string",
+            "description": "Display name sent to support",
+            "example": "Jean Dupont"
+          },
+          "subject": {
+            "type": "string",
+            "description": "Optional support subject",
+            "example": "Bug sur la page Support"
+          },
+          "context": {
+            "description": "Additional non-sensitive frontend context",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SupportFeedbackContextDto"
+              }
+            ]
+          },
+          "sentry": {
+            "description": "Sentry relay configuration",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SupportFeedbackSentryDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "category",
+          "email",
+          "message",
+          "name",
+          "sentry"
+        ]
+      },
+      "SupportFeedbackResponseDto": {
+        "type": "object",
+        "properties": {
+          "eventId": {
+            "type": "string",
+            "description": "Generated Sentry feedback event identifier",
+            "example": "4f3c0f5d5d8748f394e8d4c7a1b23456"
+          }
+        },
+        "required": [
+          "eventId"
         ]
       },
       "StatsAnalyticsRangeDto": {

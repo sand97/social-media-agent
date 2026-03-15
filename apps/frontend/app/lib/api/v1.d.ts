@@ -618,6 +618,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/users/me/support-feedback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Submit support feedback for current user */
+        post: operations["UserController_submitSupportFeedback"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/users/me/stats": {
         parameters: {
             query?: never;
@@ -1399,6 +1416,71 @@ export interface components {
             productsImported: number;
             /** @description Number of contacts imported */
             contactsImported: number;
+        };
+        SupportFeedbackContextDto: {
+            /** @description Application area */
+            appArea?: string;
+            /** @description Detected plan label */
+            currentPlan?: string;
+            /** @description Current route pathname */
+            route?: string;
+            /** @description User timezone */
+            timezone?: string;
+            /** @description Current page absolute URL */
+            url?: string;
+            /** @description User identifier from frontend context */
+            userId?: string;
+            /** @description Context score value */
+            contextScore?: string;
+        };
+        SupportFeedbackSentryDto: {
+            /**
+             * @description Public Sentry DSN used for support feedback
+             * @example https://549db520247ca4aa7f69f7e3eb5775f6@o1063428.ingest.us.sentry.io/4511042903539712
+             */
+            dsn: string;
+            /** @description Frontend Sentry environment */
+            environment?: string;
+            /** @description Frontend release identifier */
+            release?: string;
+        };
+        CreateSupportFeedbackDto: {
+            /**
+             * @description Support request category
+             * @example bug
+             */
+            category: string;
+            /**
+             * @description Reply email used in Sentry feedback
+             * @example client@example.com
+             */
+            email: string;
+            /**
+             * @description Support message body
+             * @example Le formulaire support reste bloque apres validation.
+             */
+            message: string;
+            /**
+             * @description Display name sent to support
+             * @example Jean Dupont
+             */
+            name: string;
+            /**
+             * @description Optional support subject
+             * @example Bug sur la page Support
+             */
+            subject?: string;
+            /** @description Additional non-sensitive frontend context */
+            context?: components["schemas"]["SupportFeedbackContextDto"];
+            /** @description Sentry relay configuration */
+            sentry: components["schemas"]["SupportFeedbackSentryDto"];
+        };
+        SupportFeedbackResponseDto: {
+            /**
+             * @description Generated Sentry feedback event identifier
+             * @example 4f3c0f5d5d8748f394e8d4c7a1b23456
+             */
+            eventId: string;
         };
         StatsAnalyticsRangeDto: {
             /** @example 2026-01-01 */
@@ -2938,6 +3020,51 @@ export interface operations {
                 content?: never;
             };
             /** @description Failed to import WhatsApp data */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    UserController_submitSupportFeedback: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateSupportFeedbackDto"];
+            };
+        };
+        responses: {
+            /** @description Support feedback submitted successfully */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupportFeedbackResponseDto"];
+                };
+            };
+            /** @description Invalid feedback payload */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Support feedback relay failed */
             500: {
                 headers: {
                     [name: string]: unknown;

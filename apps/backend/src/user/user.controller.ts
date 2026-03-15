@@ -17,6 +17,8 @@ import {
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 
 import { ImportWhatsAppDataResponseDto } from './dto/import-whatsapp-data-response.dto';
+import { CreateSupportFeedbackDto } from './dto/create-support-feedback.dto';
+import { SupportFeedbackResponseDto } from './dto/support-feedback-response.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UserService } from './user.service';
 
@@ -71,6 +73,29 @@ export class UserController {
     @Request() req: any,
   ): Promise<ImportWhatsAppDataResponseDto> {
     return this.userService.importWhatsAppData(req.user.id);
+  }
+
+  @Post('me/support-feedback')
+  @ApiOperation({ summary: 'Submit support feedback for current user' })
+  @ApiResponse({
+    status: 201,
+    description: 'Support feedback submitted successfully',
+    type: SupportFeedbackResponseDto,
+  })
+  @ApiResponse({ status: 400, description: 'Invalid feedback payload' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({
+    status: 500,
+    description: 'Support feedback relay failed',
+  })
+  async submitSupportFeedback(
+    @Request() req: any,
+    @Body() createSupportFeedbackDto: CreateSupportFeedbackDto,
+  ): Promise<SupportFeedbackResponseDto> {
+    return this.userService.submitSupportFeedback(
+      req.user.id,
+      createSupportFeedbackDto,
+    );
   }
 
   @Get('me/stats')

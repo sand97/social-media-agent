@@ -301,7 +301,6 @@ export default function CatalogPage() {
         title={headerTitle}
         right={
           <Button
-            className='!h-9 !py-0'
             variant='outlined'
             onClick={handleForceSync}
             loading={isSyncing}

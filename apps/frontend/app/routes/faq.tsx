@@ -1,17 +1,21 @@
 import {
-  ArrowRightOutlined,
-  MessageOutlined,
   QuestionCircleOutlined,
+  ReadOutlined,
+  RocketOutlined,
+  SettingOutlined,
 } from '@ant-design/icons'
 import { DashboardHeader } from '@app/components/layout'
-import { Button, Card, Collapse, Tag, Typography } from 'antd'
-import type { CollapseProps } from 'antd'
-import { useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { CollapsibleCard } from '@app/components/ui'
+import { useMemo, useState, type ReactNode } from 'react'
 
-const { Paragraph, Text, Title } = Typography
+type FaqItem = {
+  key: string
+  category: string
+  question: string
+  answer: string[]
+}
 
-const FAQ_ITEMS = [
+const FAQ_ITEMS: FaqItem[] = [
   {
     key: 'demarrage',
     category: 'Onboarding',
@@ -77,6 +81,16 @@ const FAQ_ITEMS = [
   },
 ]
 
+const CATEGORY_ICON: Record<string, ReactNode> = {
+  Abonnement: <ReadOutlined />,
+  Catalogue: <SettingOutlined />,
+  Marketing: <RocketOutlined />,
+  Onboarding: <QuestionCircleOutlined />,
+  Pilotage: <ReadOutlined />,
+  Roadmap: <RocketOutlined />,
+  Support: <QuestionCircleOutlined />,
+}
+
 export function meta() {
   return [
     { title: 'FAQ - WhatsApp Agent' },
@@ -89,124 +103,65 @@ export function meta() {
 }
 
 export default function FaqPage() {
-  const navigate = useNavigate()
+  const [expandedItems, setExpandedItems] = useState<string[]>([])
+  const groupedItems = useMemo(() => {
+    return FAQ_ITEMS.reduce<Record<string, FaqItem[]>>((groups, item) => {
+      const entry = groups[item.category] || []
+      entry.push(item)
+      groups[item.category] = entry
+      return groups
+    }, {})
+  }, [])
 
-  const items = useMemo<CollapseProps['items']>(
-    () =>
-      FAQ_ITEMS.map(item => ({
-        key: item.key,
-        label: (
-          <div className='flex min-w-0 flex-col gap-1 py-1'>
-            <Text strong className='text-[15px] text-[#111b21]'>
-              {item.question}
-            </Text>
-            <Text className='text-xs text-[#6a6a6a]'>{item.category}</Text>
-          </div>
-        ),
-        children: (
-          <div className='flex flex-col gap-3 pt-1 text-[#4d4d4d]'>
-            {item.answer.map(paragraph => (
-              <Paragraph key={paragraph} className='!mb-0'>
-                {paragraph}
-              </Paragraph>
-            ))}
-          </div>
-        ),
-      })),
-    []
-  )
+  const toggleItem = (itemKey: string, expanded: boolean) => {
+    setExpandedItems(previous => {
+      if (expanded) {
+        return previous.includes(itemKey) ? previous : [...previous, itemKey]
+      }
+
+      return previous.filter(key => key !== itemKey)
+    })
+  }
 
   return (
     <>
-      <DashboardHeader
-        title='FAQ'
-        right={
-          <Tag className='rounded-full border-none bg-[#effaf3] px-3 py-1 text-[#178f57]'>
-            Base produit V1
-          </Tag>
-        }
-      />
+      <DashboardHeader title='FAQ' />
 
-      <div className='flex w-full flex-col gap-6 px-4 py-5 sm:px-6 sm:py-6'>
-        <Card styles={{ body: { padding: 0 } }} className='overflow-hidden'>
-          <div className='grid grid-cols-1 gap-0 lg:grid-cols-[1.4fr_0.8fr]'>
-            <div className='bg-[linear-gradient(135deg,#fffdf7_0%,#f7fff9_55%,#eefaf2_100%)] px-6 py-7 sm:px-8 sm:py-8'>
-              <Tag className='mb-4 rounded-full border-none bg-[#111b21] px-3 py-1 text-white'>
-                Questions fréquentes
-              </Tag>
-              <Title level={3} className='!mb-2'>
-                Une FAQ simple à enrichir sans refaire la structure.
-              </Title>
-              <Paragraph className='!mb-0 max-w-2xl text-[#5b5b5b]'>
-                Chaque entrée vit dans une configuration unique, puis est rendue
-                dans un composant Ant Design repliable pour rester lisible sur
-                mobile comme sur desktop.
-              </Paragraph>
+      <div className='w-full space-y-6 px-4 py-5 sm:px-6 sm:py-6'>
+        {Object.entries(groupedItems).map(([category, items]) => (
+          <section key={category} className='space-y-3'>
+            <div className='flex items-center gap-2 text-sm font-semibold text-[var(--color-text-primary)]'>
+              <span className='inline-flex h-6 w-6 items-center justify-center text-base'>
+                {CATEGORY_ICON[category] || <QuestionCircleOutlined />}
+              </span>
+              <span>{category}</span>
             </div>
 
-            <div className='flex flex-col justify-between gap-4 bg-[#111b21] px-6 py-7 text-white sm:px-8 sm:py-8'>
-              <div className='flex h-11 w-11 items-center justify-center rounded-2xl bg-white/10'>
-                <QuestionCircleOutlined className='text-lg text-white' />
-              </div>
-              <div>
-                <Text className='!mb-2 block !text-white/72'>
-                  Vous ne trouvez pas votre réponse ?
-                </Text>
-                <Title level={4} className='!mb-2 !text-white'>
-                  Ouvrez un retour support sans quitter le dashboard.
-                </Title>
-                <Paragraph className='!mb-0 !text-white/72'>
-                  Le formulaire support permet de transmettre un bug, une
-                  demande d’aide ou un besoin d’évolution produit.
-                </Paragraph>
-              </div>
-              <Button
-                type='primary'
-                shape='round'
-                icon={<ArrowRightOutlined />}
-                iconPosition='end'
-                onClick={() => navigate('/support')}
-              >
-                Aller au support
-              </Button>
+            <div className='merge-border-radius grid gap-2'>
+              {items.map(item => (
+                <CollapsibleCard
+                  key={item.key}
+                  title={item.question}
+                  subtitle={item.answer.join('\n')}
+                  expanded={expandedItems.includes(item.key)}
+                  hideSubtitleWhenExpanded
+                  onToggle={expanded => toggleItem(item.key, expanded)}
+                >
+                  <div className='space-y-3'>
+                    {item.answer.map(paragraph => (
+                      <p
+                        key={paragraph}
+                        className='m-0 text-sm leading-[1.75] text-[var(--color-text-secondary)]'
+                      >
+                        {paragraph}
+                      </p>
+                    ))}
+                  </div>
+                </CollapsibleCard>
+              ))}
             </div>
-          </div>
-        </Card>
-
-        <div className='grid grid-cols-1 gap-4 xl:grid-cols-[1.6fr_0.8fr]'>
-          <Card className='h-full' styles={{ body: { padding: 24 } }}>
-            <Collapse
-              ghost
-              size='large'
-              items={items}
-              className='faq-collapse'
-            />
-          </Card>
-
-          <Card className='h-full' styles={{ body: { padding: 24 } }}>
-            <div className='flex h-full flex-col gap-5'>
-              <div className='flex h-11 w-11 items-center justify-center rounded-2xl bg-[#f4fbf7] text-[#178f57]'>
-                <MessageOutlined className='text-lg' />
-              </div>
-              <div>
-                <Title level={5} className='!mb-2'>
-                  Conseils rapides
-                </Title>
-                <Paragraph className='!mb-3 text-[#5b5b5b]'>
-                  Commencez par les pages <Text strong>Contexte</Text>,
-                  <Text strong> Catalogue</Text> et
-                  <Text strong> Status scheduler</Text> pour stabiliser votre
-                  usage avant de chercher à automatiser plus loin.
-                </Paragraph>
-                <Paragraph className='!mb-0 text-[#5b5b5b]'>
-                  La structure de cette FAQ est volontairement en tableau de
-                  données pour faciliter les prochains ajouts sans modifier la
-                  mise en page.
-                </Paragraph>
-              </div>
-            </div>
-          </Card>
-        </div>
+          </section>
+        ))}
       </div>
     </>
   )

@@ -1,12 +1,13 @@
 import {
-  CalendarOutlined,
+  CheckCircleOutlined,
   ClockCircleOutlined,
-  DeleteOutlined,
-  EditOutlined,
-  FileImageOutlined,
+  CloseCircleOutlined,
+  EllipsisOutlined,
   NotificationOutlined,
+  PictureOutlined,
   PlayCircleOutlined,
   PlusOutlined,
+  UploadOutlined,
 } from '@ant-design/icons'
 import { DashboardHeader } from '@app/components/layout'
 import {
@@ -24,71 +25,52 @@ import {
   App,
   Button,
   Calendar,
+  DatePicker,
+  Dropdown,
   Empty,
   Form,
+  Image,
   Input,
   Modal,
-  Popconfirm,
   Select,
   Skeleton,
-  Statistic,
-  Tag,
-  Typography,
+  Upload,
+  type CalendarProps,
+  type MenuProps,
+  type UploadProps,
 } from 'antd'
-import type { CalendarProps } from 'antd'
+import dayjs, { type Dayjs } from 'dayjs'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 
-const { Text, Title } = Typography
-
-type ScheduleFormValues = {
-  scheduledTime: string
-  contentType: StatusScheduleContentType
-  textContent?: string
+type ComposerFormValues = {
   caption?: string
+  contentType: StatusScheduleContentType
   mediaUrl?: string
+  slots: Array<{ scheduledFor: Dayjs | null }>
+  textContent?: string
 }
+
+type ModalMode = 'composer' | 'day' | 'empty' | null
 
 const CONTENT_TYPE_META: Record<
   StatusScheduleContentType,
   {
-    label: string
-    accent: string
-    background: string
     icon: ReactNode
+    label: string
   }
 > = {
-  TEXT: {
-    label: 'Texte',
-    accent: '#111b21',
-    background: '#f4f7f6',
-    icon: <NotificationOutlined />,
-  },
   IMAGE: {
-    label: 'Image',
-    accent: '#178f57',
-    background: '#ebfff3',
-    icon: <FileImageOutlined />,
+    icon: <PictureOutlined />,
+    label: 'Texte + image',
+  },
+  TEXT: {
+    icon: <NotificationOutlined />,
+    label: 'Texte',
   },
   VIDEO: {
-    label: 'Vidéo',
-    accent: '#c26c12',
-    background: '#fff5e8',
     icon: <PlayCircleOutlined />,
+    label: 'Vidéo',
   },
-}
-
-const STATUS_META: Record<
-  StatusSchedule['status'],
-  {
-    label: string
-    color: string
-  }
-> = {
-  PENDING: { label: 'Planifié', color: 'default' },
-  PROCESSING: { label: 'Envoi', color: 'processing' },
-  SENT: { label: 'Envoyé', color: 'success' },
-  FAILED: { label: 'Échec', color: 'error' },
-  CANCELLED: { label: 'Annulé', color: 'default' },
 }
 
 function formatTime(schedule: StatusSchedule) {
@@ -99,9 +81,8 @@ function formatTime(schedule: StatusSchedule) {
   }).format(new Date(schedule.scheduledFor))
 }
 
-function formatDayLabel(day: string) {
+function formatDayHeading(day: string) {
   return new Intl.DateTimeFormat('fr-FR', {
-    weekday: 'long',
     day: 'numeric',
     month: 'long',
     year: 'numeric',
@@ -113,24 +94,9 @@ function getMonthRange(month: string) {
   const lastDay = new Date(year, monthIndex, 0)
 
   return {
-    startDate: `${month}-01`,
     endDate: `${month}-${String(lastDay.getDate()).padStart(2, '0')}`,
+    startDate: `${month}-01`,
   }
-}
-
-function buildScheduledFor(day: string, time: string) {
-  const [year, month, dayOfMonth] = day.split('-').map(Number)
-  const [hours, minutes] = time.split(':').map(Number)
-
-  return new Date(
-    year,
-    month - 1,
-    dayOfMonth,
-    hours || 0,
-    minutes || 0,
-    0,
-    0
-  ).toISOString()
 }
 
 function getDefaultTimeForDay(day: string) {
@@ -138,43 +104,92 @@ function getDefaultTimeForDay(day: string) {
   const today = now.toISOString().slice(0, 10)
 
   if (day === today) {
-    const nextHour = new Date(now)
-    nextHour.setHours(nextHour.getHours() + 1, 0, 0, 0)
-    return `${String(nextHour.getHours()).padStart(2, '0')}:${String(
-      nextHour.getMinutes()
+    const nextHour = dayjs(now).add(1, 'hour').startOf('hour')
+    const minimumScheduleTime = getMinimumScheduleTime(dayjs(now))
+    const defaultTime = nextHour.isAfter(minimumScheduleTime)
+      ? nextHour
+      : minimumScheduleTime
+
+    return `${String(defaultTime.hour()).padStart(2, '0')}:${String(
+      defaultTime.minute()
     ).padStart(2, '0')}`
   }
 
   return '09:00'
 }
 
-function getSchedulePreview(schedule: StatusSchedule) {
-  if (schedule.contentType === 'TEXT') {
-    return schedule.textContent || 'Statut texte'
+function getMinimumScheduleTime(reference = dayjs()) {
+  const minimum = reference.add(5, 'minute')
+
+  if (minimum.second() === 0 && minimum.millisecond() === 0) {
+    return minimum
   }
 
-  return schedule.caption || schedule.mediaUrl || 'Media prêt à publier'
+  return minimum.add(1, 'minute').startOf('minute')
 }
 
-function normalizePayload(
-  day: string,
-  timezone: string,
-  values: ScheduleFormValues
-): CreateStatusSchedulePayload {
-  const payload: CreateStatusSchedulePayload = {
-    scheduledFor: buildScheduledFor(day, values.scheduledTime),
-    timezone,
-    contentType: values.contentType,
+function createSlotValue(day: string) {
+  return dayjs(`${day}T${getDefaultTimeForDay(day)}`)
+}
+
+function getDisabledScheduleTime(current: Dayjs | null) {
+  const minimum = getMinimumScheduleTime()
+
+  if (!current || !current.isSame(minimum, 'day')) {
+    return {}
   }
 
-  if (values.contentType === 'TEXT') {
-    payload.textContent = values.textContent?.trim()
-  } else {
-    payload.mediaUrl = values.mediaUrl?.trim()
-    payload.caption = values.caption?.trim()
+  const minimumHour = minimum.hour()
+  const minimumMinute = minimum.minute()
+
+  return {
+    disabledHours: () =>
+      Array.from({ length: minimumHour }, (_, index) => index),
+    disabledMinutes: (selectedHour: number) =>
+      selectedHour === minimumHour
+        ? Array.from({ length: minimumMinute }, (_, index) => index)
+        : [],
+  }
+}
+
+function getSchedulePreview(schedule: StatusSchedule) {
+  if (schedule.contentType === 'TEXT') {
+    return schedule.textContent || 'Story texte'
   }
 
-  return payload
+  return schedule.caption || 'Story média'
+}
+
+function toIsoString(value: Dayjs) {
+  return value.toDate().toISOString()
+}
+
+function getErrorMessage(error: unknown) {
+  if (typeof error === 'object' && error && 'response' in error) {
+    const response = (error as { response?: { data?: { message?: string } } })
+      .response
+    if (response?.data?.message) {
+      return response.data.message
+    }
+  }
+
+  if (error instanceof Error) {
+    return error.message
+  }
+
+  return 'Une erreur est survenue.'
+}
+
+function getCalendarStatusDotClass(status: StatusSchedule['status']) {
+  if (status === 'SENT') {
+    return 'bg-[var(--color-primary)]'
+  }
+
+  if (status === 'FAILED') {
+    return 'bg-[var(--color-danger)]'
+  }
+
+  return 'bg-[var(--color-field-border-strong)]'
 }
 
 export function meta() {
@@ -191,20 +206,17 @@ export function meta() {
 export default function StatusSchedulerPage() {
   const { notification } = App.useApp()
   const queryClient = useQueryClient()
-  const [form] = Form.useForm<ScheduleFormValues>()
-  const timezone = useMemo(
-    () => Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
-    []
-  )
+  const [form] = Form.useForm<ComposerFormValues>()
   const today = useMemo(() => new Date().toISOString().slice(0, 10), [])
   const [calendarMonth, setCalendarMonth] = useState(today.slice(0, 7))
   const [selectedDay, setSelectedDay] = useState(today)
-  const [modalOpen, setModalOpen] = useState(false)
+  const [modalMode, setModalMode] = useState<ModalMode>(null)
   const [editingSchedule, setEditingSchedule] = useState<StatusSchedule | null>(
     null
   )
+  const [showHelpCard, setShowHelpCard] = useState(true)
   const contentType = Form.useWatch('contentType', form) || 'TEXT'
-
+  const currentMediaUrl = Form.useWatch('mediaUrl', form)
   const monthRange = useMemo(
     () => getMonthRange(calendarMonth),
     [calendarMonth]
@@ -214,6 +226,18 @@ export default function StatusSchedulerPage() {
     queryKey: ['status-schedules', monthRange.startDate, monthRange.endDate],
     queryFn: () => getStatusSchedules(monthRange),
   })
+
+  const createMutation = useMutation({ mutationFn: createStatusSchedule })
+  const updateMutation = useMutation({
+    mutationFn: ({
+      payload,
+      scheduleId,
+    }: {
+      payload: CreateStatusSchedulePayload
+      scheduleId: string
+    }) => updateStatusSchedule(scheduleId, payload),
+  })
+  const cancelMutation = useMutation({ mutationFn: cancelStatusSchedule })
 
   const schedulesByDay = useMemo(() => {
     const nextMap = new Map<string, StatusSchedule[]>()
@@ -240,154 +264,174 @@ export default function StatusSchedulerPage() {
     [schedulesByDay, selectedDay]
   )
 
-  const summary = useMemo(() => {
-    const schedules = schedulesQuery.data || []
-    const plannedDays = new Set(
-      schedules.map(schedule => schedule.scheduledDay)
-    )
-
-    return {
-      total: schedules.length,
-      plannedDays: plannedDays.size,
-      pending: schedules.filter(schedule => schedule.status === 'PENDING')
-        .length,
-      failed: schedules.filter(schedule => schedule.status === 'FAILED').length,
-    }
-  }, [schedulesQuery.data])
-
-  const resetComposer = (day = selectedDay) => {
-    setEditingSchedule(null)
-    form.setFieldsValue({
-      scheduledTime: getDefaultTimeForDay(day),
-      contentType: 'TEXT',
-      textContent: '',
-      caption: '',
-      mediaUrl: '',
-    })
-  }
-
-  useEffect(() => {
-    if (!modalOpen || editingSchedule) {
-      return
-    }
-
-    form.setFieldsValue({
-      scheduledTime: getDefaultTimeForDay(selectedDay),
-      contentType: 'TEXT',
-      textContent: '',
-      caption: '',
-      mediaUrl: '',
-    })
-  }, [editingSchedule, form, modalOpen, selectedDay])
+  const canCreateOnSelectedDay = selectedDay >= today
 
   const invalidateSchedules = async () => {
     await queryClient.invalidateQueries({ queryKey: ['status-schedules'] })
   }
 
-  const createMutation = useMutation({
-    mutationFn: createStatusSchedule,
-    onSuccess: async () => {
-      await invalidateSchedules()
-      resetComposer(selectedDay)
-      notification.success({
-        message: 'Statut planifié',
-        description: 'Le statut a été ajouté à cette journée.',
-      })
-    },
-    onError: (error: any) => {
-      notification.error({
-        message: 'Création impossible',
-        description:
-          error?.response?.data?.message ||
-          'Le statut n’a pas pu être planifié.',
-      })
-    },
-  })
-
-  const updateMutation = useMutation({
-    mutationFn: ({
-      scheduleId,
-      payload,
-    }: {
-      scheduleId: string
-      payload: CreateStatusSchedulePayload
-    }) => updateStatusSchedule(scheduleId, payload),
-    onSuccess: async () => {
-      await invalidateSchedules()
-      resetComposer(selectedDay)
-      notification.success({
-        message: 'Statut mis à jour',
-        description: 'La planification a été enregistrée.',
-      })
-    },
-    onError: (error: any) => {
-      notification.error({
-        message: 'Mise à jour impossible',
-        description:
-          error?.response?.data?.message ||
-          'Le statut n’a pas pu être modifié.',
-      })
-    },
-  })
-
-  const cancelMutation = useMutation({
-    mutationFn: cancelStatusSchedule,
-    onSuccess: async () => {
-      await invalidateSchedules()
-      notification.success({
-        message: 'Statut supprimé',
-        description: 'La planification a bien été retirée du calendrier.',
-      })
-    },
-    onError: (error: any) => {
-      notification.error({
-        message: 'Suppression impossible',
-        description:
-          error?.response?.data?.message ||
-          'Le statut n’a pas pu être supprimé.',
-      })
-    },
-  })
-
-  const handleOpenDay = (day: string) => {
+  const openDayModal = (day: string) => {
     setSelectedDay(day)
-    setCalendarMonth(day.slice(0, 7))
-    setModalOpen(true)
     setEditingSchedule(null)
+    setModalMode((schedulesByDay.get(day) || []).length > 0 ? 'day' : 'empty')
   }
 
-  const handleSubmit = async (values: ScheduleFormValues) => {
-    const payload = normalizePayload(selectedDay, timezone, values)
+  const openComposer = (day: string, schedule?: StatusSchedule) => {
+    setSelectedDay(day)
+    setEditingSchedule(schedule || null)
+    setModalMode('composer')
 
-    if (editingSchedule) {
-      await updateMutation.mutateAsync({
-        scheduleId: editingSchedule.id,
-        payload,
+    if (schedule) {
+      form.setFieldsValue({
+        caption: schedule.caption || '',
+        contentType: schedule.contentType,
+        mediaUrl: schedule.mediaUrl || '',
+        slots: [{ scheduledFor: dayjs(schedule.scheduledFor) }],
+        textContent: schedule.textContent || '',
       })
       return
     }
 
-    await createMutation.mutateAsync(payload)
-  }
-
-  const handleEdit = (schedule: StatusSchedule) => {
-    setEditingSchedule(schedule)
     form.setFieldsValue({
-      scheduledTime: formatTime(schedule),
-      contentType: schedule.contentType,
-      textContent: schedule.textContent || '',
-      caption: schedule.caption || '',
-      mediaUrl: schedule.mediaUrl || '',
+      caption: '',
+      contentType: 'TEXT',
+      mediaUrl: '',
+      slots: [{ scheduledFor: createSlotValue(day) }],
+      textContent: '',
     })
   }
 
-  const canCreateOnSelectedDay = selectedDay >= today
-  const isMutating =
-    createMutation.isPending ||
-    updateMutation.isPending ||
-    cancelMutation.isPending
+  const closeComposer = () => {
+    setEditingSchedule(null)
+    setModalMode(selectedDaySchedules.length > 0 ? 'day' : 'empty')
+  }
 
-  const fullCellRender: CalendarProps<any>['fullCellRender'] = (
+  useEffect(() => {
+    if (modalMode === 'day' && selectedDaySchedules.length === 0) {
+      setModalMode('empty')
+    }
+  }, [modalMode, selectedDaySchedules.length])
+
+  useEffect(() => {
+    if (contentType === 'TEXT') {
+      form.setFieldValue('mediaUrl', '')
+      form.setFieldValue('caption', '')
+    }
+  }, [contentType, form])
+
+  const uploadProps: UploadProps = {
+    accept: contentType === 'VIDEO' ? 'video/*' : 'image/*',
+    beforeUpload: file => {
+      const reader = new globalThis.FileReader()
+      reader.onload = event => {
+        const result = event.target?.result
+        if (typeof result === 'string') {
+          form.setFieldValue('mediaUrl', result)
+        }
+      }
+      reader.readAsDataURL(file)
+      return false
+    },
+    maxCount: 1,
+    showUploadList: false,
+  }
+
+  const handleSubmit = async (values: ComposerFormValues) => {
+    const slots = (values.slots || [])
+      .map(slot => slot.scheduledFor)
+      .filter((slot): slot is Dayjs => Boolean(slot))
+    const minimumScheduleTime = getMinimumScheduleTime()
+
+    if (slots.length === 0) {
+      notification.error({
+        message: 'Date manquante',
+        description: 'Ajoutez au moins une date de publication.',
+      })
+      return
+    }
+
+    if (slots.some(slot => slot.isBefore(minimumScheduleTime))) {
+      notification.error({
+        message: 'Horaire invalide',
+        description:
+          'Choisissez une date de publication au moins 5 minutes après maintenant.',
+      })
+      return
+    }
+
+    const timezone =
+      Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/Paris'
+
+    try {
+      if (editingSchedule) {
+        await updateMutation.mutateAsync({
+          payload: {
+            caption: values.caption?.trim(),
+            contentType: values.contentType,
+            mediaUrl: values.mediaUrl?.trim(),
+            scheduledFor: toIsoString(slots[0]),
+            textContent: values.textContent?.trim(),
+            timezone,
+          },
+          scheduleId: editingSchedule.id,
+        })
+
+        await invalidateSchedules()
+        notification.success({
+          message: 'Story mise à jour',
+          description: 'La planification a été enregistrée.',
+        })
+      } else {
+        for (const slot of slots) {
+          await createMutation.mutateAsync({
+            caption: values.caption?.trim(),
+            contentType: values.contentType,
+            mediaUrl: values.mediaUrl?.trim(),
+            scheduledFor: toIsoString(slot),
+            textContent: values.textContent?.trim(),
+            timezone,
+          })
+        }
+
+        await invalidateSchedules()
+        notification.success({
+          message: 'Story programmée',
+          description:
+            slots.length > 1
+              ? `${slots.length} stories ont été ajoutées au calendrier.`
+              : 'La story a été ajoutée au calendrier.',
+        })
+      }
+
+      setEditingSchedule(null)
+      setModalMode('day')
+    } catch (error) {
+      notification.error({
+        message: editingSchedule
+          ? 'Mise à jour impossible'
+          : 'Création impossible',
+        description: getErrorMessage(error),
+      })
+    }
+  }
+
+  const handleDeleteSchedule = async (scheduleId: string) => {
+    try {
+      await cancelMutation.mutateAsync(scheduleId)
+      await invalidateSchedules()
+      notification.success({
+        message: 'Story supprimée',
+        description: 'La planification a été retirée du calendrier.',
+      })
+    } catch (error) {
+      notification.error({
+        message: 'Suppression impossible',
+        description: getErrorMessage(error),
+      })
+    }
+  }
+
+  const fullCellRender: CalendarProps<Dayjs>['fullCellRender'] = (
     value,
     info
   ) => {
@@ -398,418 +442,512 @@ export default function StatusSchedulerPage() {
     const dayKey = value.format('YYYY-MM-DD')
     const daySchedules = schedulesByDay.get(dayKey) || []
     const isToday = dayKey === today
-    const isActive = dayKey === selectedDay
 
     return (
-      <div
-        className={`status-calendar-cell ${daySchedules.length > 0 ? 'has-items' : ''} ${
-          isActive ? 'is-active' : ''
-        }`}
-      >
+      <div className='story-calendar-cell'>
         <button
           type='button'
-          className='status-calendar-button'
-          onClick={() => handleOpenDay(dayKey)}
+          className='story-calendar-button'
+          onClick={() => openDayModal(dayKey)}
         >
           <div className='flex items-center justify-between gap-2'>
-            <span className='text-sm font-semibold text-[#111b21]'>
-              {value.date()}
+            <span className='text-sm font-medium text-[var(--color-text-primary)]'>
+              {value.format('DD')}
             </span>
-            {isToday && (
-              <span className='rounded-full bg-[#111b21] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-white'>
-                Aujourd&apos;hui
-              </span>
-            )}
+            {isToday ? <span className='active-day-line' /> : null}
           </div>
 
           {daySchedules.length > 0 ? (
-            <div className='mt-3 flex flex-col gap-2'>
-              {daySchedules.slice(0, 3).map(schedule => {
-                const meta = CONTENT_TYPE_META[schedule.contentType]
+            <div className='mt-3 space-y-1.5'>
+              {daySchedules.slice(0, 3).map(schedule => (
+                <div
+                  key={schedule.id}
+                  className='flex items-center gap-2 text-left text-[var(--font-size-eyebrow)] text-[var(--color-text-secondary)]'
+                >
+                  <span
+                    className={`inline-flex h-1.5 w-1.5 rounded-full ${getCalendarStatusDotClass(schedule.status)}`}
+                  />
+                  <span>{formatTime(schedule)}</span>
+                  <span className='text-[var(--color-text-soft)]'>
+                    {CONTENT_TYPE_META[schedule.contentType].icon}
+                  </span>
+                </div>
+              ))}
 
-                return (
-                  <div
-                    key={schedule.id}
-                    className='rounded-2xl border border-black/6 bg-white/90 px-3 py-2 text-left shadow-[0px_12px_28px_rgba(17,27,33,0.08)]'
-                  >
-                    <div className='mb-1 flex items-center justify-between gap-2'>
-                      <span
-                        className='inline-flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.14em]'
-                        style={{ color: meta.accent }}
-                      >
-                        {meta.icon}
-                        {meta.label}
-                      </span>
-                      <span className='text-xs font-medium text-[#5f6a6f]'>
-                        {formatTime(schedule)}
-                      </span>
-                    </div>
-                    <div className='line-clamp-2 text-xs text-[#4c5458]'>
-                      {getSchedulePreview(schedule)}
-                    </div>
-                  </div>
-                )
-              })}
-
-              {daySchedules.length > 3 && (
-                <span className='text-xs font-medium text-[#5f6a6f]'>
-                  +{daySchedules.length - 3} statut(s)
-                </span>
-              )}
+              {daySchedules.length > 3 ? (
+                <p className='m-0 text-[var(--color-text-soft)]'>
+                  +{daySchedules.length - 3}
+                </p>
+              ) : null}
             </div>
-          ) : (
-            <div className='mt-4 rounded-2xl border border-dashed border-black/8 px-3 py-4 text-left text-xs text-[#7b8589]'>
-              Journée libre
-            </div>
-          )}
+          ) : null}
         </button>
       </div>
+    )
+  }
+
+  const groupedSchedules = useMemo(() => {
+    return {
+      failed: selectedDaySchedules.filter(
+        schedule => schedule.status === 'FAILED'
+      ),
+      pending: selectedDaySchedules.filter(schedule =>
+        ['PENDING', 'PROCESSING'].includes(schedule.status)
+      ),
+      sent: selectedDaySchedules.filter(schedule => schedule.status === 'SENT'),
+    }
+  }, [selectedDaySchedules])
+
+  const renderScheduleCard = (schedule: StatusSchedule) => {
+    const menuItems: MenuProps['items'] = [
+      {
+        key: 'edit',
+        label: 'Modifier',
+        onClick: () => openComposer(schedule.scheduledDay, schedule),
+      },
+      {
+        danger: true,
+        key: 'delete',
+        label: 'Supprimer',
+        onClick: () => handleDeleteSchedule(schedule.id),
+      },
+    ]
+
+    const isEditable = !['SENT', 'PROCESSING'].includes(schedule.status)
+
+    return (
+      <article
+        key={schedule.id}
+        className='rounded-[var(--radius-card)] border-none bg-white p-4 shadow-card sm:p-4 m-1'
+      >
+        <div className='flex items-start justify-between gap-4'>
+          <div className='space-y-2'>
+            <p className='m-0 text-[var(--font-size-display-sm)] font-semibold text-[var(--color-text-primary)]'>
+              {formatTime(schedule)}
+            </p>
+            <p className='m-0 text-sm leading-[1.7] text-[var(--color-text-secondary)]'>
+              {getSchedulePreview(schedule)}
+            </p>
+          </div>
+
+          {isEditable ? (
+            <Dropdown menu={{ items: menuItems }} trigger={['click']}>
+              <button
+                type='button'
+                className='inline-flex h-10 w-10 items-center justify-center rounded-full border-none bg-white text-[var(--color-text-primary)] shadow-card'
+              >
+                <EllipsisOutlined />
+              </button>
+            </Dropdown>
+          ) : null}
+        </div>
+
+        {schedule.mediaUrl && schedule.contentType !== 'TEXT' ? (
+          <div className='mt-4 overflow-hidden rounded-[var(--radius-control)] border border-[var(--color-field-border-muted)]'>
+            {schedule.contentType === 'VIDEO' ? (
+              <video
+                src={schedule.mediaUrl}
+                controls
+                className='block h-[180px] w-full object-cover'
+              />
+            ) : (
+              <Image
+                src={schedule.mediaUrl}
+                alt='Story programmée'
+                preview={false}
+                className='block h-[180px] w-full object-cover'
+              />
+            )}
+          </div>
+        ) : null}
+      </article>
     )
   }
 
   return (
     <>
       <DashboardHeader
-        title='Status scheduler'
+        title='Planifier vos status'
         right={
-          <Button
-            type='primary'
-            icon={<PlusOutlined />}
-            onClick={() => handleOpenDay(today)}
-          >
-            Ajouter aujourd&apos;hui
-          </Button>
+          <DatePicker
+            picker='month'
+            value={dayjs(`${calendarMonth}-01`)}
+            onChange={value =>
+              setCalendarMonth((value || dayjs()).format('YYYY-MM'))
+            }
+            format='MMMM YYYY'
+            allowClear={false}
+          />
         }
       />
 
-      <div className='relative flex w-full flex-col gap-6 px-4 py-5 sm:px-6 sm:py-6'>
-        <div className='pointer-events-none absolute inset-x-0 top-0 h-72 bg-[radial-gradient(circle_at_top_left,rgba(36,211,102,0.14),transparent_42%),radial-gradient(circle_at_top_right,rgba(17,27,33,0.08),transparent_34%)]' />
-
-        <section className='relative overflow-hidden rounded-[32px] border border-white/80 bg-[linear-gradient(180deg,#f6faf7_0%,#fdfdfd_100%)] p-5 shadow-[0px_30px_120px_rgba(17,27,33,0.08)] sm:p-6'>
-          <div className='flex flex-col gap-6'>
-            <div className='flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between'>
-              <div className='max-w-2xl'>
-                <Text className='!mb-2 !inline-flex !rounded-full !bg-white !px-3 !py-1 !text-[11px] !font-semibold !uppercase !tracking-[0.22em] !text-[#5f6a6f] !shadow-[0px_8px_24px_rgba(17,27,33,0.06)]'>
-                  Calendrier marketing
-                </Text>
-                <Title level={2} className='!mb-2 !text-[32px] !leading-tight'>
-                  Planifier plusieurs statuts WhatsApp sur une même journée
-                </Title>
-                <Text type='secondary' className='!text-base'>
-                  Cliquez sur un jour, ajoutez autant de publications que
-                  nécessaire, puis laissez le backend déclencher l’envoi à
-                  l’heure prévue via WPPConnect.
-                </Text>
+      <div className='w-full space-y-4 px-4 py-5 sm:px-6 sm:py-6'>
+        {showHelpCard ? (
+          <div className='rounded-[var(--radius-card)] border-none bg-[var(--color-surface-muted)] px-5 py-4 shadow-card sm:px-5'>
+            <div className='flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between'>
+              <div>
+                <p className='m-0 text-lg font-semibold text-[var(--color-text-primary)]'>
+                  Comment programmer un status
+                </p>
+                <p className='mb-0 mt-2 text-sm leading-[1.7] text-[var(--color-text-secondary)]'>
+                  Il vous suffit de cliquer sur une date et de remplir le
+                  formulaire.
+                </p>
               </div>
 
-              <div className='grid grid-cols-2 gap-3 sm:grid-cols-4'>
-                <div className='rounded-[24px] border border-white/70 bg-white/90 px-4 py-4 shadow-[0px_18px_50px_rgba(17,27,33,0.08)]'>
-                  <Statistic title='Ce mois' value={summary.total} />
-                </div>
-                <div className='rounded-[24px] border border-white/70 bg-white/90 px-4 py-4 shadow-[0px_18px_50px_rgba(17,27,33,0.08)]'>
-                  <Statistic title='Jours actifs' value={summary.plannedDays} />
-                </div>
-                <div className='rounded-[24px] border border-white/70 bg-white/90 px-4 py-4 shadow-[0px_18px_50px_rgba(17,27,33,0.08)]'>
-                  <Statistic title='En attente' value={summary.pending} />
-                </div>
-                <div className='rounded-[24px] border border-white/70 bg-white/90 px-4 py-4 shadow-[0px_18px_50px_rgba(17,27,33,0.08)]'>
-                  <Statistic title='À corriger' value={summary.failed} />
-                </div>
-              </div>
+              <Button onClick={() => setShowHelpCard(false)}>Fermer</Button>
             </div>
-
-            {schedulesQuery.isLoading ? (
-              <div className='rounded-[28px] border border-white/70 bg-white p-6 shadow-[0px_24px_80px_rgba(17,27,33,0.08)]'>
-                <Skeleton active paragraph={{ rows: 12 }} />
-              </div>
-            ) : schedulesQuery.isError ? (
-              <Alert
-                type='error'
-                showIcon
-                message='Impossible de charger le calendrier'
-                description='Les statuts planifiés n’ont pas pu être récupérés depuis le backend.'
-              />
-            ) : (
-              <div className='overflow-hidden rounded-[30px] border border-white/80 bg-white/90 p-3 shadow-[0px_24px_80px_rgba(17,27,33,0.08)] sm:p-5'>
-                <Calendar
-                  className='status-scheduler-calendar'
-                  onSelect={value => handleOpenDay(value.format('YYYY-MM-DD'))}
-                  onPanelChange={value =>
-                    setCalendarMonth(value.format('YYYY-MM'))
-                  }
-                  fullCellRender={fullCellRender}
-                />
-              </div>
-            )}
           </div>
-        </section>
+        ) : null}
+
+        {schedulesQuery.isLoading ? (
+          <div className='rounded-[24px] border-none bg-white p-4 shadow-card sm:p-6'>
+            <Skeleton active paragraph={{ rows: 10 }} />
+          </div>
+        ) : schedulesQuery.isError ? (
+          <Alert
+            type='error'
+            showIcon
+            message='Impossible de charger le calendrier'
+            description='Les stories planifiées n’ont pas pu être récupérées depuis le backend.'
+          />
+        ) : (
+          <div className='overflow-hidden rounded-[24px] border-none bg-white p-3 shadow-card sm:p-4'>
+            <Calendar
+              className='story-calendar'
+              value={dayjs(`${calendarMonth}-01`)}
+              onSelect={value => openDayModal(value.format('YYYY-MM-DD'))}
+              onPanelChange={value => setCalendarMonth(value.format('YYYY-MM'))}
+              headerRender={() => null}
+              fullCellRender={fullCellRender}
+            />
+          </div>
+        )}
       </div>
 
       <Modal
-        open={modalOpen}
-        onCancel={() => {
-          setModalOpen(false)
-          setEditingSchedule(null)
-        }}
-        footer={null}
-        width={840}
-        destroyOnClose={false}
+        open={modalMode === 'empty'}
+        onCancel={() => setModalMode(null)}
+        footer={[
+          <Button
+            key='create'
+            type='primary'
+            icon={<PlusOutlined />}
+            iconPosition='end'
+            onClick={() => openComposer(selectedDay)}
+            disabled={!canCreateOnSelectedDay}
+          >
+            Programmer une story
+          </Button>,
+        ]}
+        width={520}
+        closeIcon={null}
+        rootClassName='app-double-modal'
+      >
+        <div className='space-y-8 py-2 text-center'>
+          <div className='space-y-4'>
+            <div className='mx-auto inline-flex h-16 w-16 items-center justify-center rounded-full bg-[var(--color-surface-empty)] text-[32px] text-[var(--color-empty-icon)]'>
+              <CloseCircleOutlined />
+            </div>
+            <div>
+              <p className='m-0 text-[var(--font-size-title-lg)] font-semibold text-[var(--color-text-primary)]'>
+                {formatDayHeading(selectedDay)}
+              </p>
+              <p className='mb-0 mt-2 text-sm leading-[1.7] text-[var(--color-text-secondary)]'>
+                Aucune story programmée pour cette date
+              </p>
+            </div>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        open={modalMode === 'day'}
+        onCancel={() => setModalMode(null)}
+        footer={[
+          <Button key={'1'} onClick={() => setModalMode(null)}>
+            Fermer
+          </Button>,
+          <Button
+            key={'2'}
+            type='primary'
+            icon={<PlusOutlined />}
+            iconPosition='end'
+            onClick={() => openComposer(selectedDay)}
+            disabled={!canCreateOnSelectedDay}
+          >
+            Programmer une story
+          </Button>,
+        ]}
+        title={`Stories du ${formatDayHeading(selectedDay)}`}
+        width={560}
+        closeIcon={null}
+        rootClassName='app-double-modal'
+      >
+        <div className='space-y-6 m-1'>
+          {selectedDaySchedules.length === 0 && (
+            <p className='m-0 text-sm leading-[1.7] text-[var(--color-text-secondary)]'>
+              Aucune story programmée pour cette date. Cliquez sur "Programmer
+              une story" pour en ajouter une.
+            </p>
+          )}
+
+          <div className='max-h-[60vh] space-y-6 overflow-y-auto -m-1'>
+            {groupedSchedules.sent.length > 0 ? (
+              <section className='space-y-3'>
+                <div className='flex items-center gap-2 text-[var(--color-text-primary)]'>
+                  <CheckCircleOutlined />
+                  <span className='text-base font-semibold'>Envoyée</span>
+                </div>
+                <div className='space-y-3'>
+                  {groupedSchedules.sent.map(renderScheduleCard)}
+                </div>
+              </section>
+            ) : null}
+
+            {groupedSchedules.pending.length > 0 ? (
+              <section className='space-y-3'>
+                <div className='flex items-center gap-2 text-[var(--color-text-primary)]'>
+                  <ClockCircleOutlined />
+                  <span className='text-base font-semibold'>À venir</span>
+                </div>
+                <div className='space-y-3'>
+                  {groupedSchedules.pending.map(renderScheduleCard)}
+                </div>
+              </section>
+            ) : null}
+
+            {groupedSchedules.failed.length > 0 ? (
+              <section className='space-y-3'>
+                <div className='flex items-center gap-2 text-[var(--color-text-primary)]'>
+                  <CloseCircleOutlined />
+                  <span className='text-base font-semibold'>À corriger</span>
+                </div>
+                <div className='space-y-3'>
+                  {groupedSchedules.failed.map(renderScheduleCard)}
+                </div>
+              </section>
+            ) : null}
+
+            {selectedDaySchedules.length === 0 ? (
+              <div className='rounded-[var(--radius-card)] border border-dashed border-[var(--color-field-border-muted)] bg-[var(--color-surface-muted)] px-4 py-10'>
+                <Empty
+                  image={Empty.PRESENTED_IMAGE_SIMPLE}
+                  description='Aucune story programmée pour cette date.'
+                />
+              </div>
+            ) : null}
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        open={modalMode === 'composer'}
+        onCancel={closeComposer}
+        footer={[
+          <Button key='cancel' onClick={closeComposer}>
+            Annuler
+          </Button>,
+          <Button
+            key='submit'
+            type='primary'
+            icon={<PlusOutlined />}
+            iconPosition='end'
+            loading={createMutation.isPending || updateMutation.isPending}
+            onClick={() => form.submit()}
+          >
+            {editingSchedule ? 'Enregistrer' : 'Programmer'}
+          </Button>,
+        ]}
+        width={560}
+        closeIcon={null}
+        rootClassName='app-double-modal'
         title={
-          <div className='flex flex-col gap-1'>
-            <span className='inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-[#5f6a6f]'>
-              <CalendarOutlined />
-              {selectedDay}
-            </span>
-            <span className='text-xl font-semibold text-[#111b21]'>
-              {formatDayLabel(selectedDay)}
-            </span>
+          <div className='space-y-2'>
+            <h2 className='m-0 text-[var(--font-size-title-sm)] font-semibold text-[var(--color-text-primary)]'>
+              {editingSchedule ? 'Modifier une story' : 'Programmer une story'}
+            </h2>
+            <p className='m-0 text-sm leading-[1.7] font-normal text-[var(--color-text-secondary)]'>
+              Elle sera envoyée comme depuis votre smartphone
+            </p>
           </div>
         }
       >
-        <div className='flex flex-col gap-6'>
-          <section className='rounded-[28px] border border-black/6 bg-[linear-gradient(180deg,#f7faf8_0%,#ffffff_100%)] p-4 sm:p-5'>
-            <div className='mb-4 flex items-center justify-between gap-3'>
-              <div>
-                <Title level={5} className='!mb-1'>
-                  Statuts de la journée
-                </Title>
-                <Text type='secondary'>
-                  {selectedDaySchedules.length > 0
-                    ? `${selectedDaySchedules.length} publication(s) déjà prévues`
-                    : 'Aucun statut encore planifié sur cette date'}
-                </Text>
-              </div>
-
-              {!editingSchedule && canCreateOnSelectedDay && (
-                <Button
-                  type='default'
-                  icon={<PlusOutlined />}
-                  onClick={() => resetComposer(selectedDay)}
-                >
-                  Nouveau statut
-                </Button>
-              )}
-            </div>
-
-            {selectedDaySchedules.length === 0 ? (
-              <div className='rounded-[22px] border border-dashed border-black/10 bg-white px-4 py-10'>
-                <Empty
-                  image={Empty.PRESENTED_IMAGE_SIMPLE}
-                  description='Pas encore de statut planifié pour cette date.'
-                />
-              </div>
-            ) : (
-              <div className='grid gap-3'>
-                {selectedDaySchedules.map(schedule => {
-                  const typeMeta = CONTENT_TYPE_META[schedule.contentType]
-                  const statusMeta = STATUS_META[schedule.status]
-
-                  return (
-                    <article
-                      key={schedule.id}
-                      className='rounded-[24px] border border-black/6 bg-white px-4 py-4 shadow-[0px_16px_36px_rgba(17,27,33,0.06)]'
-                    >
-                      <div className='flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between'>
-                        <div className='min-w-0 flex-1'>
-                          <div className='mb-2 flex flex-wrap items-center gap-2'>
-                            <span
-                              className='inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em]'
-                              style={{
-                                color: typeMeta.accent,
-                                background: typeMeta.background,
-                              }}
-                            >
-                              {typeMeta.icon}
-                              {typeMeta.label}
-                            </span>
-                            <Tag color={statusMeta.color}>
-                              {statusMeta.label}
-                            </Tag>
-                            <span className='inline-flex items-center gap-2 text-sm font-medium text-[#111b21]'>
-                              <ClockCircleOutlined />
-                              {formatTime(schedule)}
-                            </span>
-                          </div>
-
-                          <p className='mb-0 text-sm leading-6 text-[#4c5458]'>
-                            {getSchedulePreview(schedule)}
-                          </p>
-
-                          {schedule.lastError && (
-                            <div className='mt-3 rounded-2xl border border-[#ffd8bf] bg-[#fff7e6] px-3 py-2 text-xs text-[#ad6800]'>
-                              {schedule.lastError}
-                            </div>
-                          )}
-                        </div>
-
-                        <div className='flex shrink-0 gap-2'>
-                          {schedule.status !== 'SENT' &&
-                            schedule.status !== 'PROCESSING' && (
-                              <Button
-                                type='default'
-                                icon={<EditOutlined />}
-                                onClick={() => handleEdit(schedule)}
-                              >
-                                Modifier
-                              </Button>
-                            )}
-
-                          {schedule.status !== 'SENT' &&
-                            schedule.status !== 'PROCESSING' && (
-                              <Popconfirm
-                                title='Supprimer ce statut ?'
-                                description='La planification sera retirée du calendrier.'
-                                okText='Supprimer'
-                                cancelText='Annuler'
-                                okButtonProps={{ danger: true }}
-                                onConfirm={() =>
-                                  cancelMutation.mutate(schedule.id)
-                                }
-                              >
-                                <Button
-                                  danger
-                                  icon={<DeleteOutlined />}
-                                  loading={
-                                    cancelMutation.isPending &&
-                                    cancelMutation.variables === schedule.id
-                                  }
-                                >
-                                  Supprimer
-                                </Button>
-                              </Popconfirm>
-                            )}
-                        </div>
-                      </div>
-                    </article>
-                  )
-                })}
-              </div>
-            )}
-          </section>
-
-          <section className='rounded-[28px] border border-black/6 bg-white p-4 shadow-[0px_18px_36px_rgba(17,27,33,0.05)] sm:p-5'>
-            <div className='mb-4'>
-              <Title level={5} className='!mb-1'>
-                {editingSchedule ? 'Modifier le statut' : 'Ajouter un statut'}
-              </Title>
-              <Text type='secondary'>
-                Choisissez au minimum l’heure et le type de contenu. Texte,
-                image et vidéo sont pris en charge.
-              </Text>
-            </div>
-
-            {!canCreateOnSelectedDay && !editingSchedule ? (
-              <Alert
-                type='info'
-                showIcon
-                message='Ajout désactivé sur une journée passée'
-                description='Vous pouvez consulter l’historique de cette date, mais la création de nouveaux statuts est réservée aux créneaux futurs.'
-              />
-            ) : (
-              <Form
-                form={form}
-                layout='vertical'
-                onFinish={handleSubmit}
-                initialValues={{
-                  scheduledTime: getDefaultTimeForDay(selectedDay),
-                  contentType: 'TEXT',
-                }}
-              >
-                <div className='grid grid-cols-1 gap-4 md:grid-cols-2'>
-                  <Form.Item
-                    name='scheduledTime'
-                    label='Heure'
-                    rules={[
-                      {
-                        required: true,
-                        message: 'Choisissez une heure de publication',
-                      },
-                    ]}
-                  >
-                    <Input type='time' className='w-full' />
-                  </Form.Item>
-
-                  <Form.Item
-                    name='contentType'
-                    label='Type de contenu'
-                    rules={[
-                      {
-                        required: true,
-                        message: 'Choisissez un type de contenu',
-                      },
-                    ]}
-                  >
-                    <Select
-                      options={Object.entries(CONTENT_TYPE_META).map(
-                        ([value, meta]) => ({
-                          value,
-                          label: meta.label,
-                        })
-                      )}
-                    />
-                  </Form.Item>
-                </div>
-
-                {contentType === 'TEXT' ? (
-                  <Form.Item
-                    name='textContent'
-                    label='Contenu'
-                    rules={[
-                      {
-                        required: true,
-                        message: 'Saisissez le texte du statut',
-                      },
-                    ]}
-                  >
-                    <Input.TextArea
-                      rows={5}
-                      maxLength={700}
-                      placeholder='Ex: Arrivage du jour, promo flash jusqu’à 18h, nouveautés en boutique...'
-                    />
-                  </Form.Item>
-                ) : (
-                  <>
-                    <Form.Item
-                      name='mediaUrl'
-                      label='URL du média'
-                      rules={[
-                        {
-                          required: true,
-                          message: 'Ajoutez une URL image ou vidéo',
-                        },
-                      ]}
-                    >
-                      <Input placeholder='https://cdn.example.com/statuses/visuel.jpg' />
-                    </Form.Item>
-
-                    <Form.Item name='caption' label='Légende'>
-                      <Input.TextArea
-                        rows={4}
-                        maxLength={700}
-                        placeholder='Texte optionnel affiché avec le média'
-                      />
-                    </Form.Item>
-                  </>
+        <div className='space-y-6 py-1'>
+          <Form<ComposerFormValues>
+            form={form}
+            layout='vertical'
+            onFinish={handleSubmit}
+            initialValues={{
+              contentType: 'TEXT',
+              slots: [{ scheduledFor: createSlotValue(selectedDay) }],
+            }}
+          >
+            <Form.Item
+              label='Type'
+              name='contentType'
+              rules={[{ required: true, message: 'Choisissez un type.' }]}
+            >
+              <Select
+                options={Object.entries(CONTENT_TYPE_META).map(
+                  ([value, meta]) => ({
+                    label: meta.label,
+                    value,
+                  })
                 )}
+              />
+            </Form.Item>
 
-                <div className='flex flex-col gap-3 sm:flex-row sm:justify-end'>
-                  {editingSchedule && (
-                    <Button onClick={() => resetComposer(selectedDay)}>
-                      Annuler l’édition
+            <Form.List name='slots'>
+              {(fields, { add, remove }) => (
+                <div className='space-y-3'>
+                  <label className='block text-base text-[var(--color-text-secondary)]'>
+                    Date (s) et heure (s)
+                  </label>
+
+                  {fields.map(field => (
+                    <div key={field.key} className='flex gap-2'>
+                      <Form.Item
+                        className='!mb-0 flex-1'
+                        name={[field.name, 'scheduledFor']}
+                        rules={[
+                          {
+                            required: true,
+                            message: 'Choisissez une date de publication.',
+                          },
+                          {
+                            validator: (_, value?: Dayjs | null) => {
+                              if (!value) {
+                                return Promise.resolve()
+                              }
+
+                              return value.isBefore(getMinimumScheduleTime())
+                                ? Promise.reject(
+                                    new Error(
+                                      'Choisissez une date au moins 5 minutes après maintenant.'
+                                    )
+                                  )
+                                : Promise.resolve()
+                            },
+                          },
+                        ]}
+                      >
+                        <DatePicker
+                          className='w-full'
+                          showTime={{ format: 'HH:mm' }}
+                          format='DD MMM YYYY, HH:mm'
+                          popupClassName='status-scheduler-slot-picker-dropdown'
+                          disabledDate={current =>
+                            current
+                              ? current
+                                  .endOf('day')
+                                  .isBefore(
+                                    getMinimumScheduleTime().startOf('day')
+                                  )
+                              : false
+                          }
+                          disabledTime={getDisabledScheduleTime}
+                        />
+                      </Form.Item>
+
+                      {fields.length > 1 ? (
+                        <Button onClick={() => remove(field.name)}>
+                          Retirer
+                        </Button>
+                      ) : null}
+                    </div>
+                  ))}
+
+                  {!editingSchedule ? (
+                    <Button
+                      className='mb-5'
+                      icon={<PlusOutlined />}
+                      onClick={() =>
+                        add({ scheduledFor: createSlotValue(selectedDay) })
+                      }
+                    >
+                      Ajouter une autre date
                     </Button>
-                  )}
-                  <Button
-                    type='primary'
-                    htmlType='submit'
-                    icon={editingSchedule ? <EditOutlined /> : <PlusOutlined />}
-                    loading={isMutating}
-                  >
-                    {editingSchedule ? 'Enregistrer' : 'Ajouter au calendrier'}
-                  </Button>
+                  ) : null}
                 </div>
-              </Form>
+              )}
+            </Form.List>
+
+            {contentType !== 'TEXT' ? (
+              <>
+                <Form.Item className='mt-6' label='Message' name='caption'>
+                  <Input.TextArea
+                    rows={5}
+                    placeholder='S’adapter à au client'
+                  />
+                </Form.Item>
+
+                <Form.Item
+                  label='Illustration'
+                  name='mediaUrl'
+                  rules={[
+                    {
+                      required: true,
+                      message: 'Ajoutez un média pour cette story.',
+                    },
+                  ]}
+                >
+                  <Upload {...uploadProps}>
+                    <div className='rounded-[var(--radius-card)] border-none bg-[var(--color-surface-muted)] px-5 py-10 text-center shadow-card'>
+                      {currentMediaUrl ? (
+                        <div className='space-y-4'>
+                          <div className='overflow-hidden rounded-[var(--radius-control)]'>
+                            {contentType === 'VIDEO' ? (
+                              <video
+                                src={currentMediaUrl}
+                                controls
+                                className='block w-full max-h-[220px] rounded-[var(--radius-control)] object-cover'
+                              />
+                            ) : (
+                              <img
+                                src={currentMediaUrl}
+                                alt='Aperçu'
+                                className='block w-full max-h-[220px] rounded-[var(--radius-control)] object-cover'
+                              />
+                            )}
+                          </div>
+                          <p className='m-0 text-sm font-medium text-[var(--color-text-primary)]'>
+                            Changer le fichier
+                          </p>
+                        </div>
+                      ) : (
+                        <div className='space-y-3'>
+                          <div className='mx-auto inline-flex h-14 w-14 items-center justify-center rounded-[18px] border border-[rgba(36,211,102,0.3)] text-2xl text-[var(--color-primary)]'>
+                            <UploadOutlined />
+                          </div>
+                          <div>
+                            <p className='m-0 text-lg font-semibold text-[var(--color-text-primary)]'>
+                              Cliquer ici pour charger vos images
+                            </p>
+                            <p className='mb-0 mt-2 text-sm leading-[1.7] text-[var(--color-text-secondary)]'>
+                              Vous pouvez envoyer plusieurs images et ensuite
+                              choisir l’ordre des publications
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </Upload>
+                </Form.Item>
+              </>
+            ) : (
+              <Form.Item
+                className='mt-6'
+                label='Votre message'
+                name='textContent'
+                rules={[
+                  { required: true, message: 'Ajoutez le texte de la story.' },
+                ]}
+              >
+                <Input.TextArea rows={6} placeholder='S’adapter à au client' />
+              </Form.Item>
             )}
-          </section>
+          </Form>
         </div>
       </Modal>
     </>

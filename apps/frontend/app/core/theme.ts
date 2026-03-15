@@ -5,14 +5,15 @@ export const antdProviderProps: ConfigProviderProps = {
     token: {
       // Seed Token - WhatsApp Green
       colorPrimary: '#24d366',
-      borderRadius: 1000,
+      borderRadius: 16,
 
       colorLink: '#24d366',
       // Alias Token
       colorBgContainer: '#ffffff',
 
       // Typography
-      fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+      fontFamily:
+        "-apple-system, 'SF Pro Display', 'SF Pro Text', 'Geist', ui-sans-serif, system-ui, sans-serif",
 
       // Colors from Figma design
       colorText: '#111b21',
@@ -21,20 +22,29 @@ export const antdProviderProps: ConfigProviderProps = {
     },
     components: {
       Modal: {
+        borderRadiusLG: 26,
         wireframe: true,
       },
       Button: {
-        borderRadius: 100,
+        borderRadius: 16,
         controlHeight: 46,
-        paddingInline: 32,
+        paddingInline: 24,
       },
       Input: {
-        borderRadius: 100,
+        borderRadius: 16,
         controlHeight: 52,
         paddingInline: 24,
       },
+      Select: {
+        borderRadius: 16,
+        controlHeight: 52,
+      },
+      DatePicker: {
+        borderRadius: 16,
+        controlHeight: 52,
+      },
       Card: {
-        borderRadiusLG: 24,
+        borderRadiusLG: 20,
         boxShadowTertiary: '0px 0px 1px 0px rgba(0,0,0,0.4)',
       },
     },

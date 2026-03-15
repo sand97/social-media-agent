@@ -1,17 +1,17 @@
 import {
-  BarChartOutlined,
-  CreditCardOutlined,
   CustomerServiceOutlined,
-  HomeOutlined,
   LoadingOutlined,
   LogoutOutlined,
-  NotificationOutlined,
   QuestionCircleOutlined,
-  SettingOutlined,
-  ShopOutlined,
-  TeamOutlined,
   UserOutlined,
 } from '@ant-design/icons'
+import CatalogIcon from '@app/assets/CatalogIcon.svg?react'
+import HomeIcon from '@app/assets/HomeIcon.svg?react'
+import LeadsIcon from '@app/assets/LeadsIcon.svg?react'
+import RocketIcon from '@app/assets/Rocket.svg?react'
+import StatsIcon from '@app/assets/StatsIcons.svg?react'
+import StoriesIcon from '@app/assets/StoriesIcon.svg?react'
+import SubscribeIcon from '@app/assets/SubscribreIcon.svg?react'
 import { LayoutProvider, useLayout } from '@app/contexts/LayoutContext'
 import { useAuth } from '@app/hooks/useAuth'
 import { Avatar, Layout, Menu, Modal, Spin } from 'antd'
@@ -37,6 +37,8 @@ const CONTEXT_OPTIONAL_PATHS = [
   '/faq',
 ]
 
+const SIDEBAR_ICON_SIZE = '16px'
+
 const menuSections = [
   {
     title: 'Général',
@@ -44,25 +46,31 @@ const menuSections = [
       {
         key: 'home',
         label: 'Accueil',
-        icon: <HomeOutlined />,
+        icon: <HomeIcon width={SIDEBAR_ICON_SIZE} height={SIDEBAR_ICON_SIZE} />,
         path: '/dashboard',
       },
       {
         key: 'stats',
         label: 'Statistiques',
-        icon: <BarChartOutlined />,
+        icon: (
+          <StatsIcon width={SIDEBAR_ICON_SIZE} height={SIDEBAR_ICON_SIZE} />
+        ),
         path: '/stats',
       },
       {
         key: 'leads',
         label: 'Leads',
-        icon: <TeamOutlined />,
+        icon: (
+          <LeadsIcon width={SIDEBAR_ICON_SIZE} height={SIDEBAR_ICON_SIZE} />
+        ),
         path: '/leads',
       },
       {
         key: 'forfaits',
         label: 'Forfaits',
-        icon: <CreditCardOutlined />,
+        icon: (
+          <SubscribeIcon width={SIDEBAR_ICON_SIZE} height={SIDEBAR_ICON_SIZE} />
+        ),
         path: '/pricing',
       },
     ],
@@ -73,19 +81,25 @@ const menuSections = [
       {
         key: 'context',
         label: "Contexte de l'IA",
-        icon: <SettingOutlined />,
+        icon: (
+          <RocketIcon width={SIDEBAR_ICON_SIZE} height={SIDEBAR_ICON_SIZE} />
+        ),
         path: '/context',
       },
       {
         key: 'catalog',
         label: 'Catalogue',
-        icon: <ShopOutlined />,
+        icon: (
+          <CatalogIcon width={SIDEBAR_ICON_SIZE} height={SIDEBAR_ICON_SIZE} />
+        ),
         path: '/catalog',
       },
       {
         key: 'marketing',
         label: 'Status scheduler',
-        icon: <NotificationOutlined />,
+        icon: (
+          <StoriesIcon width={SIDEBAR_ICON_SIZE} height={SIDEBAR_ICON_SIZE} />
+        ),
         path: '/status-scheduler',
       },
     ],
@@ -96,13 +110,17 @@ const menuSections = [
       {
         key: 'support',
         label: 'Support',
-        icon: <CustomerServiceOutlined />,
+        icon: (
+          <CustomerServiceOutlined style={{ fontSize: SIDEBAR_ICON_SIZE }} />
+        ),
         path: '/support',
       },
       {
         key: 'faq',
         label: 'FAQ',
-        icon: <QuestionCircleOutlined />,
+        icon: (
+          <QuestionCircleOutlined style={{ fontSize: SIDEBAR_ICON_SIZE }} />
+        ),
         path: '/faq',
       },
     ],
@@ -210,9 +228,6 @@ function DashboardLayoutContent() {
   const location = useLocation()
   const [modal, contextHolder] = Modal.useModal()
   const isNavigatingRef = useRef(false)
-  const isPricingRoute =
-    location.pathname === '/pricing' ||
-    location.pathname.startsWith('/pricing/')
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated && !isNavigatingRef.current) {
@@ -332,11 +347,7 @@ function DashboardLayoutContent() {
     <div className='min-h-screen bg-[#fbfafb]'>
       {contextHolder}
 
-      <div
-        className={`relative flex min-h-screen w-full ${
-          isPricingRoute ? 'lg:px-4 lg:pb-4 lg:pt-0' : 'lg:p-4'
-        }`}
-      >
+      <div className='relative flex min-h-screen w-full lg:p-4'>
         <button
           type='button'
           aria-label='Fermer le menu'
@@ -408,13 +419,7 @@ function DashboardLayoutContent() {
 
         <main className='flex min-w-0 flex-1 flex-col lg:pl-4'>
           <div className='min-h-screen bg-transparent lg:min-h-[calc(100vh-32px)]'>
-            <div
-              className={`flex min-h-screen min-w-0 flex-col ${
-                isPricingRoute
-                  ? 'bg-transparent lg:min-h-[calc(100vh-16px)] lg:rounded-none lg:shadow-none'
-                  : 'bg-white lg:min-h-[calc(100vh-32px)] lg:rounded-2xl lg:shadow-card'
-              }`}
-            >
+            <div className='flex min-h-screen min-w-0 flex-col bg-white lg:min-h-[calc(100vh-32px)] lg:rounded-2xl lg:shadow-card'>
               <Outlet />
             </div>
           </div>

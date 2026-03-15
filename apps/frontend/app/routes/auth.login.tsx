@@ -1,6 +1,7 @@
 import {
   ArrowRightOutlined,
   CustomerServiceOutlined,
+  DollarOutlined,
   QuestionCircleOutlined,
 } from '@ant-design/icons'
 import { featuresConfig } from '@app/data/features'
@@ -11,13 +12,31 @@ import Form from 'antd/es/form'
 import FormItem from 'antd/es/form/FormItem'
 import PhoneInput, { type PhoneNumber } from 'antd-phone-input'
 import { QRCodeSVG } from 'qrcode.react'
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, type CSSProperties } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 const LAST_PHONE_KEY = 'whatsapp-agent-last-phone'
 
 interface FormValues {
   phone: PhoneNumber
+}
+
+function getPhoneCountryLabel(value: PhoneNumber | string | undefined) {
+  const fallbackLabel = 'Cameroun'
+
+  if (typeof value === 'object' && value?.isoCode) {
+    try {
+      return (
+        new Intl.DisplayNames(['fr-FR'], { type: 'region' }).of(
+          value.isoCode.toUpperCase()
+        ) || fallbackLabel
+      )
+    } catch {
+      return fallbackLabel
+    }
+  }
+
+  return fallbackLabel
 }
 
 export function meta() {
@@ -40,6 +59,8 @@ export default function LoginPage() {
   const { notification } = App.useApp()
   const { login } = useAuth()
   const [form] = Form.useForm<FormValues>()
+  const phoneFieldValue = Form.useWatch('phone', form)
+  const phoneCountryLabel = getPhoneCountryLabel(phoneFieldValue)
   const [isLoading, setIsLoading] = useState(false)
   const [selectedFeatureKey, setSelectedFeatureKey] = useState<string | null>(
     null
@@ -49,10 +70,7 @@ export default function LoginPage() {
   const [qrSessionToken, setQrSessionToken] = useState<string | null>(null)
   const [isQrMode, setIsQrMode] = useState(false)
   const [isMobile] = useState(isMobileDevice())
-  const [currentPhoneNumber, setCurrentPhoneNumber] = useState<string | null>(
-    null
-  )
-  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null)
+  const pollingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const [isPolling, setIsPolling] = useState(false)
 
   // Récupérer la feature sélectionnée depuis la config
@@ -147,7 +165,6 @@ export default function LoginPage() {
   const handleContinue = async (values: FormValues) => {
     const { phone } = values
     const fullPhoneNumber = `+${phone.countryCode}${phone.areaCode}${phone.phoneNumber}`
-    setCurrentPhoneNumber(fullPhoneNumber)
 
     if (!phone.phoneNumber) {
       notification.error({
@@ -300,9 +317,9 @@ export default function LoginPage() {
   if (!isMobile && isQrMode && qrCode) {
     return (
       <div className='min-h-screen flex flex-col items-center bg-bg-subtle px-2 py-8'>
-        <div className='w-card max-w-full my-[15vh] flex flex-col items-center'>
-          <div className='bg-white rounded-card-outer shadow-card-subtle p-1'>
-            <div className='bg-white rounded-card-inner shadow-card p-12 flex flex-col items-center'>
+        <div className='my-[15vh] w-card max-w-full flex flex-col items-center'>
+          <div className='w-full max-w-[780px] rounded-[28px] border-none bg-[rgba(255,255,255,0.8)] p-1 shadow-[0px_0px_1px_0px_rgba(0,0,0,0.4),0px_24px_60px_rgba(17,27,33,0.08)]'>
+            <div className='rounded-[24px] bg-white flex flex-col items-center p-12'>
               {/* Header */}
               <div className='text-center mb-8'>
                 <h1 className='text-xl font-medium text-text-dark leading-9 mb-2'>
@@ -316,7 +333,7 @@ export default function LoginPage() {
               </div>
 
               {/* QR Code */}
-              <div className='p-8 bg-white border-2 border-gray-200 rounded-lg mb-6 shadow-sm'>
+              <div className='mb-6 rounded-[var(--radius-control)] border-none bg-white p-8 shadow-card'>
                 <QRCodeSVG value={qrCode} size={256} level='M' />
               </div>
 
@@ -360,9 +377,9 @@ export default function LoginPage() {
   // Affichage du formulaire (desktop sans QR mode OU mobile)
   return (
     <div className='min-h-screen flex flex-col items-center bg-bg-subtle px-2 py-8'>
-      <div className='w-card max-w-full my-[15vh] flex flex-col items-center'>
-        <div className='bg-white rounded-card-outer shadow-card-subtle p-1'>
-          <div className='bg-white rounded-card-inner shadow-card p-12'>
+      <div className='my-[15vh] w-card max-w-full flex flex-col items-center'>
+        <div className='w-full max-w-[780px] rounded-[28px] border-none bg-[rgba(255,255,255,0.8)] p-1 shadow-[0px_0px_1px_0px_rgba(0,0,0,0.4),0px_24px_60px_rgba(17,27,33,0.08)]'>
+          <div className='rounded-[24px] bg-white px-6 py-10 sm:px-10 sm:py-12'>
             {/* Header */}
             <div className='text-center mb-8'>
               <h1 className='text-xl font-medium text-text-dark leading-9 mb-2'>
@@ -379,24 +396,36 @@ export default function LoginPage() {
             <Form
               form={form}
               onFinish={handleContinue}
-              className='flex flex-col items-center gap-3'
+              className='flex flex-col items-center gap-4'
             >
               <FormItem
                 name='phone'
+                className='auth-phone-field w-full max-w-[320px]'
+                style={
+                  {
+                    '--phone-country-label': `"${phoneCountryLabel}"`,
+                  } as CSSProperties
+                }
                 rules={[
                   { required: true, message: 'Veuillez entrer votre numéro' },
                 ]}
               >
-                <PhoneInput enableSearch enableArrow disableParentheses />
+                <PhoneInput
+                  country='cm'
+                  enableSearch
+                  enableArrow
+                  disableParentheses
+                  preferredCountries={['cm']}
+                />
               </FormItem>
 
-              <FormItem className='mb-0 mt-4'>
+              <FormItem className='mb-0 mt-2'>
                 <Button
                   type='primary'
                   htmlType='submit'
                   size='large'
                   loading={isLoading}
-                  className='h-button px-8 bg-primary-green border-black border hover:bg-primary-hover flex items-center gap-2'
+                  className='min-w-[220px] !h-[46px] !rounded-full px-8'
                 >
                   Continuer
                   <ArrowRightOutlined />
@@ -406,9 +435,9 @@ export default function LoginPage() {
           </div>
         </div>
 
-        <div className='flex justify-center gap-4 lg:mt-4 mt-2'>
+        <div className='flex flex-wrap justify-center gap-3 lg:mt-4 mt-2'>
           <Button
-            variant={'outlined'}
+            type='default'
             size='large'
             onClick={() => {
               const featuresSection = document.getElementById('features')
@@ -419,15 +448,27 @@ export default function LoginPage() {
             icon={<QuestionCircleOutlined />}
             iconPosition={'end'}
           >
-            Fonctionnalités
+            Des questions ?
           </Button>
           <Button
-            variant={'outlined'}
+            type='default'
             size='large'
+            onClick={() => setSelectedFeatureKey('Réponses aux questions')}
             icon={<CustomerServiceOutlined />}
             iconPosition={'end'}
           >
             Aide
+          </Button>
+          <Button
+            type='default'
+            size='large'
+            onClick={() =>
+              setSelectedFeatureKey('Négociations des prix suivant vos règles')
+            }
+            icon={<DollarOutlined />}
+            iconPosition={'end'}
+          >
+            Prix
           </Button>
         </div>
       </div>

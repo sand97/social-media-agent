@@ -1,20 +1,16 @@
+import { ArrowUpOutlined, EditOutlined, StopOutlined } from '@ant-design/icons'
 import {
-  QuestionCircleOutlined,
-  CustomerServiceOutlined,
-  ShopOutlined,
-  ArrowUpOutlined,
-  StopOutlined,
-} from '@ant-design/icons'
-import {
-  AgentTestCard,
   AgentProductionCard,
+  AgentTestCard,
 } from '@app/components/agent-config'
 import { DashboardHeader } from '@app/components/layout'
+import { CollapsibleCard } from '@app/components/ui'
 import { useAuth } from '@app/hooks/useAuth'
 import apiClient from '@app/lib/api/client'
 import { App, Button, Input, Modal, Skeleton, Spin, Typography } from 'antd'
-import { useState, useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { io, Socket } from 'socket.io-client'
+
 const { Text } = Typography
 
 interface ThreadMessage {
@@ -40,6 +36,145 @@ interface OnboardingThread {
   messages: ThreadMessage[]
 }
 
+type ParsedBlock =
+  | {
+      items: string[]
+      type: 'list'
+    }
+  | {
+      text: string
+      type: 'paragraph'
+    }
+
+type ParsedSection = {
+  blocks: ParsedBlock[]
+  id: string
+  summary: string
+  title: string
+}
+
+function renderInlineMarkdown(text: string) {
+  return text.split(/(`[^`]+`|\*\*[^*]+\*\*)/g).map((segment, index) => {
+    if (segment.startsWith('**') && segment.endsWith('**')) {
+      return (
+        <strong key={`${segment}-${index}`}>
+          {segment.slice(2, segment.length - 2)}
+        </strong>
+      )
+    }
+
+    if (segment.startsWith('`') && segment.endsWith('`')) {
+      return (
+        <code
+          key={`${segment}-${index}`}
+          className='rounded-lg bg-[var(--color-surface-accent)] px-1.5 py-0.5 text-[13px] text-[var(--color-text-primary)]'
+        >
+          {segment.slice(1, segment.length - 1)}
+        </code>
+      )
+    }
+
+    return segment
+  })
+}
+
+function parseMarkdownSections(markdown: string): ParsedSection[] {
+  const normalized = markdown.trim()
+
+  if (!normalized) {
+    return []
+  }
+
+  const lines = normalized.split(/\r?\n/)
+  const sections: Array<{ body: string[]; title: string }> = []
+  let currentTitle = 'Résumé'
+  let currentBody: string[] = []
+
+  const flushSection = () => {
+    const body = currentBody.join('\n').trim()
+
+    if (body) {
+      sections.push({
+        body: body.split('\n'),
+        title: currentTitle,
+      })
+    }
+
+    currentBody = []
+  }
+
+  for (const line of lines) {
+    const headingMatch = line.match(/^#{1,6}\s+(.*)$/)
+
+    if (headingMatch) {
+      flushSection()
+      currentTitle = headingMatch[1].trim() || 'Section'
+      continue
+    }
+
+    currentBody.push(line)
+  }
+
+  flushSection()
+
+  return sections.map((section, index) => {
+    const blocks: ParsedBlock[] = []
+    let buffer: string[] = []
+
+    const flushBlock = () => {
+      if (buffer.length === 0) {
+        return
+      }
+
+      const isList = buffer.every(line => /^[-*]\s+/.test(line))
+
+      if (isList) {
+        blocks.push({
+          items: buffer.map(line => line.replace(/^[-*]\s+/, '').trim()),
+          type: 'list',
+        })
+      } else {
+        blocks.push({
+          text: buffer.join('\n').trim(),
+          type: 'paragraph',
+        })
+      }
+
+      buffer = []
+    }
+
+    for (const line of section.body) {
+      if (!line.trim()) {
+        flushBlock()
+        continue
+      }
+
+      buffer.push(line.trim())
+    }
+
+    flushBlock()
+
+    const summarySource = blocks[0]
+    const rawSummary =
+      summarySource?.type === 'list'
+        ? summarySource.items.join('\n')
+        : summarySource?.text || ''
+    const summary = rawSummary
+      .replace(/\*\*([^*]+)\*\*/g, '$1')
+      .replace(/`([^`]+)`/g, '$1')
+
+    return {
+      blocks,
+      id: `${section.title}-${index}`
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)/g, ''),
+      summary,
+      title: section.title,
+    }
+  })
+}
+
 export function meta() {
   return [
     { title: "Contexte de l'IA - WhatsApp Agent" },
@@ -59,6 +194,7 @@ export default function ContextOnboardingPage() {
   const [thread, setThread] = useState<OnboardingThread | null>(null)
   const [messages, setMessages] = useState<ThreadMessage[]>([])
   const [score, setScore] = useState(user?.contextScore ?? 0)
+  const [contextMarkdown, setContextMarkdown] = useState('')
   const [loadingStatus, setLoadingStatus] = useState<string>(
     'Réflexion en cours...'
   )
@@ -66,61 +202,91 @@ export default function ContextOnboardingPage() {
   const [hasShownModal, setHasShownModal] = useState(false)
   const [hasRequestedInitialAnalysis, setHasRequestedInitialAnalysis] =
     useState(false)
+  const [viewMode, setViewMode] = useState<'chat' | 'summary'>('chat')
+  const [expandedSections, setExpandedSections] = useState<string[]>([])
   const socketRef = useRef<Socket | null>(null)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const messagesEndRef = useRef<any>(null)
+  const messagesEndRef = useRef<{
+    scrollIntoView: (options?: { behavior?: 'auto' | 'smooth' }) => void
+  } | null>(null)
   const updateContextScoreRef = useRef(updateContextScore)
+  const initialUserScoreRef = useRef(user?.contextScore ?? 0)
+  const initialViewModeSetRef = useRef(false)
 
-  // Keep ref updated
+  const parsedSections = useMemo(
+    () => parseMarkdownSections(contextMarkdown),
+    [contextMarkdown]
+  )
+  const allSectionsExpanded =
+    parsedSections.length > 0 &&
+    expandedSections.length === parsedSections.length
+
   useEffect(() => {
     updateContextScoreRef.current = updateContextScore
   }, [updateContextScore])
 
-  // Helper to update score in both local state and AuthContext
+  useEffect(() => {
+    setExpandedSections(previous =>
+      previous.filter(sectionId =>
+        parsedSections.some(section => section.id === sectionId)
+      )
+    )
+  }, [parsedSections])
+
+  const setInitialViewMode = (nextScore: number, nextContext?: string) => {
+    if (initialViewModeSetRef.current) {
+      return
+    }
+
+    initialViewModeSetRef.current = true
+    setViewMode(
+      nextScore >= 80 && Boolean(nextContext?.trim()) ? 'summary' : 'chat'
+    )
+  }
+
   const handleScoreUpdate = (newScore: number) => {
     setScore(newScore)
     updateContextScoreRef.current(newScore)
   }
 
-  // Scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
-  // Show activation modal when score reaches 80%
   useEffect(() => {
-    // Check if user has already configured the agent
     const hasConfiguredAgent =
       (user?.agentConfig?.testPhoneNumbers?.length ?? 0) > 0 ||
       (user?.agentConfig?.testLabels?.length ?? 0) > 0 ||
       (user?.agentConfig?.labelsToNotReply?.length ?? 0) > 0 ||
       user?.agentConfig?.productionEnabled === true
 
-    // Don't show modal if user has already configured the agent
     if (score >= 80 && !hasShownModal && !isLoading && !hasConfiguredAgent) {
       setShowActivationModal(true)
       setHasShownModal(true)
     }
   }, [score, hasShownModal, isLoading, user?.agentConfig])
 
-  // Fetch thread and connect to WebSocket on mount
   useEffect(() => {
     const fetchThread = async () => {
       try {
         const response = await apiClient.get<OnboardingThread>(
           '/onboarding/threads'
         )
+
         if (response.data) {
           setThread(response.data)
           setMessages(response.data.messages || [])
+          setContextMarkdown(response.data.context || '')
           handleScoreUpdate(response.data.score || 0)
+          setInitialViewMode(response.data.score || 0, response.data.context)
         }
       } catch (error: unknown) {
         const err = error as { response?: { status?: number } }
-        // Thread might not exist yet, that's okay
+
         if (err.response?.status !== 404) {
           console.error('Failed to fetch thread:', error)
         }
+
+        setInitialViewMode(initialUserScoreRef.current, '')
       } finally {
         setIsLoading(false)
       }
@@ -128,16 +294,14 @@ export default function ContextOnboardingPage() {
 
     fetchThread()
 
-    // Connect to WebSocket
     const token = localStorage.getItem('auth_token')
     if (!token) return
 
     const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000'
-
     const socket = io(`${apiUrl}/onboarding`, {
       auth: { token },
       transports: ['websocket'],
-      reconnectionAttempts: 5, // Limit reconnection attempts
+      reconnectionAttempts: 5,
       reconnectionDelay: 1000,
     })
 
@@ -149,7 +313,6 @@ export default function ContextOnboardingPage() {
       console.error('WebSocket connection error:', error)
     })
 
-    // Listen for AI messages
     socket.on(
       'onboarding:ai_message',
       (data: {
@@ -159,7 +322,7 @@ export default function ContextOnboardingPage() {
         needs?: string[]
       }) => {
         const newMessage: ThreadMessage = {
-          id: `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`, // Unique ID
+          id: `msg-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`,
           threadId: '',
           role: 'assistant',
           content: data.message,
@@ -170,8 +333,13 @@ export default function ContextOnboardingPage() {
           },
           createdAt: new Date().toISOString(),
         }
+
         setMessages(prev => [...prev, newMessage])
         setIsSubmitting(false)
+
+        if (data.context !== undefined) {
+          setContextMarkdown(data.context)
+        }
 
         if (data.score !== undefined) {
           handleScoreUpdate(data.score)
@@ -179,14 +347,11 @@ export default function ContextOnboardingPage() {
       }
     )
 
-    // Listen for score updates
     socket.on('score:updated', (data: { score: number }) => {
       handleScoreUpdate(data.score)
     })
 
-    // Listen for tool execution status
     socket.on('onboarding:tool_executing', (data: { toolName: string }) => {
-      // Map tool names to user-friendly messages
       const toolMessages: Record<string, string> = {
         getAllGroups: 'Récupération des groupes...',
         getAllLabels: 'Récupération des labels...',
@@ -204,38 +369,36 @@ export default function ContextOnboardingPage() {
         updateContext: 'Mise à jour du contexte...',
         updateNeeds: 'Mise à jour des besoins...',
       }
+
       setLoadingStatus(
         toolMessages[data.toolName] || `Exécution de ${data.toolName}...`
       )
     })
 
-    // Listen for thinking status
     socket.on('onboarding:thinking', (data: { isThinking: boolean }) => {
       if (data.isThinking) {
         setLoadingStatus('Réflexion en cours...')
       }
     })
 
-    // Listen for cancellation confirmation
     socket.on(
       'onboarding:cancelled',
       (data: { success: boolean; restoredContent: string | null }) => {
         setIsSubmitting(false)
         setLoadingStatus('Réflexion en cours...')
 
-        // Restore the message to the input
         if (data.restoredContent) {
           setInputValue(data.restoredContent)
         }
 
-        // Remove the last user message from the UI
         setMessages(prev => {
           const reversedIndex = [...prev]
             .reverse()
-            .findIndex(m => m.role === 'user')
+            .findIndex(message => message.role === 'user')
 
           if (reversedIndex === -1) return prev
           const lastUserIndex = prev.length - 1 - reversedIndex
+
           return [
             ...prev.slice(0, lastUserIndex),
             ...prev.slice(lastUserIndex + 1),
@@ -244,32 +407,28 @@ export default function ContextOnboardingPage() {
       }
     )
 
-    // Listen for AI errors
     socket.on(
       'onboarding:error',
-      (data: { message: string; type: string; retryable: boolean }) => {
+      (data: { message: string; retryable: boolean; type: string }) => {
         setIsSubmitting(false)
         setLoadingStatus('Réflexion en cours...')
 
-        // Show error notification
         notification.error({
           message: 'Erreur technique',
           description: data.message,
-          duration: data.retryable ? 10 : 0, // 10 seconds if retryable, persistent if not
+          duration: data.retryable ? 10 : 0,
         })
 
-        // Remove the last user message from the UI if retryable
         if (data.retryable) {
           setMessages(prev => {
             const reversedIndex = [...prev]
               .reverse()
-              .findIndex(m => m.role === 'user')
+              .findIndex(message => message.role === 'user')
 
             if (reversedIndex === -1) return prev
             const lastUserIndex = prev.length - 1 - reversedIndex
-
-            // Restore the message to the input so user can retry
             const lastUserMessage = prev[lastUserIndex]
+
             if (lastUserMessage) {
               setInputValue(lastUserMessage.content)
             }
@@ -288,9 +447,8 @@ export default function ContextOnboardingPage() {
     return () => {
       socket.disconnect()
     }
-  }, [])
+  }, [notification])
 
-  // When no messages after initial load, request initial evaluation job
   useEffect(() => {
     if (isLoading) return
     if (hasRequestedInitialAnalysis) return
@@ -320,7 +478,6 @@ export default function ContextOnboardingPage() {
     setIsSubmitting(true)
     setLoadingStatus('Réflexion en cours...')
 
-    // Add user message immediately for better UX
     const userMessage: ThreadMessage = {
       id: `user-${Date.now()}`,
       threadId: thread?.id || '',
@@ -328,17 +485,16 @@ export default function ContextOnboardingPage() {
       content: inputValue,
       createdAt: new Date().toISOString(),
     }
+
     setMessages(prev => [...prev, userMessage])
 
     const messageContent = inputValue
     setInputValue('')
 
     try {
-      // Send message to backend
       await apiClient.post('/onboarding/messages', {
         content: messageContent,
       })
-      // Response will come via WebSocket
     } catch (error: unknown) {
       const err = error as { response?: { data?: { message?: string } } }
       notification.error({
@@ -349,18 +505,195 @@ export default function ContextOnboardingPage() {
     }
   }
 
-  const getScoreColor = (scoreValue: number) => {
-    if (scoreValue >= 80) return 'border-[#24d366] text-[#24d366]'
-    if (scoreValue >= 50) return 'border-[#ff9500] text-[#111b21]'
-    return 'border-[#ff9500] text-[#111b21]'
+  const getScoreBadgeClass = (scoreValue: number) => {
+    if (scoreValue >= 80)
+      return 'border-[var(--color-primary)] text-[var(--color-primary)]'
+    return 'border-[var(--color-warning)] text-[var(--color-text-primary)]'
   }
+
+  const toggleSection = (sectionId: string, expanded: boolean) => {
+    setExpandedSections(previous => {
+      if (expanded) {
+        return previous.includes(sectionId)
+          ? previous
+          : [...previous, sectionId]
+      }
+
+      return previous.filter(id => id !== sectionId)
+    })
+  }
+
+  const toggleAllSections = () => {
+    setExpandedSections(
+      allSectionsExpanded ? [] : parsedSections.map(section => section.id)
+    )
+  }
+
+  const renderSummaryView = () => (
+    <div className='w-full space-y-4 px-4 py-5 sm:px-6 sm:py-6'>
+      <div className='flex flex-wrap gap-3'>
+        <Button onClick={toggleAllSections}>
+          {allSectionsExpanded ? 'Tout plier' : 'Tout déplier'}
+        </Button>
+        <Button icon={<EditOutlined />} onClick={() => setViewMode('chat')}>
+          Modifier
+        </Button>
+      </div>
+
+      {parsedSections.length > 0 ? (
+        <div className='merge-border-radius grid gap-2'>
+          {parsedSections.map(section => (
+            <CollapsibleCard
+              key={section.id}
+              title={section.title}
+              subtitle={section.summary}
+              expanded={expandedSections.includes(section.id)}
+              hideSubtitleWhenExpanded
+              onToggle={expanded => toggleSection(section.id, expanded)}
+            >
+              <div className='space-y-4'>
+                {section.blocks.map((block, blockIndex) =>
+                  block.type === 'list' ? (
+                    <ul
+                      key={`${section.id}-list-${blockIndex}`}
+                      className='m-0 space-y-2 text-sm leading-[1.75] text-[var(--color-text-secondary)]'
+                    >
+                      {block.items.map(item => (
+                        <li key={item}>{renderInlineMarkdown(item)}</li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p
+                      key={`${section.id}-paragraph-${blockIndex}`}
+                      className='m-0 whitespace-pre-line text-sm leading-[1.75] text-[var(--color-text-secondary)]'
+                    >
+                      {renderInlineMarkdown(block.text)}
+                    </p>
+                  )
+                )}
+              </div>
+            </CollapsibleCard>
+          ))}
+        </div>
+      ) : (
+        <div className='rounded-[var(--radius-card)] bg-white p-5 text-sm text-[var(--color-text-secondary)] shadow-card'>
+          Le contexte généré par l&apos;IA est encore vide.
+        </div>
+      )}
+    </div>
+  )
+
+  const renderChatView = () => (
+    <div className='flex h-[calc(100vh-80px)] w-full flex-col'>
+      <div className='flex min-h-0 flex-1 flex-col overflow-hidden'>
+        <div className='flex-1 space-y-4 overflow-y-auto px-4 py-4 sm:px-6 sm:py-6'>
+          {isLoading ? (
+            <div className='space-y-4'>
+              <Skeleton active avatar paragraph={{ rows: 2 }} />
+              <Skeleton active avatar paragraph={{ rows: 2 }} />
+            </div>
+          ) : messages.length === 0 ? (
+            <div className='py-12 text-center text-gray-500'>
+              <Spin size='large' />
+              <p className='mt-4'>
+                En attente de l&apos;analyse initiale de l&apos;IA...
+              </p>
+            </div>
+          ) : (
+            messages.map(message => (
+              <div
+                key={message.id}
+                className={`flex gap-3 ${
+                  message.role === 'user' ? 'flex-row-reverse' : ''
+                }`}
+              >
+                <div
+                  className={`max-w-[88%] rounded-[var(--radius-card)] px-4 py-3 text-sm leading-[1.75] shadow-card ${
+                    message.role === 'user'
+                      ? 'border-none bg-[var(--color-primary)] text-[var(--color-text-primary)]'
+                      : 'border-none bg-white text-[var(--color-text-primary)]'
+                  }`}
+                >
+                  <p className='m-0 whitespace-pre-wrap'>{message.content}</p>
+                </div>
+              </div>
+            ))
+          )}
+
+          {isSubmitting ? (
+            <div className='flex gap-3'>
+              <div className='max-w-[88%] rounded-[var(--radius-card)] border-none bg-white px-4 py-3 shadow-card'>
+                <div className='flex items-center gap-3'>
+                  <Spin size='small' />
+                  <span className='text-sm text-[var(--color-text-secondary)]'>
+                    {loadingStatus}
+                  </span>
+                </div>
+              </div>
+            </div>
+          ) : null}
+
+          <div
+            ref={node => {
+              messagesEndRef.current = node
+            }}
+          />
+        </div>
+
+        {!isLoading ? (
+          <div className='rounded-b-2xl bg-[var(--color-surface-footer)] px-4 pb-4 pt-2 sm:px-6 sm:pb-6 sm:pt-3'>
+            <div className='flex items-start gap-3'>
+              <Input.TextArea
+                value={inputValue}
+                onChange={event => setInputValue(event.target.value)}
+                onPressEnter={event => {
+                  if (!event.shiftKey) {
+                    event.preventDefault()
+                    handleSubmit()
+                  }
+                }}
+                placeholder='Écrivez votre réponse... (Entrée pour envoyer, Shift+Entrée pour nouvelle ligne)'
+                variant='borderless'
+                className='flex-1 !bg-transparent text-sm'
+                disabled={isSubmitting}
+                autoSize={{ minRows: 1, maxRows: 6 }}
+                style={{ resize: 'none' }}
+              />
+
+              {isSubmitting ? (
+                <Button
+                  type='default'
+                  shape='circle'
+                  size='large'
+                  icon={<StopOutlined />}
+                  onClick={handleCancel}
+                  danger
+                  className='!h-[46px] !w-[46px] !min-h-[46px] shrink-0 !border-none !p-0'
+                />
+              ) : (
+                <Button
+                  type='primary'
+                  shape='circle'
+                  size='large'
+                  icon={<ArrowUpOutlined />}
+                  onClick={handleSubmit}
+                  disabled={!inputValue.trim()}
+                  className='!h-[46px] !w-[46px] !min-h-[46px] shrink-0 !p-0'
+                />
+              )}
+            </div>
+          </div>
+        ) : null}
+      </div>
+    </div>
+  )
 
   return (
     <>
       <DashboardHeader
         right={
           <div
-            className={`flex items-center justify-center rounded-full border px-4 py-2 ${getScoreColor(score)}`}
+            className={`flex items-center justify-center rounded-full border px-4 py-2 ${getScoreBadgeClass(score)}`}
           >
             <span className='text-sm font-semibold tracking-wide'>
               Score • {score}%
@@ -370,166 +703,44 @@ export default function ContextOnboardingPage() {
         title={"Contexte de l'IA"}
       />
 
-      <div className='flex flex-col gap-6 w-full h-[calc(100vh-80px)]'>
-        {/* Messages Container */}
-        <div className='flex-1 space-y-4 overflow-y-auto lg:p-6 p-4'>
-          {isLoading ? (
-            <div className='space-y-4'>
-              <Skeleton active avatar paragraph={{ rows: 2 }} />
-              <Skeleton active avatar paragraph={{ rows: 2 }} />
-            </div>
-          ) : messages.length === 0 ? (
-            <div className='py-8 text-center text-gray-500'>
-              <Spin size='large' />
-              <p className='mt-4'>
-                En attente de l&apos;analyse initiale de l&apos;IA...
-              </p>
-            </div>
-          ) : (
-            messages.map(msg => (
-              <div
-                key={msg.id}
-                className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}
-              >
-                <div
-                  className={`max-w-[80%] rounded-2xl px-4 py-3 ${
-                    msg.role === 'user'
-                      ? 'bg-[#24d366] text-white'
-                      : 'bg-gray-100 text-[#111b21]'
-                  }`}
-                >
-                  <p className='m-0 whitespace-pre-wrap text-sm'>
-                    {msg.content}
-                  </p>
-                </div>
-              </div>
-            ))
-          )}
+      {viewMode === 'summary' ? renderSummaryView() : renderChatView()}
 
-          {/* Loading indicator for AI response */}
-          {isSubmitting && (
-            <div className='flex gap-3'>
-              <div className='max-w-[80%] rounded-2xl bg-gray-100 px-4 py-3'>
-                <div className='flex items-center gap-3'>
-                  <Spin size='small' />
-                  <span className='text-sm text-gray-600'>{loadingStatus}</span>
-                </div>
-              </div>
-            </div>
-          )}
-
-          <div ref={messagesEndRef} />
+      <Modal
+        open={showActivationModal}
+        onCancel={() => setShowActivationModal(false)}
+        footer={
+          <div className='flex justify-center'>
+            <Button onClick={() => setShowActivationModal(false)}>
+              Continuer à améliorer le contexte
+            </Button>
+          </div>
+        }
+        centered
+        width={800}
+        title={
+          <div className='space-y-2'>
+            <h2 className='m-0 text-[var(--font-size-title-sm)] font-semibold text-[var(--color-text-primary)]'>
+              Votre IA est prête !
+            </h2>
+            <Text
+              type='secondary'
+              className='m-0 text-base text-[var(--color-text-secondary)] !font-normal'
+            >
+              Vous pouvez maintenant activer votre agent ou continuer à fournir
+              des informations pour le rendre plus précis.
+            </Text>
+          </div>
+        }
+      >
+        <div className='flex flex-col gap-2 py-6 md:flex-row'>
+          <div className='flex-1'>
+            <AgentTestCard />
+          </div>
+          <div className='flex-1'>
+            <AgentProductionCard />
+          </div>
         </div>
-
-        {/* Input Area - Always visible at bottom */}
-        {!isLoading && (
-          <div className='bg-white p-2 rounded-b-2xl'>
-            <div className='rounded-xl'>
-              <div className='flex items-start gap-4 rounded-xl  pr-4 py-2.5 shadow-[0px_0px_1px_0px_rgba(0,0,0,0.4)]'>
-                <Input.TextArea
-                  value={inputValue}
-                  onChange={e => setInputValue(e.target.value)}
-                  onPressEnter={e => {
-                    if (!e.shiftKey) {
-                      e.preventDefault()
-                      handleSubmit()
-                    }
-                  }}
-                  placeholder='Écrivez votre réponse... (Entrée pour envoyer, Shift+Entrée pour nouvelle ligne)'
-                  variant='borderless'
-                  className='flex-1 text-sm'
-                  disabled={isSubmitting}
-                  autoSize={{ minRows: 1, maxRows: 6 }}
-                  style={{ resize: 'none' }}
-                />
-                {isSubmitting ? (
-                  <Button
-                    type='default'
-                    shape='circle'
-                    size='large'
-                    icon={<StopOutlined />}
-                    onClick={handleCancel}
-                    danger
-                    className='mt-1 border-none !h-10 !w-10 !py-0'
-                  />
-                ) : (
-                  <Button
-                    type='primary'
-                    shape='circle'
-                    size='large'
-                    icon={<ArrowUpOutlined />}
-                    onClick={handleSubmit}
-                    disabled={!inputValue.trim()}
-                    className='mt-1 border-none !h-10 !w-10 !py-0'
-                  />
-                )}
-              </div>
-
-              {/* Quick Action Buttons */}
-              {/*<div className='flex gap-2'>*/}
-              {/*  <Button*/}
-              {/*    type='default'*/}
-              {/*    className='flex h-auto items-center gap-2 rounded-full border-none bg-white px-4 py-3 shadow-[0px_0px_1px_0px_rgba(0,0,0,0.4)]'*/}
-              {/*  >*/}
-              {/*    <CustomerServiceOutlined />*/}
-              {/*    <span className='text-sm font-medium tracking-tight text-[#050505]'>*/}
-              {/*      Support*/}
-              {/*    </span>*/}
-              {/*  </Button>*/}
-              {/*  <Button*/}
-              {/*    type='default'*/}
-              {/*    className='flex h-auto items-center gap-2 rounded-full border-none bg-white px-4 py-3 shadow-[0px_0px_1px_0px_rgba(0,0,0,0.4)]'*/}
-              {/*  >*/}
-              {/*    <ShopOutlined />*/}
-              {/*    <span className='text-sm font-medium tracking-tight text-[#050505]'>*/}
-              {/*      Stratégie de vente*/}
-              {/*    </span>*/}
-              {/*  </Button>*/}
-              {/*</div>*/}
-            </div>
-          </div>
-        )}
-
-        {/* Activation Modal */}
-        <Modal
-          open={showActivationModal}
-          onCancel={() => setShowActivationModal(false)}
-          footer={
-            <div className={'flex justify-center'}>
-              <Button
-                variant='outlined'
-                onClick={() => setShowActivationModal(false)}
-                className='self-center'
-              >
-                Continuer à améliorer le contexte
-              </Button>
-            </div>
-          }
-          centered
-          width={800}
-          title={
-            <div>
-              <h2 className='m-0 mb-2 text-xl font-semibold text-black'>
-                Votre IA est prête !
-              </h2>
-              <Text type='secondary' className={'!font-normal'}>
-                Vous pouvez maintenant activer votre agent ou continuer à
-                fournir des informations pour le rendre plus précis.
-              </Text>
-            </div>
-          }
-        >
-          {/* Cards container - vertical on mobile, horizontal on desktop */}
-          <div className='flex flex-col gap-2 md:flex-row py-6'>
-            <div className='flex-1'>
-              <AgentTestCard />
-            </div>
-            <div className='flex-1'>
-              <AgentProductionCard />
-            </div>
-          </div>
-        </Modal>
-      </div>
+      </Modal>
     </>
   )
 }
