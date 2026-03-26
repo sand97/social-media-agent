@@ -4,6 +4,8 @@ export interface DailyStatsRecord {
   messagesHandled: number;
   imageMessages: number;
   imageMessagesHandled: number;
+  audioMessages: number;
+  audioMessagesHandled: number;
   textMessages: number;
   textMessagesHandled: number;
   conversations: number;
@@ -75,6 +77,8 @@ export function createEmptyDailyStats(day: string): DailyStatsRecord {
     messagesHandled: 0,
     imageMessages: 0,
     imageMessagesHandled: 0,
+    audioMessages: 0,
+    audioMessagesHandled: 0,
     textMessages: 0,
     textMessagesHandled: 0,
     conversations: 0,
@@ -105,6 +109,11 @@ export function aggregateOperationsByDay<T extends AnalyticsOperationLike>(
       normalizedMessageType === 'photo' ||
       messageContent.includes('#image_metadata') ||
       messageContent.includes('[image]');
+    const isAudio =
+      normalizedMessageType === 'audio' ||
+      normalizedMessageType === 'ptt' ||
+      messageContent.includes('#audio_metadata') ||
+      messageContent.includes('[audio]');
     const isHandled =
       operation.status === 'success' &&
       typeof operation.agentResponse === 'string' &&
@@ -121,6 +130,11 @@ export function aggregateOperationsByDay<T extends AnalyticsOperationLike>(
       existing.imageMessages += 1;
       if (isHandled) {
         existing.imageMessagesHandled += 1;
+      }
+    } else if (isAudio) {
+      existing.audioMessages += 1;
+      if (isHandled) {
+        existing.audioMessagesHandled += 1;
       }
     } else {
       existing.textMessages += 1;

@@ -75,6 +75,25 @@ enum PaymentMethodType {
   MOBILE_MONEY
 }
 
+enum BillingProvider {
+  STRIPE
+  NOTCH_PAY
+}
+
+enum BillingPaymentMethod {
+  CARD
+  MOBILE_MONEY
+}
+
+enum BillingPaymentStatus {
+  PENDING
+  PROCESSING
+  SUCCEEDED
+  FAILED
+  CANCELED
+  EXPIRED
+}
+
 enum SyncStatus {
   PENDING // En attente de démarrage
   IN_PROGRESS // Synchronisation en cours
@@ -87,6 +106,11 @@ enum SyncImageStatus {
   SYNCING // Synchronisation des images en cours
   DONE // Synchronisation des images terminée
   FAILED // Échec de la synchronisation des images
+}
+
+enum GoogleContactSyncStatus {
+  CREATED
+  LINKED
 }
 
 enum StatusScheduleContentType {
@@ -139,8 +163,10 @@ model User {
   paymentMethods    PaymentMethod[]
   orders            Order[]
   creditHistory     Credit[]
+  billingPayments   BillingPayment[]
   subscription      Subscription?
   groups            Group[]
+  customerContacts  CustomerContact[]
   dailyStats        UserDailyStat[]
   statusSchedules   StatusSchedule[]
 
@@ -158,6 +184,8 @@ model WhatsAppAgent {
   port              Int // Port de l'agent WhatsApp
   connectorPort     Int // Port du connector WhatsApp
   encryptedPassword String // Mot de passe chiffré pour accéder à l'agent
+  encryptedGoogleContactsToken String? @db.Text
+  googleContactsConnectedAt    DateTime?
 
   // Statuts
   status           WhatsAppAgentStatus @default(PROVISIONING)
@@ -500,6 +528,8 @@ model Credit {
   id     String     @id @unique @default(cuid())
   userId String
   user   User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  paymentId String? @unique
+  payment   BillingPayment? @relation(fields: [paymentId], references: [id], onDelete: SetNull)
   amount Int // Positif = ajout, négatif = décompte
   type   CreditType
 
@@ -512,6 +542,47 @@ model Credit {
 
   @@index([userId])
   @@index([type])
+}
+
+model BillingPayment {
+  id     String @id @unique @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  provider      BillingProvider
+  paymentMethod BillingPaymentMethod
+  status        BillingPaymentStatus @default(PENDING)
+
+  reference          String  @unique
+  providerSessionId  String? @unique
+  providerPaymentId  String?
+  providerCheckoutUrl String? @db.Text
+
+  amount        Float
+  currency      String
+  durationMonths Int
+  creditsAmount Int
+
+  subscriptionTier SubscriptionTier
+  phoneNumber      String?
+  description      String
+
+  metadata Json?
+
+  processedAt   DateTime?
+  failedAt      DateTime?
+  failureReason String?  @db.Text
+
+  creditGrant Credit?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@index([provider])
+  @@index([reference])
+  @@index([createdAt])
 }
 
 model Subscription {
@@ -551,6 +622,29 @@ model Group {
   @@unique([userId, whatsappGroupId]) // Un user ne peut pas avoir le même groupe deux fois
   @@index([userId])
   @@index([whatsappGroupId])
+}
+
+model CustomerContact {
+  id     String @id @unique @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  phoneNumber       String
+  whatsappChatId    String
+  whatsappContactId String
+  displayName       String
+  whatsappPushName  String?
+  organizationName  String?
+  googleResourceName String?
+  googleSyncStatus   GoogleContactSyncStatus
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, phoneNumber])
+  @@index([userId])
+  @@index([phoneNumber])
+  @@index([googleResourceName])
 }
 
 model AgentOperation {
@@ -604,6 +698,8 @@ model UserDailyStat {
   messagesHandled       Int @default(0)
   imageMessages         Int @default(0)
   imageMessagesHandled  Int @default(0)
+  audioMessages         Int @default(0)
+  audioMessagesHandled  Int @default(0)
   textMessages          Int @default(0)
   textMessagesHandled   Int @default(0)
   conversations         Int @default(0)

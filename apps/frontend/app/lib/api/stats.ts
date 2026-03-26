@@ -6,10 +6,19 @@ export interface DailyStatsPoint {
   messagesHandled: number
   imageMessages: number
   imageMessagesHandled: number
+  audioMessages: number
+  audioMessagesHandled: number
   textMessages: number
   textMessagesHandled: number
   conversations: number
   tokens: number
+}
+
+export interface UserStatsSummary {
+  ordersCount: number
+  creditsUsed: number
+  creditsRemaining: number
+  productsCount: number
 }
 
 export interface StatsAnalyticsRange {
@@ -39,6 +48,12 @@ export async function getStatsAnalytics(
       params,
     }
   )
+
+  return response.data
+}
+
+export async function getUserStatsSummary(): Promise<UserStatsSummary> {
+  const response = await apiClient.get<UserStatsSummary>('/users/me/stats')
 
   return response.data
 }

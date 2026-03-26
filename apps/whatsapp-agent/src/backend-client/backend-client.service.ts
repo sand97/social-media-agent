@@ -30,6 +30,8 @@ import {
   InternalCustomPromptResponse,
   InternalManagementGroupResponse,
   InternalImageSyncStatusUpdate,
+  InternalGoogleContactSyncRequest,
+  InternalGoogleContactSyncResponse,
 } from './backend-api.types';
 
 @Injectable()
@@ -81,6 +83,14 @@ export class BackendClientService {
   private async internalPatch<T>(path: string, payload: object): Promise<T> {
     const url = `${this.baseUrl}${path}`;
     const response = await this.httpService.axiosRef.patch<T>(url, payload, {
+      headers: this.getInternalAuthHeaders(),
+    });
+    return response.data;
+  }
+
+  private async internalPost<T>(path: string, payload: object): Promise<T> {
+    const url = `${this.baseUrl}${path}`;
+    const response = await this.httpService.axiosRef.post<T>(url, payload, {
       headers: this.getInternalAuthHeaders(),
     });
     return response.data;
@@ -439,6 +449,15 @@ export class BackendClientService {
   async getManagementGroup(): Promise<InternalManagementGroupResponse> {
     const snapshot = await this.getAgentSnapshot();
     return snapshot.managementGroup;
+  }
+
+  async syncGoogleContact(
+    payload: InternalGoogleContactSyncRequest,
+  ): Promise<InternalGoogleContactSyncResponse> {
+    return this.internalPost<InternalGoogleContactSyncResponse>(
+      '/agent-internal/google-contacts/sync-contact',
+      payload,
+    );
   }
 
   async getProductsForImageIndexing(): Promise<

@@ -1,9 +1,11 @@
 import { ArrowRightOutlined, ArrowLeftOutlined } from '@ant-design/icons'
 import { useAuth } from '@app/hooks/useAuth'
 import apiClient from '@app/lib/api/client'
-import { App, Button, Form, Input } from 'antd'
+import { App, Button, Form, Input, Typography } from 'antd'
 import { useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
+
+const { Text, Link } = Typography
 
 interface VerifyOtpResponse {
   accessToken: string
@@ -242,22 +244,24 @@ export default function VerifyOtpPage() {
               </div>
 
               {/* Privacy Policy */}
-              <p className='text-sm text-[#494949] text-center leading-5'>
+              <Text
+                type='secondary'
+                className='block text-center text-sm leading-6'
+              >
                 En cliquant sur continuer, vous acceptez notre{' '}
-                <a
-                  href='/privacy'
-                  className='text-[#111b21] underline hover:text-[#24d366]'
+                <Link
+                  href='/auth/privacy'
                 >
                   politique de confidentialité
-                </a>{' '}
+                </Link>{' '}
                 et nos{' '}
-                <a
-                  href='/terms'
-                  className='text-[#111b21] underline hover:text-[#24d366]'
+                <Link
+                  href='/auth/terms'
                 >
-                  conditions générales d'utilisation
-                </a>
-              </p>
+                  conditions générales d&apos;utilisation
+                </Link>
+                .
+              </Text>
             </div>
           </div>
         </div>

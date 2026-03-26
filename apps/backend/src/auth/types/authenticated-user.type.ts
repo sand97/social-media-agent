@@ -7,8 +7,10 @@ import { Request as ExpressRequest } from 'express';
  */
 export interface AuthenticatedUser {
   id: string;
+  email?: string | null;
   phoneNumber: string;
   status: UserStatus;
+  credits: number;
   whatsappProfile: any; // JSON from Prisma
   businessInfo: {
     id: string;
@@ -40,6 +42,20 @@ export interface AuthenticatedUser {
     testLabels: string[];
     labelsToNotReply: string[];
     productionEnabled: boolean;
+  } | null;
+  googleContacts: {
+    connected: boolean;
+    contactsCount: number;
+  };
+  subscription: {
+    id: string;
+    tier: string;
+    creditsIncluded: number;
+    creditsUsed: number;
+    startDate: Date;
+    endDate: Date;
+    isActive: boolean;
+    autoRenew: boolean;
   } | null;
 }
 

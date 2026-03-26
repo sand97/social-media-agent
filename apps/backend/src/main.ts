@@ -14,6 +14,15 @@ import * as express from 'express';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  app.use(
+    '/billing/webhooks/stripe',
+    express.raw({ type: 'application/json' }),
+  );
+  app.use(
+    '/billing/webhooks/notchpay',
+    express.raw({ type: 'application/json' }),
+  );
+
   // Limite étendue pour les stories planifiées avec media inline (data URL)
   app.use(
     '/users/me/status-schedules',
@@ -33,7 +42,11 @@ async function bootstrap() {
 
   // Enable CORS
   app.enableCors({
-    origin: (process.env.CORS_ORIGIN || 'http://localhost:5173').split(','),
+    origin: (
+      process.env.CORS_ORIGIN ||
+      process.env.CORS_ORIGINS ||
+      'http://localhost:5173'
+    ).split(','),
     credentials: true,
   });
 

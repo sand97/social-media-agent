@@ -51,11 +51,7 @@ type PlanCardProps = {
   config: PlanConfig
   isCurrent: boolean
   duration: BillingDuration
-  onUpgrade: (
-    planLabel: string,
-    totalPrice: string,
-    durationCta: string
-  ) => void
+  onUpgrade: (planKey: PlanKey) => void
   isFirst: boolean
   isLast: boolean
 }
@@ -120,13 +116,7 @@ export function PlanCard({
                 className='dark-button w-full'
                 icon={<ArrowRightOutlined />}
                 iconPosition='end'
-                onClick={() =>
-                  onUpgrade(
-                    planLabel,
-                    totalPrice,
-                    getDurationCtaLabel(duration)
-                  )
-                }
+                onClick={() => onUpgrade(planKey)}
               >
                 {`Passer ${getDurationCtaLabel(duration)} mois en ${planLabel} pour ${totalPrice}`}
               </Button>

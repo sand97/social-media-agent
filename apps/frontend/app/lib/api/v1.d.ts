@@ -20,6 +20,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/google-contacts/oauth/authorize-url": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create the Google OAuth authorization URL */
+        post: operations["GoogleContactsController_createAuthorizeUrl"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/google/callback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Handle the Google OAuth callback */
+        get: operations["GoogleOAuthController_handleCallback"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agent-internal/google-contacts/sync-contact": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Sync a WhatsApp contact to Google Contacts */
+        post: operations["GoogleContactsInternalController_syncContact"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/catalog/upload-image": {
         parameters: {
             query?: never;
@@ -583,6 +634,91 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/billing/checkout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Initialize a payment checkout session */
+        post: operations["BillingController_createCheckout"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/billing/stripe/return": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Handle Stripe browser return after checkout */
+        get: operations["BillingController_handleStripeReturn"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/billing/notchpay/return": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Handle Notch Pay browser return after checkout */
+        get: operations["BillingController_handleNotchReturn"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/billing/webhooks/stripe": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Handle Stripe webhooks */
+        post: operations["BillingController_handleStripeWebhook"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/billing/webhooks/notchpay": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Handle Notch Pay webhooks */
+        post: operations["BillingController_handleNotchWebhook"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/users/me": {
         parameters: {
             query?: never;
@@ -1126,6 +1262,7 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        SyncGoogleContactDto: Record<string, never>;
         UpdateAgentStatusDto: {
             /**
              * @description The new status of the agent
@@ -1403,6 +1540,16 @@ export interface components {
              */
             code: string;
         };
+        CreateCheckoutDto: {
+            /** @enum {string} */
+            planKey: "pro" | "business";
+            /** @enum {number} */
+            durationMonths: 1 | 6 | 12;
+            /** @enum {string} */
+            paymentMethod: "CARD" | "MOBILE_MONEY";
+            /** @example +237690000000 */
+            phoneNumber?: string;
+        };
         UpdateUserDto: {
             /** @description User email address */
             email?: string;
@@ -1503,6 +1650,10 @@ export interface components {
             imageMessages: number;
             /** @example 2 */
             imageMessagesHandled: number;
+            /** @example 4 */
+            audioMessages: number;
+            /** @example 3 */
+            audioMessagesHandled: number;
             /** @example 15 */
             textMessages: number;
             /** @example 14 */
@@ -2054,6 +2205,68 @@ export interface operations {
                         };
                     };
                 };
+            };
+        };
+    };
+    GoogleContactsController_createAuthorizeUrl: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Authorization URL generated successfully */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        authorizeUrl?: string;
+                    };
+                };
+            };
+        };
+    };
+    GoogleOAuthController_handleCallback: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Redirects the user back to the frontend dashboard */
+            302: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    GoogleContactsInternalController_syncContact: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SyncGoogleContactDto"];
+            };
+        };
+        responses: {
+            /** @description Contact sync result */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -2907,11 +3120,105 @@ export interface operations {
                         phoneNumber?: string;
                         status?: string;
                         whatsappProfile?: Record<string, never>;
+                        googleContacts?: {
+                            connected?: boolean;
+                            contactsCount?: number;
+                        };
                     };
                 };
             };
             /** @description Unauthorized */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    BillingController_createCheckout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCheckoutDto"];
+            };
+        };
+        responses: {
+            /** @description Checkout initialized successfully */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    BillingController_handleStripeReturn: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    BillingController_handleNotchReturn: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    BillingController_handleStripeWebhook: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    BillingController_handleNotchWebhook: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };

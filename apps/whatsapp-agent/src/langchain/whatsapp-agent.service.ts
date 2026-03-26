@@ -675,6 +675,13 @@ export class WhatsAppAgentService implements OnModuleInit {
       const isGroupMessage = chatId.includes('@g.us');
       let groupUsage: string | undefined;
 
+      if (!isGroupMessage && contactId) {
+        void this.syncGoogleContactInBackground({
+          chatId,
+          contactId,
+        });
+      }
+
       if (isGroupMessage) {
         // Check if this group is authorized
         const authorizedGroup = canProcess.authorizedGroups?.find(
@@ -761,6 +768,48 @@ export class WhatsAppAgentService implements OnModuleInit {
       message,
       contactLabels,
     );
+  }
+
+  private async syncGoogleContactInBackground(input: {
+    chatId: string;
+    contactId: string;
+  }): Promise<void> {
+    try {
+      const contact = await this.connectorClient.getContactById(input.contactId);
+      const normalizedPhoneNumber = this.normalizeGoogleSyncPhoneNumber(
+        contact?.number || input.contactId || input.chatId,
+      );
+
+      if (!normalizedPhoneNumber) {
+        this.logger.debug(
+          `Skipping Google contact sync for ${input.contactId}: missing phone number`,
+        );
+        return;
+      }
+
+      const response = await this.backendClient.syncGoogleContact({
+        phoneNumber: normalizedPhoneNumber,
+        whatsappChatId: input.chatId,
+        whatsappContactId: input.contactId,
+        displayName: contact?.name || contact?.pushname || undefined,
+        whatsappPushName: contact?.pushname || undefined,
+      });
+
+      if (!response.success && !response.skipped) {
+        this.logger.warn(
+          `Google contact sync failed for ${input.contactId}: ${response.reason || 'unknown error'}`,
+        );
+      }
+    } catch (error: any) {
+      this.logger.warn(
+        `Best-effort Google contact sync failed for ${input.contactId}: ${error.message || error}`,
+      );
+    }
+  }
+
+  private normalizeGoogleSyncPhoneNumber(value?: string): string {
+    const digits = String(value || '').replace(/\D/g, '');
+    return digits ? `+${digits}` : '';
   }
 
   /**

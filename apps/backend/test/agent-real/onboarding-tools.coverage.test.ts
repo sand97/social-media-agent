@@ -211,8 +211,8 @@ describe('Onboarding tools coverage (all tools invoke at least once)', () => {
     };
 
     const allTools: AnyTool[] = [
-      ...(dbToolsService.createTools() as AnyTool[]),
-      ...(waJsToolsService.createTools() as AnyTool[]),
+      ...(dbToolsService.createTools() as unknown as AnyTool[]),
+      ...(waJsToolsService.createTools() as unknown as AnyTool[]),
     ];
 
     expect(allTools.length).toBe(27);

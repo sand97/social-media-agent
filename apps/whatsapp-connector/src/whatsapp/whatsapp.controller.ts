@@ -4,6 +4,7 @@ import {
   Get,
   HttpException,
   HttpStatus,
+  Param,
   Post,
 } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
@@ -143,6 +144,34 @@ export class WhatsAppController {
           error: error.message,
         },
         HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
+
+  @Get('contact/:contactId')
+  @ApiOperation({
+    summary: 'Récupérer un contact WhatsApp par son ID',
+    description:
+      'Retourne les informations sérialisables du contact utiles au whatsapp-agent.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Contact récupéré avec succès',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Contact introuvable',
+  })
+  async getContact(@Param('contactId') contactId: string) {
+    try {
+      return await this.whatsappClientService.getContactById(contactId);
+    } catch (error: any) {
+      throw new HttpException(
+        {
+          success: false,
+          error: error.message,
+        },
+        error?.status || HttpStatus.NOT_FOUND,
       );
     }
   }

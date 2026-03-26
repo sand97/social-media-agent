@@ -10,10 +10,12 @@ import { SentryModule } from '@sentry/nestjs/setup';
 import { AcceptLanguageResolver, I18nModule } from 'nestjs-i18n';
 
 import { AuthModule } from './auth/auth.module';
+import { BillingModule } from './billing/billing.module';
 import { CatalogModule } from './catalog/catalog.module';
 import { CommonModule } from './common/common.module';
 import aiConfig from './config/ai.config';
 import { ConnectorClientModule } from './connector-client/connector-client.module';
+import { GoogleContactsModule } from './google-contacts/google-contacts.module';
 import { MinioModule } from './minio/minio.module';
 import { OnboardingModule } from './onboarding/onboarding.module';
 import { OrdersModule } from './orders/orders.module';
@@ -53,6 +55,7 @@ import { WhatsAppAgentModule } from './whatsapp-agent/whatsapp-agent.module';
     PrismaModule,
     HealthModule,
     CommonModule,
+    GoogleContactsModule,
     MinioModule,
     PageScriptModule,
     CatalogModule,
@@ -60,6 +63,7 @@ import { WhatsAppAgentModule } from './whatsapp-agent/whatsapp-agent.module';
     WhatsAppAgentModule,
     OnboardingModule,
     AuthModule,
+    BillingModule,
     UserModule,
     StatsModule,
     StatusSchedulerModule,

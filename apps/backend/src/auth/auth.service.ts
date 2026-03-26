@@ -560,25 +560,32 @@ export class AuthService {
    * Validate user by ID (used by JWT strategy)
    */
   async validateUser(userId: string): Promise<AuthenticatedUser | null> {
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      include: {
-        businessInfo: true,
-        onboardingThread: {
-          select: {
-            score: true,
+    const [user, contactsCount] = await Promise.all([
+      this.prisma.user.findUnique({
+        where: { id: userId },
+        include: {
+          businessInfo: true,
+          onboardingThread: {
+            select: {
+              score: true,
+            },
           },
-        },
-        whatsappAgent: {
-          select: {
-            testPhoneNumbers: true,
-            testLabels: true,
-            labelsToNotReply: true,
-            productionEnabled: true,
+          whatsappAgent: {
+            select: {
+              testPhoneNumbers: true,
+              testLabels: true,
+              labelsToNotReply: true,
+              productionEnabled: true,
+              encryptedGoogleContactsToken: true,
+            },
           },
+          subscription: true,
         },
-      },
-    });
+      }),
+      this.prisma.customerContact.count({
+        where: { userId },
+      }),
+    ]);
 
     if (!user) {
       return null;
@@ -586,8 +593,10 @@ export class AuthService {
 
     return {
       id: user.id,
+      email: user.email,
       phoneNumber: user.phoneNumber,
       status: user.status,
+      credits: user.credits,
       whatsappProfile: user.whatsappProfile,
       businessInfo: user.businessInfo,
       contextScore: user.onboardingThread?.score ?? 0,
@@ -599,6 +608,13 @@ export class AuthService {
             productionEnabled: user.whatsappAgent.productionEnabled,
           }
         : null,
+      googleContacts: {
+        connected: Boolean(
+          user.whatsappAgent?.encryptedGoogleContactsToken,
+        ),
+        contactsCount,
+      },
+      subscription: user.subscription,
     };
   }
 

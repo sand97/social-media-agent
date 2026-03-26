@@ -26,6 +26,5 @@
     "strictBindCallApply": false,
     "noFallthroughCasesInSwitch": false
   },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "prisma", "src/generated/*/**"]
+  "exclude": ["node_modules", "dist", "src/generated/*/**"]
 }

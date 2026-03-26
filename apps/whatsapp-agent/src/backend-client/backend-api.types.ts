@@ -32,6 +32,25 @@ export interface CanProcessResponse {
   authorizedGroups?: AuthorizedGroup[];
 }
 
+export interface InternalGoogleContactSyncRequest {
+  phoneNumber: string;
+  whatsappChatId: string;
+  whatsappContactId: string;
+  displayName?: string;
+  whatsappPushName?: string;
+}
+
+export interface InternalGoogleContactSyncResponse {
+  success: boolean;
+  skipped?: boolean;
+  reason?: string;
+  contact?: {
+    id: string;
+    phoneNumber: string;
+    googleResourceName?: string | null;
+  };
+}
+
 export interface ToolExecution {
   name: string;
   args: any;

@@ -23,6 +23,10 @@ interface User {
     [key: string]: any
   }
   agentConfig?: AgentConfig | null
+  googleContacts?: {
+    connected: boolean
+    contactsCount: number
+  }
   [key: string]: any
 }
 

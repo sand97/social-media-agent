@@ -166,6 +166,83 @@
         }
       }
     },
+    "/google-contacts/oauth/authorize-url": {
+      "post": {
+        "operationId": "GoogleContactsController_createAuthorizeUrl",
+        "summary": "Create the Google OAuth authorization URL",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "Authorization URL generated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "authorizeUrl": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "google-contacts"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/google/callback": {
+      "get": {
+        "operationId": "GoogleOAuthController_handleCallback",
+        "summary": "Handle the Google OAuth callback",
+        "parameters": [],
+        "responses": {
+          "302": {
+            "description": "Redirects the user back to the frontend dashboard"
+          }
+        },
+        "tags": [
+          "google-contacts"
+        ]
+      }
+    },
+    "/agent-internal/google-contacts/sync-contact": {
+      "post": {
+        "operationId": "GoogleContactsInternalController_syncContact",
+        "summary": "Sync a WhatsApp contact to Google Contacts",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SyncGoogleContactDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Contact sync result"
+          }
+        },
+        "tags": [
+          "google-contacts"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
     "/catalog/upload-image": {
       "post": {
         "operationId": "CatalogController_uploadImage",
@@ -1246,6 +1323,17 @@
                     },
                     "whatsappProfile": {
                       "type": "object"
+                    },
+                    "googleContacts": {
+                      "type": "object",
+                      "properties": {
+                        "connected": {
+                          "type": "boolean"
+                        },
+                        "contactsCount": {
+                          "type": "number"
+                        }
+                      }
                     }
                   }
                 }
@@ -1263,6 +1351,96 @@
           {
             "bearer": []
           }
+        ]
+      }
+    },
+    "/billing/checkout": {
+      "post": {
+        "operationId": "BillingController_createCheckout",
+        "summary": "Initialize a payment checkout session",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCheckoutDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Checkout initialized successfully"
+          }
+        },
+        "tags": [
+          "billing"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/billing/stripe/return": {
+      "get": {
+        "operationId": "BillingController_handleStripeReturn",
+        "summary": "Handle Stripe browser return after checkout",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "billing"
+        ]
+      }
+    },
+    "/billing/notchpay/return": {
+      "get": {
+        "operationId": "BillingController_handleNotchReturn",
+        "summary": "Handle Notch Pay browser return after checkout",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "billing"
+        ]
+      }
+    },
+    "/billing/webhooks/stripe": {
+      "post": {
+        "operationId": "BillingController_handleStripeWebhook",
+        "summary": "Handle Stripe webhooks",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "billing"
+        ]
+      }
+    },
+    "/billing/webhooks/notchpay": {
+      "post": {
+        "operationId": "BillingController_handleNotchWebhook",
+        "summary": "Handle Notch Pay webhooks",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "billing"
         ]
       }
     },
@@ -2814,6 +2992,10 @@
       }
     },
     "schemas": {
+      "SyncGoogleContactDto": {
+        "type": "object",
+        "properties": {}
+      },
       "UpdateAgentStatusDto": {
         "type": "object",
         "properties": {
@@ -3256,6 +3438,42 @@
           "code"
         ]
       },
+      "CreateCheckoutDto": {
+        "type": "object",
+        "properties": {
+          "planKey": {
+            "type": "string",
+            "enum": [
+              "pro",
+              "business"
+            ]
+          },
+          "durationMonths": {
+            "type": "number",
+            "enum": [
+              1,
+              6,
+              12
+            ]
+          },
+          "paymentMethod": {
+            "type": "string",
+            "enum": [
+              "CARD",
+              "MOBILE_MONEY"
+            ]
+          },
+          "phoneNumber": {
+            "type": "string",
+            "example": "+237690000000"
+          }
+        },
+        "required": [
+          "planKey",
+          "durationMonths",
+          "paymentMethod"
+        ]
+      },
       "UpdateUserDto": {
         "type": "object",
         "properties": {
@@ -3461,6 +3679,14 @@
             "type": "number",
             "example": 2
           },
+          "audioMessages": {
+            "type": "number",
+            "example": 4
+          },
+          "audioMessagesHandled": {
+            "type": "number",
+            "example": 3
+          },
           "textMessages": {
             "type": "number",
             "example": 15
@@ -3484,6 +3710,8 @@
           "messagesHandled",
           "imageMessages",
           "imageMessagesHandled",
+          "audioMessages",
+          "audioMessagesHandled",
           "textMessages",
           "textMessagesHandled",
           "conversations",

@@ -1,0 +1,15 @@
+whatsapp.bedones.org {
+	# Enable automatic HTTPS with self-signed certificate for local development
+	tls internal
+
+	# Reverse proxy to Frontend
+	reverse_proxy localhost:5173
+}
+
+api-whatsapp.bedones.org {
+	# Enable automatic HTTPS with self-signed certificate for local development
+	tls internal
+
+	# Reverse proxy to Backend
+	reverse_proxy localhost:3000
+}

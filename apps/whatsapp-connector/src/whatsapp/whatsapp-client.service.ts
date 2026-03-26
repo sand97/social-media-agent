@@ -3,6 +3,7 @@ import * as fs from 'fs';
 
 import { HttpService } from '@nestjs/axios';
 import {
+  NotFoundException,
   Injectable,
   Logger,
   OnModuleDestroy,
@@ -708,6 +709,64 @@ export class WhatsAppClientService implements OnModuleInit, OnModuleDestroy {
       this.logger.error('Error executing page script:', error);
       throw error;
     }
+  }
+
+  async getContactById(contactId: string): Promise<{
+    id: string;
+    number?: string;
+    name?: string;
+    pushname?: string;
+    shortName?: string;
+    formattedName?: string;
+    isMyContact?: boolean;
+    isWAContact?: boolean;
+    isUser?: boolean;
+  }> {
+    if (!contactId) {
+      throw new NotFoundException('contactId is required');
+    }
+
+    const page = this.client?.pupPage;
+    if (!page) {
+      throw new NotFoundException('Puppeteer page is not available');
+    }
+
+    await this.ensureWPPInjected(false);
+
+    const contact = await page.evaluate(async (targetContactId: string) => {
+      const resolved = (await window.WPP.contact.get(targetContactId)) as any;
+
+      if (!resolved) {
+        return null;
+      }
+
+      const resolvedId =
+        typeof resolved.id === 'string'
+          ? resolved.id
+          : resolved.id?._serialized || resolved.attributes?.id?._serialized || '';
+
+      return {
+        id: resolvedId,
+        number:
+          resolved.phoneNumber ||
+          resolved.id?.user ||
+          resolved.attributes?.id?.user ||
+          '',
+        name: resolved.name || resolved.formattedName || resolved.pushname || '',
+        pushname: resolved.pushname || '',
+        shortName: resolved.shortName || '',
+        formattedName: resolved.formattedName || '',
+        isMyContact: Boolean(resolved.isMyContact),
+        isWAContact: Boolean(resolved.isWAContact),
+        isUser: Boolean(resolved.isUser),
+      };
+    }, contactId);
+
+    if (!contact) {
+      throw new NotFoundException(`Contact ${contactId} not found`);
+    }
+
+    return contact;
   }
 
   private attachPageDebugListeners(page: any) {

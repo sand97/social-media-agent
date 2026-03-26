@@ -19,7 +19,7 @@ describe('stats.utils', () => {
     expect(addUtcDays('2026-03-07', 2)).toBe('2026-03-09');
   });
 
-  it('aggregates image and text operations separately', () => {
+  it('aggregates image, audio and text operations separately', () => {
     const aggregated = aggregateOperationsByDay([
       {
         chatId: '111@c.us',
@@ -41,6 +41,15 @@ describe('stats.utils', () => {
       },
       {
         chatId: '222@g.us',
+        createdAt: new Date('2026-03-07T10:30:00.000Z'),
+        status: 'success',
+        totalTokens: 30,
+        userMessage: '#AUDIO_METADATA: available',
+        agentResponse: 'Bien recu.',
+        metadata: { messageType: 'audio' },
+      },
+      {
+        chatId: '222@g.us',
         createdAt: new Date('2026-03-07T11:00:00.000Z'),
         status: 'success',
         totalTokens: 42,
@@ -52,14 +61,16 @@ describe('stats.utils', () => {
 
     expect(aggregated.get('2026-03-07')).toEqual({
       day: '2026-03-07',
-      messages: 3,
-      messagesHandled: 2,
+      messages: 4,
+      messagesHandled: 3,
       imageMessages: 1,
       imageMessagesHandled: 1,
+      audioMessages: 1,
+      audioMessagesHandled: 1,
       textMessages: 2,
       textMessagesHandled: 1,
       conversations: 2,
-      tokens: 172,
+      tokens: 202,
     });
   });
 
@@ -70,6 +81,8 @@ describe('stats.utils', () => {
       messagesHandled: 0,
       imageMessages: 0,
       imageMessagesHandled: 0,
+      audioMessages: 0,
+      audioMessagesHandled: 0,
       textMessages: 0,
       textMessagesHandled: 0,
       conversations: 0,

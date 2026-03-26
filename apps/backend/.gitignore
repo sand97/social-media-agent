@@ -44,6 +44,7 @@ lerna-debug.log*
 .env.dev
 .env.staging
 .env.main
+google_client_secret.json
 
 # temp directory
 .temp

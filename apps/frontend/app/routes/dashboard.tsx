@@ -11,8 +11,12 @@ import {
   GoogleBrandIcon,
   FacebookBrandIcon,
 } from '@app/components/icons/BrandIcons'
+import { useAuth } from '@app/hooks/useAuth'
+import { getPlanLabel, resolveCurrentPlanKey } from '@app/lib/current-plan'
+import apiClient from '@app/lib/api/client'
 import { DashboardHeader } from '@app/components/layout'
-import { Button, Card, Typography } from 'antd'
+import { App, Button, Card, Typography } from 'antd'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 const { Title, Text, Link } = Typography
@@ -28,7 +32,12 @@ export function meta() {
 }
 
 export default function DashboardPage() {
+  const { user, checkAuth } = useAuth()
+  const { notification } = App.useApp()
   const navigate = useNavigate()
+  const [googleConnectLoading, setGoogleConnectLoading] = useState(false)
+  const googleContacts = user?.googleContacts
+  const currentPlanLabel = getPlanLabel(resolveCurrentPlanKey(user))
 
   const openModerator = () => {
     if (typeof window === 'undefined') return
@@ -39,6 +48,66 @@ export default function DashboardPage() {
       'noopener,noreferrer'
     )
   }
+
+  const handleConnectGoogle = async () => {
+    setGoogleConnectLoading(true)
+
+    try {
+      const response = await apiClient.post('/google-contacts/oauth/authorize-url')
+      const authorizeUrl = response?.data?.authorizeUrl
+
+      if (!authorizeUrl) {
+        throw new Error("L'URL d'autorisation Google est manquante.")
+      }
+
+      window.location.assign(authorizeUrl)
+    } catch (error) {
+      console.error('Failed to start Google OAuth:', error)
+      notification.error({
+        message: 'Connexion Google impossible',
+        description:
+          error instanceof Error
+            ? error.message
+            : 'Le flux OAuth Google a échoué.',
+      })
+      setGoogleConnectLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    const url = new URL(window.location.href)
+    const status = url.searchParams.get('googleContacts')
+    const message = url.searchParams.get('message')
+
+    if (!status) return
+
+    if (status === 'connected') {
+      notification.success({
+        message: 'Google Contacts connecté',
+      })
+      void checkAuth()
+    } else {
+      notification.error({
+        message: 'Connexion Google échouée',
+        description: message || 'Le callback Google n’a pas abouti.',
+      })
+    }
+
+    url.searchParams.delete('googleContacts')
+    url.searchParams.delete('message')
+
+    navigate(
+      {
+        pathname: url.pathname,
+        search: url.searchParams.toString()
+          ? `?${url.searchParams.toString()}`
+          : '',
+      },
+      { replace: true }
+    )
+  }, [checkAuth, navigate, notification])
 
   return (
     <>
@@ -110,14 +179,14 @@ export default function DashboardPage() {
                     iconPosition='end'
                     onClick={() => navigate('/pricing')}
                   >
-                    Voir les forfaits
+                    Voir les souscriptions
                   </Button>
                 </div>
                 <div>
                   <div className='mb-1 flex items-center gap-2'>
-                    <Text strong>Forfait</Text>
+                    <Text strong>Souscription</Text>
                     <span className='rounded-full bg-[#24d366] px-2.5 py-1 text-xs font-semibold text-black'>
-                      Free
+                      {currentPlanLabel}
                     </span>
                   </div>
                   <Text type='secondary' className='block'>
@@ -146,22 +215,31 @@ export default function DashboardPage() {
                   <div className='flex h-12 w-12 items-center justify-center'>
                     <GoogleBrandIcon className='h-10 w-10' />
                   </div>
-                  <Button
-                    type='default'
-                    shape='round'
-                    icon={<ArrowRightOutlined />}
-                    iconPosition='end'
-                  >
-                    Connecter
-                  </Button>
+                  {googleContacts?.connected ? (
+                    <span className='rounded-full bg-[#24d366] px-3 py-1 text-sm font-semibold text-black'>
+                      {googleContacts.contactsCount} contacts sauvegardés
+                    </span>
+                  ) : (
+                    <Button
+                      type='default'
+                      shape='round'
+                      icon={<ArrowRightOutlined />}
+                      iconPosition='end'
+                      loading={googleConnectLoading}
+                      onClick={handleConnectGoogle}
+                    >
+                      Connecter
+                    </Button>
+                  )}
                 </div>
                 <div>
                   <Text strong className='mb-1 block'>
                     Google Contacts
                   </Text>
                   <Text type='secondary'>
-                    Sauvegarder automatiquement des nouveaux contacts pour les
-                    statuts
+                    {googleContacts?.connected
+                      ? 'Les nouveaux contacts WhatsApp sont sauvegardés automatiquement dans Google.'
+                      : 'Sauvegarder automatiquement les nouveaux contacts WhatsApp dans Google.'}
                   </Text>
                 </div>
               </div>

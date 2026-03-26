@@ -5,6 +5,8 @@ import AuthLayout from '@app/layout/auth-layout'
 import DashboardLayout from '@app/layout/dashboard-layout'
 import LoginPage from '@app/routes/auth.login'
 import PairingCodePage from '@app/routes/auth.pairing-code'
+import PrivacyPage from '@app/routes/auth.privacy'
+import TermsPage from '@app/routes/auth.terms'
 import VerifyOtpPage from '@app/routes/auth.verify-otp'
 import Catalog from '@app/routes/catalog'
 import ContextOnboarding from '@app/routes/context.onboarding'
@@ -52,6 +54,14 @@ const router = createBrowserRouter([
       {
         path: 'auth/verify-otp',
         element: <VerifyOtpPage />,
+      },
+      {
+        path: 'auth/privacy',
+        element: <PrivacyPage />,
+      },
+      {
+        path: 'auth/terms',
+        element: <TermsPage />,
       },
     ],
   },

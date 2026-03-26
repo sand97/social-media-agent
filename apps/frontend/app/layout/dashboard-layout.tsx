@@ -14,6 +14,7 @@ import StoriesIcon from '@app/assets/StoriesIcon.svg?react'
 import SubscribeIcon from '@app/assets/SubscribreIcon.svg?react'
 import { LayoutProvider, useLayout } from '@app/contexts/LayoutContext'
 import { useAuth } from '@app/hooks/useAuth'
+import { getPlanLabel, resolveCurrentPlanKey } from '@app/lib/current-plan'
 import { Avatar, Layout, Menu, Modal, Spin } from 'antd'
 import { useEffect, useRef } from 'react'
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
@@ -66,8 +67,8 @@ const menuSections = [
         path: '/leads',
       },
       {
-        key: 'forfaits',
-        label: 'Forfaits',
+        key: 'subscriptions',
+        label: 'Souscriptions',
         icon: (
           <SubscribeIcon width={SIDEBAR_ICON_SIZE} height={SIDEBAR_ICON_SIZE} />
         ),
@@ -144,6 +145,8 @@ function DashboardSidebarContent({
   onNavigate,
   user,
 }: DashboardSidebarContentProps) {
+  const planLabel = user ? getPlanLabel(resolveCurrentPlanKey(user)) : 'Free'
+
   return (
     <div className='flex h-full flex-col'>
       <div className='brand-name'>
@@ -163,7 +166,7 @@ function DashboardSidebarContent({
                   </span>
                 )}
                 <span className='rounded bg-[#24d366] px-2 py-0.5 text-xs font-semibold text-black'>
-                  Free
+                  {planLabel}
                 </span>
               </div>
               <span className='truncate text-xs text-[#494949]'>
@@ -344,7 +347,7 @@ function DashboardLayoutContent() {
   }
 
   return (
-    <div className='min-h-screen md:bg-[#fbfafb]'>
+    <div className='min-h-screen'>
       {contextHolder}
 
       <div className='relative flex min-h-screen w-full lg:p-4'>

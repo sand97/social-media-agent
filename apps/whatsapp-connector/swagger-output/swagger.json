@@ -266,6 +266,34 @@
         ]
       }
     },
+    "/whatsapp/contact/{contactId}": {
+      "get": {
+        "operationId": "WhatsAppController_getContact",
+        "summary": "Récupérer un contact WhatsApp par son ID",
+        "description": "Retourne les informations sérialisables du contact utiles au whatsapp-agent.",
+        "parameters": [
+          {
+            "name": "contactId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contact récupéré avec succès"
+          },
+          "404": {
+            "description": "Contact introuvable"
+          }
+        },
+        "tags": [
+          "WhatsApp"
+        ]
+      }
+    },
     "/whatsapp/status": {
       "get": {
         "operationId": "WhatsAppController_getStatus",

@@ -16,6 +16,12 @@ export class DailyStatsPointDto {
   @ApiProperty({ example: 2 })
   imageMessagesHandled: number;
 
+  @ApiProperty({ example: 4 })
+  audioMessages: number;
+
+  @ApiProperty({ example: 3 })
+  audioMessagesHandled: number;
+
   @ApiProperty({ example: 15 })
   textMessages: number;
 

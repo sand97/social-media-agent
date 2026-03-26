@@ -7,13 +7,15 @@ import {
 import { featuresConfig } from '@app/data/features'
 import { useAuth } from '@app/hooks/useAuth'
 import apiClient from '@app/lib/api/client'
-import { App, Button, Modal, Spin } from 'antd'
+import { App, Button, Modal, Spin, Typography } from 'antd'
 import Form from 'antd/es/form'
 import FormItem from 'antd/es/form/FormItem'
 import PhoneInput, { type PhoneNumber } from 'antd-phone-input'
 import { QRCodeSVG } from 'qrcode.react'
 import { useEffect, useState, useRef, type CSSProperties } from 'react'
 import { useNavigate } from 'react-router-dom'
+
+const { Text, Link } = Typography
 
 const LAST_PHONE_KEY = 'whatsapp-agent-last-phone'
 
@@ -431,6 +433,25 @@ export default function LoginPage() {
                   <ArrowRightOutlined />
                 </Button>
               </FormItem>
+
+              <Text
+                type='secondary'
+                className='block max-w-[420px] text-center text-sm leading-6'
+              >
+                En cliquant sur continuer, vous acceptez notre{' '}
+                <Link
+                  href='/auth/privacy'
+                >
+                  politique de confidentialité
+                </Link>{' '}
+                et nos{' '}
+                <Link
+                  href='/auth/terms'
+                >
+                  conditions générales d&apos;utilisation
+                </Link>
+                .
+              </Text>
             </Form>
           </div>
         </div>

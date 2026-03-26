@@ -249,6 +249,13 @@ export class AuthController {
         phoneNumber: { type: 'string' },
         status: { type: 'string' },
         whatsappProfile: { type: 'object' },
+        googleContacts: {
+          type: 'object',
+          properties: {
+            connected: { type: 'boolean' },
+            contactsCount: { type: 'number' },
+          },
+        },
       },
     },
   })
