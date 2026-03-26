@@ -111,7 +111,7 @@ export default function LoginPage() {
 
             // Login and redirect
             if (response.data.accessToken) {
-              login(response.data.accessToken, response.data.user)
+              login(response.data.user)
 
               setTimeout(() => {
                 navigate(response.data.redirectTo || '/context')
@@ -244,7 +244,7 @@ export default function LoginPage() {
               })
 
               if (qrResponse.data.accessToken) {
-                login(qrResponse.data.accessToken, qrResponse.data.user)
+                login(qrResponse.data.user)
 
                 setTimeout(() => {
                   navigate(qrResponse.data.redirectTo || '/context')

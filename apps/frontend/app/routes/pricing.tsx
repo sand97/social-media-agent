@@ -28,6 +28,7 @@ import {
   BILLING_OPTIONS,
   CREDIT_FACTS,
   DURATION_DISCOUNT,
+  formatCreditsAmount,
   PLAN_CONTENT,
   PLAN_ORDER,
   formatDisplayPrice,
@@ -228,6 +229,9 @@ export default function PricingPage() {
         1
       )
     : null
+  const selectedPlanCredits = selectedPlan?.monthlyCredits
+    ? formatCreditsAmount(selectedPlan.monthlyCredits * duration)
+    : null
   const paymentResultContent = useMemo(() => {
     if (!paymentResult) {
       return null
@@ -235,10 +239,10 @@ export default function PricingPage() {
 
     const paymentLabel = getPaymentMethodLabel(paymentResult.provider)
     const totalCredits =
-      typeof user?.credits === 'number'
-        ? user.credits
-        : typeof user?.subscription?.creditsIncluded === 'number'
-          ? user.subscription.creditsIncluded
+      typeof user?.subscription?.creditsIncluded === 'number'
+        ? user.subscription.creditsIncluded
+        : typeof user?.credits === 'number'
+          ? user.credits
           : null
 
     if (paymentResult.status === 'success') {
@@ -413,7 +417,9 @@ export default function PricingPage() {
       return
     }
 
-    const rawSelection = window.localStorage.getItem(LAST_CHECKOUT_SELECTION_KEY)
+    const rawSelection = window.localStorage.getItem(
+      LAST_CHECKOUT_SELECTION_KEY
+    )
 
     if (!rawSelection) {
       return
@@ -572,7 +578,7 @@ export default function PricingPage() {
             <p className='m-0 text-sm leading-7 text-[var(--color-text-primary)]'>
               {paymentResultContent.primaryText}
             </p>
-            <p className='m-0 text-sm leading-7 text-[var(--color-text-secondary)]'>
+            <p className='m-0 text-sm leading-7 text-[var(--color-text-primary)]'>
               {paymentResultContent.secondaryText}
             </p>
             {paymentResult.reference && paymentResult.status !== 'success' ? (
@@ -632,6 +638,11 @@ export default function PricingPage() {
                   <span className='ml-2 text-lg font-normal text-[var(--color-text-secondary)]'>
                     par mois
                   </span>
+                  {selectedPlanCredits ? (
+                    <p className='mt-3 mb-0 text-sm font-medium leading-6 text-[var(--color-text-secondary)]'>
+                      {selectedPlanCredits} crédits inclus sur la période
+                    </p>
+                  ) : null}
                 </div>
                 <span className='rounded-full bg-white px-4 py-2 text-sm font-semibold text-[var(--color-text-primary)] shadow-card'>
                   Total {selectedPlanTotal}

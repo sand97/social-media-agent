@@ -74,9 +74,9 @@ export default function PairingCodePage() {
         pairingToken: state.pairingToken,
       })
 
-      // Save token and user data
+      // Save user data (cookie is set by backend)
       if (response.data.accessToken) {
-        login(response.data.accessToken, response.data.user)
+        login(response.data.user)
       }
 
       setPairingCompleted(true)

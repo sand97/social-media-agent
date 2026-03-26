@@ -75,8 +75,8 @@ export default function VerifyOtpPage() {
         }
       )
 
-      // Save token and user data
-      login(response.data.accessToken, response.data.user)
+      // Save user data (cookie is set by backend)
+      login(response.data.user)
 
       notification.success({
         message: 'Connexion réussie',
@@ -90,7 +90,7 @@ export default function VerifyOtpPage() {
       try {
         const meResponse = await apiClient.get('/auth/me')
         if (meResponse.data) {
-          login(response.data.accessToken, meResponse.data)
+          login(meResponse.data)
           contextScore = meResponse.data.contextScore
         }
       } catch (meError) {

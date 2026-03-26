@@ -1354,6 +1354,22 @@
         ]
       }
     },
+    "/auth/logout": {
+      "post": {
+        "operationId": "AuthController_logout",
+        "summary": "Logout",
+        "description": "Clear the auth cookie to log out",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Logged out successfully"
+          }
+        },
+        "tags": [
+          "auth"
+        ]
+      }
+    },
     "/billing/checkout": {
       "post": {
         "operationId": "BillingController_createCheckout",

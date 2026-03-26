@@ -294,12 +294,9 @@ export default function ContextOnboardingPage() {
 
     fetchThread()
 
-    const token = localStorage.getItem('auth_token')
-    if (!token) return
-
     const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000'
     const socket = io(`${apiUrl}/onboarding`, {
-      auth: { token },
+      withCredentials: true,
       transports: ['websocket'],
       reconnectionAttempts: 5,
       reconnectionDelay: 1000,

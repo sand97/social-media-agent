@@ -841,6 +841,13 @@ export class BillingService {
           );
         }
 
+        const creditsIncluded = shouldExtend && subscription
+          ? subscription.creditsIncluded + payment.creditsAmount
+          : payment.creditsAmount;
+        const creditsUsed = shouldExtend && subscription
+          ? subscription.creditsUsed
+          : 0;
+
         await tx.credit.create({
           data: {
             amount: payment.creditsAmount,
@@ -864,8 +871,8 @@ export class BillingService {
           where: { userId: payment.userId },
           update: {
             autoRenew: false,
-            creditsIncluded: monthlyCredits,
-            creditsUsed: 0,
+            creditsIncluded,
+            creditsUsed,
             endDate: addMonths(endAnchor, payment.durationMonths),
             isActive: true,
             startDate,
@@ -873,8 +880,8 @@ export class BillingService {
           },
           create: {
             autoRenew: false,
-            creditsIncluded: monthlyCredits,
-            creditsUsed: 0,
+            creditsIncluded,
+            creditsUsed,
             endDate: addMonths(endAnchor, payment.durationMonths),
             isActive: true,
             startDate,

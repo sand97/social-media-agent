@@ -9,6 +9,7 @@ import { AppModule } from '@app/app.module';
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import cookieParser from 'cookie-parser';
 import * as express from 'express';
 
 async function bootstrap() {
@@ -33,6 +34,9 @@ async function bootstrap() {
   // Limite standard
   app.use(express.json({ limit: '10mb' }));
   app.use(express.urlencoded({ limit: '10mb', extended: true }));
+
+  // Cookie parser for JWT cookie authentication
+  app.use(cookieParser());
   // Limite étendue uniquement pour l'upload media
   app.use(
     '/message-metadata/upload-media',

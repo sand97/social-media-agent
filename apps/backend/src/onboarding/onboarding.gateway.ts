@@ -80,8 +80,16 @@ export class OnboardingGateway
    */
   async handleConnection(client: Socket) {
     try {
-      // Extract JWT token from handshake
+      // Extract JWT token from cookie, handshake auth, or Authorization header
+      const cookieHeader = client.handshake.headers.cookie || '';
+      const cookieToken = cookieHeader
+        .split(';')
+        .map((c) => c.trim())
+        .find((c) => c.startsWith('access_token='))
+        ?.split('=')[1];
+
       const token =
+        cookieToken ||
         client.handshake.auth.token ||
         client.handshake.headers.authorization?.split(' ')[1];
 

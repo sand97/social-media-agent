@@ -4,8 +4,10 @@ import type { PlanKey } from '@app/lib/current-plan'
 import { Button } from 'antd'
 
 import {
+  formatCreditsAmount,
   formatDisplayPrice,
   getDisplayedMonthlyPrice,
+  getPlanCreditsSummary,
   getDurationCtaLabel,
   getPlanLabel,
   getTotalPrice,
@@ -13,15 +15,17 @@ import {
   type PlanConfig,
 } from './constants'
 
-function renderPlanFooter(config: PlanConfig) {
+function renderPlanFooter(config: PlanConfig, duration: BillingDuration) {
+  const creditSummary = getPlanCreditsSummary(config, duration)
+
   if (!config.overagePrice) {
     return (
       <p className='m-0 text-[0px] leading-none tracking-[0.02em]'>
         <span className='text-[18px] font-bold text-[var(--color-text-primary)]'>
-          {config.creditAmount}
+          {creditSummary.amount}
         </span>
         <span className='ml-1 text-[16px] font-normal text-[var(--color-text-secondary)]'>
-          {config.creditSuffix}
+          {creditSummary.suffix}
         </span>
       </p>
     )
@@ -31,9 +35,9 @@ function renderPlanFooter(config: PlanConfig) {
     <div className='space-y-0.5 text-[16px] leading-[1.8] tracking-[0.02em] text-[var(--color-text-secondary)]'>
       <p className='m-0'>
         <span className='text-[18px] font-bold text-[var(--color-text-primary)]'>
-          {config.creditAmount}
+          {creditSummary.amount}
         </span>
-        <span className='ml-1'>{config.creditSuffix}</span>
+        <span className='ml-1'>{creditSummary.suffix}</span>
       </p>
       <p className='m-0'>
         Puis{' '}
@@ -73,6 +77,9 @@ export function PlanCard({
   const totalPrice = formatDisplayPrice(
     getTotalPrice(config.monthlyPrice, duration)
   )
+  const totalCredits = config.monthlyCredits
+    ? formatCreditsAmount(config.monthlyCredits * duration)
+    : null
 
   const radiusClass = isFirst
     ? 'md:rounded-l-[20px] md:rounded-r-none'
@@ -104,6 +111,12 @@ export function PlanCard({
               par mois
             </span>
           </div>
+
+          {totalCredits ? (
+            <p className='m-0 text-sm font-medium leading-6 text-[var(--color-text-secondary)]'>
+              {totalCredits} crédits inclus sur la période
+            </p>
+          ) : null}
         </div>
 
         <div className='md:sticky md:top-14 md:z-20 md:-mx-4 md:-mb-5 md:bg-white md:px-4 md:pb-5'>
@@ -168,7 +181,7 @@ export function PlanCard({
           ))}
         </div>
 
-        <div className='mt-auto px-2 pt-6'>{renderPlanFooter(config)}</div>
+        <div className='mt-auto px-2 pt-6'>{renderPlanFooter(config, duration)}</div>
       </div>
     </article>
   )

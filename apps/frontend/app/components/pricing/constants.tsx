@@ -34,6 +34,7 @@ export type PlanConfig = {
   ctaLabel?: string
   features: PlanFeatureGroup[]
   includedLabel?: string
+  monthlyCredits?: number
   monthlyPrice: number
   overagePrice?: string
   overageSuffix?: string
@@ -161,6 +162,7 @@ export const PLAN_CONTENT: Record<PlanKey, PlanConfig> = {
       },
     ],
     includedLabel: 'Tout dans Free, plus',
+    monthlyCredits: 1000,
     monthlyPrice: 10,
     overagePrice: '$0.01',
     overageSuffix: 'par crédit supplémentaire',
@@ -194,6 +196,7 @@ export const PLAN_CONTENT: Record<PlanKey, PlanConfig> = {
       },
     ],
     includedLabel: 'Tout dans Pro, plus',
+    monthlyCredits: 3000,
     monthlyPrice: 25,
     overagePrice: '$0.008',
     overageSuffix: 'par crédit supplémentaire',
@@ -230,6 +233,32 @@ export function formatDisplayPrice(amount: number, maximumFractionDigits = 2) {
     maximumFractionDigits,
     minimumFractionDigits: 0,
   })}`
+}
+
+export function formatCreditsAmount(amount: number) {
+  return amount.toLocaleString('fr-FR')
+}
+
+export function getPlanCreditsSummary(
+  config: PlanConfig,
+  duration: BillingDuration
+) {
+  if (!config.monthlyCredits) {
+    return {
+      amount: config.creditAmount,
+      suffix: config.creditSuffix,
+    }
+  }
+
+  const totalCredits = config.monthlyCredits * duration
+
+  return {
+    amount: formatCreditsAmount(totalCredits),
+    suffix:
+      duration === 1
+        ? 'crédits inclus,'
+        : `crédits inclus pour ${duration} mois,`,
+  }
 }
 
 export function getPlanLabel(plan: PlanKey) {

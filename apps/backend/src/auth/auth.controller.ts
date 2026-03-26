@@ -5,6 +5,8 @@ import {
   Body,
   UseGuards,
   Request,
+  Res,
+  HttpCode,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -12,6 +14,7 @@ import {
   ApiResponse,
   ApiBearerAuth,
 } from '@nestjs/swagger';
+import * as express from 'express';
 
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 
@@ -22,10 +25,23 @@ import { RequestPairingDto } from './dto/request-pairing.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { VerifyPairingDto } from './dto/verify-pairing.dto';
 
+const COOKIE_NAME = 'access_token';
+const COOKIE_MAX_AGE = 7 * 24 * 60 * 60 * 1000; // 7 days
+
 @ApiTags('auth')
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
+
+  private setAuthCookie(res: express.Response, token: string): void {
+    res.cookie(COOKIE_NAME, token, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'none',
+      maxAge: COOKIE_MAX_AGE,
+      path: '/',
+    });
+  }
 
   @Post('request-pairing')
   @ApiOperation({
@@ -89,8 +105,15 @@ export class AuthController {
     status: 400,
     description: 'Bad request - QR code not available',
   })
-  async requestQRCode(@Body() dto: RequestPairingDto) {
-    return this.authService.requestCodeQR(dto.phoneNumber);
+  async requestQRCode(
+    @Body() dto: RequestPairingDto,
+    @Res({ passthrough: true }) res: express.Response,
+  ) {
+    const result = await this.authService.requestCodeQR(dto.phoneNumber);
+    if (result.accessToken) {
+      this.setAuthCookie(res, result.accessToken);
+    }
+    return result;
   }
 
   @Post('refresh-qr')
@@ -118,11 +141,18 @@ export class AuthController {
     status: 400,
     description: 'Bad request - Invalid pairing token',
   })
-  async refreshQRCode(@Body() body: RefreshQrDto) {
-    return this.authService.refreshCodeQR(
+  async refreshQRCode(
+    @Body() body: RefreshQrDto,
+    @Res({ passthrough: true }) res: express.Response,
+  ) {
+    const result = await this.authService.refreshCodeQR(
       body.pairingToken,
       body.qrSessionToken,
     );
+    if (result.accessToken) {
+      this.setAuthCookie(res, result.accessToken);
+    }
+    return result;
   }
 
   @Post('verify-pairing')
@@ -154,11 +184,18 @@ export class AuthController {
     status: 404,
     description: 'User not found',
   })
-  async verifyPairing(@Body() dto: VerifyPairingDto) {
-    return this.authService.verifyPairingSuccess(
+  async verifyPairing(
+    @Body() dto: VerifyPairingDto,
+    @Res({ passthrough: true }) res: express.Response,
+  ) {
+    const result = await this.authService.verifyPairingSuccess(
       dto.phoneNumber,
       dto.whatsappProfile,
     );
+    if (result.accessToken) {
+      this.setAuthCookie(res, result.accessToken);
+    }
+    return result;
   }
 
   @Post('confirm-pairing')
@@ -195,8 +232,18 @@ export class AuthController {
     description:
       'WhatsApp connection not yet confirmed / OTP code required but not provided',
   })
-  async confirmPairing(@Body() dto: ConfirmPairingDto) {
-    return this.authService.confirmPairing(dto.pairingToken, dto.otpCode);
+  async confirmPairing(
+    @Body() dto: ConfirmPairingDto,
+    @Res({ passthrough: true }) res: express.Response,
+  ) {
+    const result = await this.authService.confirmPairing(
+      dto.pairingToken,
+      dto.otpCode,
+    );
+    if (result.accessToken) {
+      this.setAuthCookie(res, result.accessToken);
+    }
+    return result;
   }
 
   @Post('verify-otp')
@@ -228,8 +275,15 @@ export class AuthController {
     status: 401,
     description: 'Invalid or expired OTP',
   })
-  async verifyOtp(@Body() dto: VerifyOtpDto) {
-    return this.authService.verifyOTP(dto.phoneNumber, dto.code);
+  async verifyOtp(
+    @Body() dto: VerifyOtpDto,
+    @Res({ passthrough: true }) res: express.Response,
+  ) {
+    const result = await this.authService.verifyOTP(dto.phoneNumber, dto.code);
+    if (result.accessToken) {
+      this.setAuthCookie(res, result.accessToken);
+    }
+    return result;
   }
 
   @Get('me')
@@ -265,5 +319,25 @@ export class AuthController {
   })
   async getMe(@Request() req) {
     return req.user;
+  }
+
+  @Post('logout')
+  @HttpCode(200)
+  @ApiOperation({
+    summary: 'Logout',
+    description: 'Clear the auth cookie to log out',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Logged out successfully',
+  })
+  logout(@Res({ passthrough: true }) res: express.Response) {
+    res.clearCookie(COOKIE_NAME, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'none',
+      path: '/',
+    });
+    return { message: 'Logged out' };
   }
 }

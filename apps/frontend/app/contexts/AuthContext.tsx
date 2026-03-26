@@ -1,4 +1,5 @@
 import apiClient from '@app/lib/api/client'
+import axios from 'axios'
 import { createContext, useCallback, useEffect, useMemo, useState } from 'react'
 
 interface AgentConfig {
@@ -32,11 +33,10 @@ interface User {
 
 interface AuthContextType {
   user: User | null
-  token: string | null
   isAuthenticated: boolean
   isLoading: boolean
-  login: (token: string, user?: User) => void
-  logout: () => void
+  login: (user?: User) => void
+  logout: () => Promise<void>
   checkAuth: () => Promise<void>
   updateContextScore: (score: number) => void
 }
@@ -49,24 +49,23 @@ interface AuthProviderProps {
 
 export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null)
-  const [token, setToken] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
-  const login = useCallback((newToken: string, userData?: User) => {
-    setToken(newToken)
-    localStorage.setItem('auth_token', newToken)
-
-    if (userData) {
-      setUser(userData)
-      localStorage.setItem('user', JSON.stringify(userData))
+  const login = useCallback((_userData?: User) => {
+    if (_userData) {
+      setUser(_userData)
+      localStorage.setItem('user', JSON.stringify(_userData))
     }
   }, [])
 
-  const logout = useCallback(() => {
-    setToken(null)
+  const logout = useCallback(async () => {
     setUser(null)
-    localStorage.removeItem('auth_token')
     localStorage.removeItem('user')
+    try {
+      await apiClient.post('/auth/logout')
+    } catch {
+      // Ignore errors during logout
+    }
   }, [])
 
   const updateContextScore = useCallback((score: number) => {
@@ -79,15 +78,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }, [])
 
   const checkAuth = useCallback(async () => {
-    const storedToken = localStorage.getItem('auth_token')
     const storedUser = localStorage.getItem('user')
-
-    if (!storedToken) {
-      setIsLoading(false)
-      return
-    }
-
-    setToken(storedToken)
 
     if (storedUser) {
       try {
@@ -97,7 +88,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       }
     }
 
-    // Verify token with backend
+    // Verify token with backend (cookie sent automatically)
     try {
       const response = await apiClient.get('/auth/me')
       if (response.data) {
@@ -105,23 +96,26 @@ export function AuthProvider({ children }: AuthProviderProps) {
         localStorage.setItem('user', JSON.stringify(response.data))
       }
     } catch (error) {
-      // Token is invalid, clear auth state
-      logout()
+      // Only logout on 401 (invalid/expired token), not on network errors
+      if (axios.isAxiosError(error) && error.response?.status === 401) {
+        setUser(null)
+        localStorage.removeItem('user')
+      }
+      // On network errors (backend down), keep the cached user
     } finally {
       setIsLoading(false)
     }
-  }, [logout])
+  }, [])
 
   useEffect(() => {
     checkAuth()
   }, [checkAuth])
 
-  const isAuthenticated = !!token && !!user
+  const isAuthenticated = !!user
 
   const value = useMemo(
     () => ({
       user,
-      token,
       isAuthenticated,
       isLoading,
       login,
@@ -129,16 +123,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       checkAuth,
       updateContextScore,
     }),
-    [
-      user,
-      token,
-      isAuthenticated,
-      isLoading,
-      login,
-      logout,
-      checkAuth,
-      updateContextScore,
-    ]
+    [user, isAuthenticated, isLoading, login, logout, checkAuth, updateContextScore]
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
