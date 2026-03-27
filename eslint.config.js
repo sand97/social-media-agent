@@ -146,6 +146,7 @@ export default [
       'no-console': 'warn',
       'no-debugger': 'error',
       'no-unused-vars': 'off', // Use TypeScript version
+      'no-undef': 'off', // TypeScript handles identifier resolution and DOM types
       'prefer-const': 'error',
       'no-var': 'error',
 
