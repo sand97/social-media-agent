@@ -73,12 +73,6 @@ jobs:
 
   build:
     needs: changes
-    if: |
-      github.event_name == 'workflow_dispatch' ||
-      needs.changes.outputs.shared == 'true' ||
-      (matrix.id == 'backend' && needs.changes.outputs.backend == 'true') ||
-      (matrix.id == 'whatsapp-agent' && needs.changes.outputs.whatsapp_agent == 'true') ||
-      (matrix.id == 'whatsapp-connector' && needs.changes.outputs.whatsapp_connector == 'true')
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -108,11 +102,47 @@ jobs:
           echo "owner=${GITHUB_REPOSITORY_OWNER,,}" >> "${GITHUB_OUTPUT}"
           echo "push=$([[ '${{ github.event_name }}' == 'push' && '${{ github.ref }}' == 'refs/heads/main' ]] && echo true || echo false)" >> "${GITHUB_OUTPUT}"
 
+      - name: Decide whether to build image
+        id: plan
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          MATRIX_ID: ${{ matrix.id }}
+          SHARED_CHANGED: ${{ needs.changes.outputs.shared }}
+          BACKEND_CHANGED: ${{ needs.changes.outputs.backend }}
+          WHATSAPP_AGENT_CHANGED: ${{ needs.changes.outputs.whatsapp_agent }}
+          WHATSAPP_CONNECTOR_CHANGED: ${{ needs.changes.outputs.whatsapp_connector }}
+        run: |
+          should_build=false
+
+          if [[ "${EVENT_NAME}" == "workflow_dispatch" || "${SHARED_CHANGED}" == "true" ]]; then
+            should_build=true
+          else
+            case "${MATRIX_ID}" in
+              backend)
+                [[ "${BACKEND_CHANGED}" == "true" ]] && should_build=true
+                ;;
+              whatsapp-agent)
+                [[ "${WHATSAPP_AGENT_CHANGED}" == "true" ]] && should_build=true
+                ;;
+              whatsapp-connector)
+                [[ "${WHATSAPP_CONNECTOR_CHANGED}" == "true" ]] && should_build=true
+                ;;
+            esac
+          fi
+
+          echo "build=${should_build}" >> "${GITHUB_OUTPUT}"
+
+      - name: Skip unchanged image
+        if: steps.plan.outputs.build != 'true'
+        run: echo "Skipping ${{ matrix.id }} because no relevant files changed."
+
       - name: Set up Docker Buildx
+        if: steps.plan.outputs.build == 'true'
         uses: docker/setup-buildx-action@v3
 
       - name: Log in to GitHub Container Registry
-        if: steps.vars.outputs.push == 'true'
+        if: steps.plan.outputs.build == 'true' && steps.vars.outputs.push == 'true'
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -120,6 +150,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Extract Docker metadata
+        if: steps.plan.outputs.build == 'true'
         id: meta
         uses: docker/metadata-action@v5
         with:
@@ -129,6 +160,7 @@ jobs:
             type=raw,value=main,enable={{is_default_branch}}
 
       - name: Build and optionally push image
+        if: steps.plan.outputs.build == 'true'
         uses: docker/build-push-action@v6
         with:
           context: ${{ matrix.context }}
