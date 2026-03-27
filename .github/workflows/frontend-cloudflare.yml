@@ -8,6 +8,16 @@ permissions:
   contents: read
 
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/frontend-cloudflare.yml'
+      - 'apps/frontend/**'
+      - 'packages/common/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
   pull_request:
     paths:
       - '.github/workflows/frontend-cloudflare.yml'
@@ -63,7 +73,7 @@ jobs:
         run: pnpm build
 
       - name: Deploy frontend worker to Cloudflare
-        if: github.event_name == 'workflow_dispatch'
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
