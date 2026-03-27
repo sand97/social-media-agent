@@ -359,6 +359,22 @@
         ]
       }
     },
+    "/whatsapp/start": {
+      "post": {
+        "operationId": "WhatsAppController_startClient",
+        "summary": "Démarrer le client WhatsApp",
+        "description": "Initialise le client whatsapp-web.js quand l'autostart est désactivé.",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Client démarré avec succès"
+          }
+        },
+        "tags": [
+          "WhatsApp"
+        ]
+      }
+    },
     "/whatsapp/clean-restart": {
       "post": {
         "operationId": "WhatsAppController_cleanAndRestartClient",

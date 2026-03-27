@@ -1,23 +1,32 @@
 {
-  "include": ["**/*", "**/.server/**/*", "**/.client/**/*", ".react-router/types/**/*"],
+  "include": ["**/*.ts", "**/*.tsx", "eslint.config.js", "prettier.config.js", "vite.config.js"],
+  
   "compilerOptions": {
-    "lib": ["DOM", "DOM.Iterable", "ES2022"],
-    "types": ["node", "vite/client"],
     "target": "ES2022",
-    "module": "ES2022",
-    "moduleResolution": "bundler",
     "jsx": "react-jsx",
-    "rootDirs": [".", "./.react-router/types"],
+    "module": "ESNext",
     "baseUrl": ".",
     "paths": {
-      "@apps/common": ["../../packages/common/src"],
-      "@app/*": ["./app/*"]
+      "#/*": ["./src/*"],
+      "@/*": ["./src/*"],
+      "@app/*": ["./src/app/*"],
+      "react-router-dom": ["./src/lib/router/react-router-dom-compat.tsx"]
     },
-    "esModuleInterop": true,
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "types": ["vite/client", "vite-plugin-svgr/client"],
+
+    /* Bundler mode */
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": true,
     "noEmit": true,
-    "resolveJsonModule": true,
+
+    /* Linting */
     "skipLibCheck": true,
-    "strict": true
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedSideEffectImports": true
   }
 }

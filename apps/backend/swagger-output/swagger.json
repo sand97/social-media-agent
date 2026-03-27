@@ -987,7 +987,8 @@
                       "enum": [
                         "otp",
                         "pairing",
-                        "qr"
+                        "qr",
+                        "provisioning"
                       ],
                       "example": "otp"
                     },
@@ -1381,6 +1382,160 @@
         },
         "tags": [
           "auth"
+        ]
+      }
+    },
+    "/stack-pool/summary": {
+      "get": {
+        "operationId": "StackPoolController_getSummary",
+        "summary": "Résumé de la capacité disponible",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "stack-pool"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/stack-pool/vps/free": {
+      "get": {
+        "operationId": "StackPoolController_listFreeVps",
+        "summary": "Lister les VPS avec des stacks libres",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "stack-pool"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/stack-pool/provision": {
+      "post": {
+        "operationId": "StackPoolController_provision",
+        "summary": "Demander le provisionnement de nouveaux VPS/stacks",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProvisionStackCapacityDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Workflow(s) GitHub dispatché(s)"
+          }
+        },
+        "tags": [
+          "stack-pool"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/stack-pool/reconcile": {
+      "post": {
+        "operationId": "StackPoolController_reconcile",
+        "summary": "Vérifier et rétablir le stock minimal de stacks libres",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "stack-pool"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/stack-pool/release": {
+      "post": {
+        "operationId": "StackPoolController_release",
+        "summary": "Libérer une stack réservée ou déclencher sa release",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReleaseStackDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "stack-pool"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/stack-pool/workflows/callback": {
+      "post": {
+        "operationId": "StackPoolController_workflowCallback",
+        "summary": "Callback interne appelé par les workflows GitHub",
+        "parameters": [
+          {
+            "name": "x-infra-callback-secret",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkflowCallbackDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "stack-pool"
         ]
       }
     },
@@ -3467,6 +3622,80 @@
           "phoneNumber",
           "code"
         ]
+      },
+      "ProvisionStackCapacityDto": {
+        "type": "object",
+        "properties": {
+          "vpsCount": {
+            "type": "number",
+            "description": "Nombre de VPS a provisionner",
+            "example": 2
+          },
+          "stacksPerVps": {
+            "type": "number",
+            "description": "Nombre de stacks a creer par VPS",
+            "example": 2
+          },
+          "serverType": {
+            "type": "string",
+            "description": "Type de serveur Hetzner",
+            "example": "CPX21"
+          },
+          "location": {
+            "type": "string",
+            "description": "Localisation Hetzner",
+            "example": "fsn1"
+          },
+          "phoneNumber": {
+            "type": "string",
+            "description": "Numéro utilisateur à prioriser pour l'allocation",
+            "example": "+237612345678"
+          },
+          "pairingToken": {
+            "type": "string",
+            "description": "Pairing token frontend pour pousser les états WebSocket"
+          },
+          "deviceType": {
+            "type": "string",
+            "description": "Type d'appareil de la session en attente",
+            "enum": [
+              "mobile",
+              "desktop"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "description": "Raison métier ou opérationnelle",
+            "example": "keep-minimum-free-stacks"
+          }
+        }
+      },
+      "ReleaseStackDto": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string"
+          },
+          "agentId": {
+            "type": "string"
+          },
+          "serverId": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string",
+            "example": "manual-release"
+          },
+          "deleteServerWhenEmpty": {
+            "type": "boolean",
+            "description": "Supprimer aussi le VPS si plus aucune stack utile ne reste dessus",
+            "default": false
+          }
+        }
+      },
+      "WorkflowCallbackDto": {
+        "type": "object",
+        "properties": {}
       },
       "CreateCheckoutDto": {
         "type": "object",
