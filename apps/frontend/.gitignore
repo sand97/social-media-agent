@@ -9,6 +9,5 @@ dist-ssr
 .wrangler
 .output
 .vinxi
-.cloudflare-pages
 __unconfig*
 todos.json
