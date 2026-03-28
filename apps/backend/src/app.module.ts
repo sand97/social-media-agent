@@ -2,6 +2,7 @@ import * as path from 'path';
 
 import { ConnectorClientModule } from '@app/connector-client';
 import { HealthModule } from '@app/health/health.module';
+import { MigrationModule } from '@app/migration/migration.module';
 import { PageScriptModule } from '@app/page-scripts';
 import { PrismaModule } from '@app/prisma/prisma.module';
 import KeyvRedis from '@keyv/redis';
@@ -22,8 +23,8 @@ import { OnboardingModule } from './onboarding/onboarding.module';
 import { OrdersModule } from './orders/orders.module';
 import { ProductsModule } from './products/products.module';
 import { SettingsModule } from './settings/settings.module';
-import { StatsModule } from './stats/stats.module';
 import { StackPoolModule } from './stack-pool/stack-pool.module';
+import { StatsModule } from './stats/stats.module';
 import { StatusSchedulerModule } from './status-scheduler/status-scheduler.module';
 import { UserModule } from './user/user.module';
 import { WebhooksModule } from './webhooks/webhooks.module';
@@ -32,7 +33,6 @@ import { WhatsAppAgentModule } from './whatsapp-agent/whatsapp-agent.module';
 @Module({
   imports: [
     SentryModule.forRoot(),
-
     I18nModule.forRoot({
       fallbackLanguage: 'fr',
       loaderOptions: {
@@ -53,6 +53,7 @@ import { WhatsAppAgentModule } from './whatsapp-agent/whatsapp-agent.module';
         stores: [new KeyvRedis(process.env.REDIS_URL)],
       }),
     }),
+    MigrationModule,
     PrismaModule,
     HealthModule,
     CommonModule,

@@ -1,0 +1,18 @@
+import { MigrationController } from '@app/migration/migration.controller';
+import { Test, TestingModule } from '@nestjs/testing';
+
+describe('MigrationController', () => {
+  let controller: MigrationController;
+
+  beforeEach(async () => {
+    const module: TestingModule = await Test.createTestingModule({
+      controllers: [MigrationController],
+    }).compile();
+
+    controller = module.get<MigrationController>(MigrationController);
+  });
+
+  it('should be defined', () => {
+    expect(controller).toBeDefined();
+  });
+});

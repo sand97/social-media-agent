@@ -1,4 +1,5 @@
 import { HealthModule } from '@app/health/health.module';
+import { MigrationModule } from '@app/migration/migration.module';
 import { BullModule } from '@nestjs/bull';
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
@@ -36,6 +37,7 @@ import { WebhookModule } from './webhook/webhook.module';
         },
       }),
     }),
+    MigrationModule,
     ScheduleModule.forRoot(),
     PrismaModule,
     SecurityModule,
