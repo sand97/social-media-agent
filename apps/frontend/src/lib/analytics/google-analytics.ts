@@ -17,7 +17,7 @@ type PageLocationLike = {
 
 declare global {
   interface Window {
-    dataLayer: unknown[]
+    dataLayer?: unknown[]
     gtag?: (...args: unknown[]) => void
   }
 }
@@ -57,11 +57,11 @@ function ensureGtagFunction() {
     return null
   }
 
-  window.dataLayer = window.dataLayer || []
+  const dataLayer = (window.dataLayer ??= [])
 
   if (!window.gtag) {
-    window.gtag = function gtag(...args: unknown[]) {
-      window.dataLayer.push(args)
+    window.gtag = function gtag(..._args: unknown[]) {
+      dataLayer.push(arguments)
     }
   }
 

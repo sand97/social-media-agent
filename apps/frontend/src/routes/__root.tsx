@@ -9,7 +9,8 @@ import ConfigProvider from 'antd/es/config-provider'
 import frFR from 'antd/es/locale/fr_FR'
 import dayjs from 'dayjs'
 import 'dayjs/locale/fr'
-import { useEffect, useRef, type ReactNode } from 'react'
+import type { ReactNode } from 'react'
+import { useEffect, useRef } from 'react'
 
 import type { QueryClient } from '@tanstack/react-query'
 
