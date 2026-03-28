@@ -9,6 +9,7 @@
     "dev": "dotenv -e .env.local -- sh -c \"NODE_OPTIONS='--import ./instrument.server.mjs' vite dev --port 5173\"",
     "build": "vite build && mkdir -p .output/server && cp instrument.server.mjs .output/server",
     "build:cloudflare": "pnpm run build",
+    "build:pages": "pnpm run build && bash ./scripts/prepare-cloudflare-pages-build.sh",
     "preview": "vite preview",
     "test": "vitest run",
     "start": "node --import ./.output/server/instrument.server.mjs .output/server/index.mjs",
@@ -16,7 +17,7 @@
     "type-check": "tsc --noEmit",
     "format": "prettier --check .",
     "check": "prettier --write . && eslint --fix",
-    "deploy": "pnpm run build && wrangler deploy"
+    "deploy": "pnpm run build:pages && wrangler --cwd .cloudflare-pages pages deploy . --project-name=chat-bedones"
   },
   "dependencies": {
     "@ant-design/icons": "^6.1.1",

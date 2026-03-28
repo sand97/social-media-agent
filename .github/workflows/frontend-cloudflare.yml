@@ -64,17 +64,17 @@ jobs:
             | "\(.key)=\(.value|tostring)"
           ' >> "${GITHUB_ENV}"
 
-      - name: Build frontend
+      - name: Build frontend for Cloudflare Pages
         working-directory: apps/frontend
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
-        run: pnpm build
+        run: pnpm build:pages
 
-      - name: Deploy frontend worker to Cloudflare
+      - name: Deploy frontend to Cloudflare Pages
         if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          workingDirectory: apps/frontend
-          command: deploy --config dist/server/wrangler.json
+          workingDirectory: apps/frontend/.cloudflare-pages
+          command: pages deploy . --project-name=chat-bedones --branch=${{ github.ref_name }}
