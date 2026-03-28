@@ -2,8 +2,9 @@
 // Local database for agent-specific data (memories, checkpoints)
 
 generator client {
-  provider = "prisma-client-js"
-  output   = "../src/generated/client"
+  provider      = "prisma-client-js"
+  output        = "../src/generated/client"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
 }
 
 datasource db {
@@ -16,26 +17,26 @@ datasource db {
 // ============================================
 
 enum MemoryType {
-  PREFERENCE  // Préférences client (couleur préférée, taille, etc.)
-  VIP_NOTE    // Note importante sur un client VIP
-  ORDER       // Information de commande
-  CONTEXT     // Contexte de conversation
+  PREFERENCE // Préférences client (couleur préférée, taille, etc.)
+  VIP_NOTE // Note importante sur un client VIP
+  ORDER // Information de commande
+  CONTEXT // Contexte de conversation
 }
 
 enum IntentionType {
-  FOLLOW_UP           // Relancer le client
-  ORDER_REMINDER      // Rappeler une commande
-  PAYMENT_REMINDER    // Rappeler un paiement
-  DELIVERY_UPDATE     // Mise à jour de livraison
-  CUSTOM              // Intention personnalisée
+  FOLLOW_UP // Relancer le client
+  ORDER_REMINDER // Rappeler une commande
+  PAYMENT_REMINDER // Rappeler un paiement
+  DELIVERY_UPDATE // Mise à jour de livraison
+  CUSTOM // Intention personnalisée
 }
 
 enum IntentionStatus {
-  PENDING      // En attente d'exécution
-  TRIGGERED    // Déclenchée (en cours de vérification)
-  COMPLETED    // Complétée (action effectuée)
-  CANCELLED    // Annulée
-  OBSOLETE     // Devenue obsolète (contexte a changé)
+  PENDING // En attente d'exécution
+  TRIGGERED // Déclenchée (en cours de vérification)
+  COMPLETED // Complétée (action effectuée)
+  CANCELLED // Annulée
+  OBSOLETE // Devenue obsolète (contexte a changé)
 }
 
 enum MessageMetadataType {
@@ -52,15 +53,15 @@ enum MessageMetadataType {
 // Mémoires persistantes des conversations
 // Utilisé pour stocker des informations critiques qui doivent persister
 model ConversationMemory {
-  id        String     @id @default(cuid())
-  chatId    String     // WhatsApp chat ID (237xxx@c.us)
-  type      MemoryType
-  key       String     // Clé de la mémoire (ex: "color_preference", "vip_reason")
-  value     Json       // Valeur de la mémoire (structure flexible)
+  id     String     @id @default(cuid())
+  chatId String // WhatsApp chat ID (237xxx@c.us)
+  type   MemoryType
+  key    String // Clé de la mémoire (ex: "color_preference", "vip_reason")
+  value  Json // Valeur de la mémoire (structure flexible)
 
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
-  expiresAt DateTime?  // Expiration optionnelle
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  expiresAt DateTime? // Expiration optionnelle
 
   @@index([chatId])
   @@index([type])
@@ -71,39 +72,39 @@ model ConversationMemory {
 // Intentions - Représente une action future à vérifier/exécuter
 // Ex: "Relancer le client dans 2 jours si pas de réponse"
 model Intention {
-  id        String          @id @default(cuid())
-  chatId    String          // WhatsApp chat ID
-  type      IntentionType
-  status    IntentionStatus @default(PENDING)
+  id     String          @id @default(cuid())
+  chatId String // WhatsApp chat ID
+  type   IntentionType
+  status IntentionStatus @default(PENDING)
 
   // Description de l'intention
-  reason    String          @db.Text // Raison de l'intention (ex: "Client intéressé par produit X")
+  reason String @db.Text // Raison de l'intention (ex: "Client intéressé par produit X")
 
   // Conditions de vérification
-  conditionToCheck String   @db.Text // Condition à vérifier (ex: "Client a répondu", "Commande passée")
+  conditionToCheck String @db.Text // Condition à vérifier (ex: "Client a répondu", "Commande passée")
 
   // Actions
-  actionIfTrue     String?  @db.Text // Action si condition vraie (ex: "Remercier le client")
-  actionIfFalse    String   @db.Text // Action si condition fausse (ex: "Relancer le client")
+  actionIfTrue  String? @db.Text // Action si condition vraie (ex: "Remercier le client")
+  actionIfFalse String  @db.Text // Action si condition fausse (ex: "Relancer le client")
 
   // Timing
-  scheduledFor     DateTime // Quand vérifier l'intention
+  scheduledFor DateTime // Quand vérifier l'intention
 
   // Metadata
-  metadata         Json?    // Données additionnelles (productId, orderId, etc.)
+  metadata Json? // Données additionnelles (productId, orderId, etc.)
 
   // Relation
-  scheduledMessageId String? @unique
+  scheduledMessageId String?           @unique
   scheduledMessage   ScheduledMessage? @relation(fields: [scheduledMessageId], references: [id], onDelete: SetNull)
 
   // Audit
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-  triggeredAt      DateTime? // Quand l'intention a été déclenchée
-  completedAt      DateTime? // Quand l'intention a été complétée
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  triggeredAt DateTime? // Quand l'intention a été déclenchée
+  completedAt DateTime? // Quand l'intention a été complétée
 
   // Pour permettre l'annulation
-  createdByRole    String?  // "agent" ou "admin" (pour savoir qui peut annuler)
+  createdByRole String? // "agent" ou "admin" (pour savoir qui peut annuler)
 
   @@index([chatId])
   @@index([type])
@@ -115,21 +116,21 @@ model Intention {
 // Messages programmés (reminders)
 // Bull Queue va utiliser cette table pour persister les jobs
 model ScheduledMessage {
-  id           String     @id @default(cuid())
-  chatId       String     // WhatsApp chat ID
-  scheduledFor DateTime   // Quand envoyer le message
-  context      Json       // Contexte du message (reason, intentToCheck, actionIfFalse)
-  status       String     @default("pending") // "pending", "sent", "cancelled"
+  id           String   @id @default(cuid())
+  chatId       String // WhatsApp chat ID
+  scheduledFor DateTime // Quand envoyer le message
+  context      Json // Contexte du message (reason, intentToCheck, actionIfFalse)
+  status       String   @default("pending") // "pending", "sent", "cancelled"
 
   // Métadonnées
-  jobId        String?    // ID du job Bull Queue
+  jobId String? // ID du job Bull Queue
 
   // Relation avec Intention
-  intention    Intention?
+  intention Intention?
 
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
-  sentAt       DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  sentAt    DateTime?
 
   @@index([chatId])
   @@index([scheduledFor])
@@ -138,11 +139,11 @@ model ScheduledMessage {
 
 // Catalogue local avec embeddings pour recherche sémantique
 model CatalogProduct {
-  id          String   @id // WhatsApp product ID
-  name        String
-  description String?  @db.Text
-  price       Float?
-  currency    String?
+  id           String  @id // WhatsApp product ID
+  name         String
+  description  String? @db.Text
+  price        Float?
+  currency     String?
   availability String?
 
   // Collection info
@@ -150,9 +151,9 @@ model CatalogProduct {
   collectionName String?
 
   // Metadata WhatsApp
-  retailerId     String?
-  maxAvailable   Int?
-  imageHashes    String[] @default([])
+  retailerId   String?
+  maxAvailable Int?
+  imageHashes  String[] @default([])
 
   // Embedding for semantic search (stored as JSON array of floats)
   embedding Json? // Vector embedding for similarity search
@@ -171,9 +172,9 @@ model CatalogProduct {
 // Permet d'éviter les synchronisations inutiles via signature
 model CatalogSyncMetadata {
   id            String   @id @default("singleton") // Un seul record (singleton pattern)
-  quickHash     String   // Hash des IDs de produits uniquement (rapide)
-  fullHash      String   // Hash complet avec metadata (nom, prix, images, etc.)
-  productsCount Int      // Nombre de produits dans le catalogue
+  quickHash     String // Hash des IDs de produits uniquement (rapide)
+  fullHash      String // Hash complet avec metadata (nom, prix, images, etc.)
+  productsCount Int // Nombre de produits dans le catalogue
   lastSyncedAt  DateTime // Dernière synchronisation réussie
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
