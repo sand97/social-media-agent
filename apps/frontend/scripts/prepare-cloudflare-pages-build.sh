@@ -6,6 +6,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CLIENT_DIR="${ROOT_DIR}/dist/client"
 SERVER_DIR="${ROOT_DIR}/dist/server"
 OUTPUT_DIR="${ROOT_DIR}/.cloudflare-pages"
+COMPATIBILITY_DATE="2025-09-02"
 
 if [[ ! -d "${CLIENT_DIR}" ]]; then
   echo "Missing client build directory: ${CLIENT_DIR}" >&2
@@ -19,6 +20,7 @@ fi
 
 rm -rf "${OUTPUT_DIR}"
 mkdir -p "${OUTPUT_DIR}"
+rm -rf "${ROOT_DIR}/.wrangler/deploy"
 
 cp -R "${CLIENT_DIR}/." "${OUTPUT_DIR}/"
 
@@ -45,5 +47,14 @@ done < <(find "${SERVER_DIR}/assets" -type f | sort)
 sed 's|//# sourceMappingURL=index.js.map|//# sourceMappingURL=_worker.js.map|' \
   "${SERVER_DIR}/index.js" > "${OUTPUT_DIR}/_worker.js"
 cp "${SERVER_DIR}/index.js.map" "${OUTPUT_DIR}/_worker.js.map"
+
+cat > "${OUTPUT_DIR}/wrangler.json" <<EOF
+{
+  "name": "chat-bedones",
+  "pages_build_output_dir": ".",
+  "compatibility_date": "${COMPATIBILITY_DATE}",
+  "compatibility_flags": ["nodejs_compat"]
+}
+EOF
 
 echo "Prepared Cloudflare Pages bundle in ${OUTPUT_DIR}"
