@@ -1411,7 +1411,7 @@ export class StackPoolService implements OnModuleInit {
   private getDefaultLocation() {
     return this.configService.get<string>(
       'STACK_POOL_DEFAULT_LOCATION',
-      'fsn1',
+      'nbg1',
     );
   }
 

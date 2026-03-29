@@ -34,7 +34,7 @@ export class ProvisionStackCapacityDto extends InfraAdminTokenDto {
 
   @ApiPropertyOptional({
     description: 'Localisation Hetzner',
-    example: 'fsn1',
+    example: 'nbg1',
   })
   @IsOptional()
   @IsString()

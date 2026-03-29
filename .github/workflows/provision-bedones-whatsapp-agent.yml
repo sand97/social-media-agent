@@ -23,7 +23,7 @@ on:
       location:
         description: Hetzner location
         required: false
-        default: fsn1
+        default: nbg1
         type: string
       stacks_per_vps:
         description: Number of stacks to deploy

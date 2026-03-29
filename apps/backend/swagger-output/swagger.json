@@ -3933,7 +3933,7 @@
           "location": {
             "type": "string",
             "description": "Localisation Hetzner",
-            "example": "fsn1"
+            "example": "nbg1"
           },
           "phoneNumber": {
             "type": "string",
