@@ -48,6 +48,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Ensure runner dependencies
+        shell: bash
+        run: bash scripts/ensure-provisioning-runner-deps.sh
+
       - name: Release stack
         shell: bash
         env:

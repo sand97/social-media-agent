@@ -1,4 +1,5 @@
 import { VpsProvisioningStatus } from '@app/generated/client';
+import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
   IsDateString,
@@ -9,14 +10,15 @@ import {
   Max,
   Min,
 } from 'class-validator';
-import { ApiPropertyOptional } from '@nestjs/swagger';
+
+import { InfraAdminTokenDto } from './infra-admin-token.dto';
 
 export const INFRA_SERVER_CONTRACT_STATES = ['active', 'terminated'] as const;
 
 export type InfraServerContractState =
   (typeof INFRA_SERVER_CONTRACT_STATES)[number];
 
-export class ListProvisioningServersDto {
+export class ListProvisioningServersDto extends InfraAdminTokenDto {
   @ApiPropertyOptional({
     default: 1,
     description: 'Page à retourner',

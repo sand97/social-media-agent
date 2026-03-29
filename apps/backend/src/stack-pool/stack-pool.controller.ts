@@ -16,9 +16,10 @@ import {
 
 import PasswordGuard from '../guards/password.guard';
 
+import { InfraAdminTokenDto } from './dto/infra-admin-token.dto';
 import { ListProvisioningServersDto } from './dto/list-provisioning-servers.dto';
 import { ProvisionStackCapacityDto } from './dto/provision-stack-capacity.dto';
-import { ReleaseStackDto } from './dto/release-stack.dto';
+import { ReconcileStackPoolDto } from './dto/reconcile-stack-pool.dto';
 import { WorkflowCallbackDto } from './dto/workflow-callback.dto';
 import { StackPoolService } from './stack-pool.service';
 
@@ -32,7 +33,7 @@ export class InfraStackPoolController {
   @ApiOperation({
     summary: 'Résumé du stock de stacks et des workflows en cours',
   })
-  async getSummary() {
+  async getSummary(@Query() _: InfraAdminTokenDto) {
     return this.stackPoolService.getCapacitySummary();
   }
 
@@ -48,7 +49,7 @@ export class InfraStackPoolController {
   @ApiOperation({
     summary: 'Lister les VPS avec des stacks libres',
   })
-  async listFreeVps() {
+  async listFreeVps(@Query() _: InfraAdminTokenDto) {
     return this.stackPoolService.listVpsWithFreeStacks();
   }
 
@@ -68,20 +69,12 @@ export class InfraStackPoolController {
   @ApiOperation({
     summary: 'Vérifier et rétablir le stock minimal de stacks libres',
   })
-  async reconcile() {
+  async reconcile(@Body() _: ReconcileStackPoolDto) {
     await this.stackPoolService.reconcileCapacity({
       reason: 'manual-reconcile',
     });
 
     return this.stackPoolService.getCapacitySummary();
-  }
-
-  @Post('release')
-  @ApiOperation({
-    summary: 'Libérer une stack réservée ou résilier un VPS',
-  })
-  async release(@Body() dto: ReleaseStackDto) {
-    return this.stackPoolService.releaseCapacity(dto);
   }
 }
 

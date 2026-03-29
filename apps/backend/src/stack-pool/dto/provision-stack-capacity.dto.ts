@@ -1,7 +1,9 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { IsIn, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
 
-export class ProvisionStackCapacityDto {
+import { InfraAdminTokenDto } from './infra-admin-token.dto';
+
+export class ProvisionStackCapacityDto extends InfraAdminTokenDto {
   @ApiPropertyOptional({
     description: 'Nombre de VPS a provisionner',
     example: 2,

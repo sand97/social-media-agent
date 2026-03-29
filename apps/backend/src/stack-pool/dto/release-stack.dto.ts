@@ -1,7 +1,9 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { IsBoolean, IsOptional, IsString } from 'class-validator';
 
-export class ReleaseStackDto {
+import { InfraAdminTokenDto } from './infra-admin-token.dto';
+
+export class ReleaseStackDto extends InfraAdminTokenDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
@@ -25,7 +27,8 @@ export class ReleaseStackDto {
   reason?: string;
 
   @ApiPropertyOptional({
-    description: 'Supprimer aussi le VPS si plus aucune stack utile ne reste dessus',
+    description:
+      'Supprimer aussi le VPS si plus aucune stack utile ne reste dessus',
     default: false,
   })
   @IsOptional()

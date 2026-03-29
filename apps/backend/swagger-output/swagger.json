@@ -1601,7 +1601,18 @@
       "get": {
         "operationId": "InfraStackPoolController_getSummary",
         "summary": "Résumé du stock de stacks et des workflows en cours",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "token",
+            "required": false,
+            "in": "query",
+            "description": "Token d'administration infra attendu par PasswordGuard(INFRA_ADMIN_TOKEN)",
+            "schema": {
+              "example": "your-infra-admin-token",
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": ""
@@ -1617,6 +1628,16 @@
         "operationId": "InfraStackPoolController_listServers",
         "summary": "Lister les VPS provisionnés avec pagination et filtres",
         "parameters": [
+          {
+            "name": "token",
+            "required": false,
+            "in": "query",
+            "description": "Token d'administration infra attendu par PasswordGuard(INFRA_ADMIN_TOKEN)",
+            "schema": {
+              "example": "your-infra-admin-token",
+              "type": "string"
+            }
+          },
           {
             "name": "page",
             "required": false,
@@ -1707,7 +1728,18 @@
       "get": {
         "operationId": "InfraStackPoolController_listFreeVps",
         "summary": "Lister les VPS avec des stacks libres",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "token",
+            "required": false,
+            "in": "query",
+            "description": "Token d'administration infra attendu par PasswordGuard(INFRA_ADMIN_TOKEN)",
+            "schema": {
+              "example": "your-infra-admin-token",
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": ""
@@ -1748,27 +1780,12 @@
         "operationId": "InfraStackPoolController_reconcile",
         "summary": "Vérifier et rétablir le stock minimal de stacks libres",
         "parameters": [],
-        "responses": {
-          "201": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "infra-stack-pool"
-        ]
-      }
-    },
-    "/infra/stack-pool/release": {
-      "post": {
-        "operationId": "InfraStackPoolController_release",
-        "summary": "Libérer une stack réservée ou résilier un VPS",
-        "parameters": [],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ReleaseStackDto"
+                "$ref": "#/components/schemas/ReconcileStackPoolDto"
               }
             }
           }
@@ -3868,6 +3885,11 @@
       "ProvisionStackCapacityDto": {
         "type": "object",
         "properties": {
+          "token": {
+            "type": "string",
+            "description": "Token d'administration infra attendu par PasswordGuard(INFRA_ADMIN_TOKEN)",
+            "example": "your-infra-admin-token"
+          },
           "vpsCount": {
             "type": "number",
             "description": "Nombre de VPS a provisionner",
@@ -3912,26 +3934,13 @@
           }
         }
       },
-      "ReleaseStackDto": {
+      "ReconcileStackPoolDto": {
         "type": "object",
         "properties": {
-          "userId": {
-            "type": "string"
-          },
-          "agentId": {
-            "type": "string"
-          },
-          "serverId": {
-            "type": "string"
-          },
-          "reason": {
+          "token": {
             "type": "string",
-            "example": "manual-release"
-          },
-          "deleteServerWhenEmpty": {
-            "type": "boolean",
-            "description": "Supprimer aussi le VPS si plus aucune stack utile ne reste dessus",
-            "default": false
+            "description": "Token d'administration infra attendu par PasswordGuard(INFRA_ADMIN_TOKEN)",
+            "example": "your-infra-admin-token"
           }
         }
       },
