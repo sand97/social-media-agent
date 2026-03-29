@@ -3,6 +3,9 @@ FROM node:20-bookworm-slim AS build
 ENV PNPM_HOME="/pnpm" \
     PATH="$PNPM_HOME:$PATH"
 
+ARG SENTRY_AUTH_TOKEN
+ENV SENTRY_AUTH_TOKEN="${SENTRY_AUTH_TOKEN}"
+
 RUN corepack enable
 
 WORKDIR /app
