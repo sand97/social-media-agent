@@ -1,11 +1,9 @@
+# syntax=docker/dockerfile:1.7
 FROM node:20-bookworm-slim AS build
 
 ENV PNPM_HOME="/pnpm" \
     PATH="$PNPM_HOME:$PATH" \
     PUPPETEER_SKIP_DOWNLOAD=true
-
-ARG SENTRY_AUTH_TOKEN
-ENV SENTRY_AUTH_TOKEN="${SENTRY_AUTH_TOKEN}"
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends git ca-certificates \

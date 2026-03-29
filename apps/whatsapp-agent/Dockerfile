@@ -1,12 +1,13 @@
+# syntax=docker/dockerfile:1.7
 FROM node:20-bookworm-slim AS build
 
 ENV PNPM_HOME="/pnpm" \
     PATH="$PNPM_HOME:$PATH"
 
-ARG SENTRY_AUTH_TOKEN
-ENV SENTRY_AUTH_TOKEN="${SENTRY_AUTH_TOKEN}"
-
-RUN corepack enable
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates \
+    && rm -rf /var/lib/apt/lists/* \
+    && corepack enable
 
 WORKDIR /app
 
@@ -24,7 +25,8 @@ COPY apps/whatsapp-agent ./apps/whatsapp-agent
 RUN pnpm --filter @apps/common build
 RUN rm -rf apps/whatsapp-agent/src/generated/client
 RUN pnpm --filter whatsapp-agent prisma:generate
-RUN pnpm --filter whatsapp-agent build
+RUN --mount=type=secret,id=sentry_auth_token \
+    sh -lc 'if [ -f /run/secrets/sentry_auth_token ]; then export SENTRY_AUTH_TOKEN="$(cat /run/secrets/sentry_auth_token)"; fi; pnpm --filter whatsapp-agent build'
 
 FROM node:20-bookworm-slim AS runtime
 
