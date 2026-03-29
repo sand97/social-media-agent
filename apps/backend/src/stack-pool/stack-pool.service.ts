@@ -429,6 +429,10 @@ export class StackPoolService implements OnModuleInit, OnModuleDestroy {
 
     const runs: ProvisioningWorkflowRun[] = [];
 
+    this.logger.log(
+      `[provision_capacity] requested_vps_count=${requestedVpsCount} stacks_per_vps=${stacksPerVps} server_type=${serverType} location=${location} reason=${dto.reason ?? 'manual'}`,
+    );
+
     for (let index = 0; index < requestedVpsCount; index += 1) {
       const server = await this.prisma.provisioningServer.create({
         data: {
@@ -471,12 +475,20 @@ export class StackPoolService implements OnModuleInit, OnModuleDestroy {
       });
 
       try {
+        this.logger.log(
+          `[provision_capacity] creating_hetzner_server workflow=${workflow.id} server=${server.id} name=${server.name} type=${server.serverType} location=${server.location}`,
+        );
+
         const createResult = await this.hetznerCloudService.createServer({
           location: server.location ?? location,
           name: server.name,
           serverType: server.serverType,
           sshKeyNames: this.getHetznerSshKeyNames(),
         });
+
+        this.logger.log(
+          `[provision_capacity] hetzner_server_created workflow=${workflow.id} server=${server.id} provider_server_id=${createResult.server.id} action_id=${createResult.action.id} action_status=${createResult.action.status} action_progress=${createResult.action.progress ?? 0} public_ipv4=${createResult.server.public_net?.ipv4?.ip ?? 'pending'}`,
+        );
 
         workflow = await this.prisma.provisioningWorkflowRun.update({
           where: { id: workflow.id },
@@ -773,6 +785,10 @@ export class StackPoolService implements OnModuleInit, OnModuleDestroy {
       const actionResponse = await this.hetznerCloudService.getAction(actionId);
       const action = actionResponse.action;
 
+      this.logger.log(
+        `[server_initialization] workflow=${workflow.id} server=${workflow.server.id} provider_server_id=${providerServerId} action_id=${actionId} status=${action.status} progress=${action.progress ?? 0}`,
+      );
+
       if (action.status === 'running') {
         await this.updateServerInitializationProgress(
           workflow,
@@ -811,6 +827,18 @@ export class StackPoolService implements OnModuleInit, OnModuleDestroy {
             providerServer.server_type?.name || workflow.server.serverType,
         },
       });
+
+      this.logger.log(
+        `[server_initialization] provider_server_ready workflow=${workflow.id} server=${workflow.server.id} provider_server_id=${providerServer.id} public_ipv4=${updatedServer.publicIpv4 ?? 'missing'} private_ipv4=${updatedServer.privateIpv4 ?? 'missing'} location=${updatedServer.location ?? 'missing'}`,
+      );
+
+      if (!updatedServer.publicIpv4) {
+        this.logger.warn(
+          `[server_initialization] waiting_for_public_ipv4 workflow=${workflow.id} server=${workflow.server.id} provider_server_id=${providerServer.id}`,
+        );
+        await this.updateServerInitializationProgress(workflow, 100);
+        return;
+      }
 
       await this.dispatchInstallWorkflowForServer(workflow, updatedServer);
     } catch (error) {
@@ -857,24 +885,32 @@ export class StackPoolService implements OnModuleInit, OnModuleDestroy {
     server: ProvisioningServer,
   ) {
     const payload = this.asObject(workflow.payload) || {};
+    const installInputs = {
+      backend_callback_url: this.getWorkflowCallbackUrl(),
+      location: server.location ?? this.getDefaultLocation(),
+      private_ipv4: server.privateIpv4 ?? '',
+      provider_server_id: server.providerServerId ?? '',
+      public_ipv4: server.publicIpv4 ?? '',
+      requested_phone_number: workflow.requestedPhoneNumber ?? '',
+      server_name: server.name,
+      server_record_id: server.id,
+      server_type: server.serverType,
+      stacks_per_vps: String(
+        server.plannedStacksCount || workflow.requestedStacksPerVps,
+      ),
+      target_device_type: workflow.targetDeviceType ?? '',
+      workflow_record_id: workflow.id,
+    };
 
     try {
-      await this.dispatchGithubWorkflow(this.getProvisionWorkflowFile(), {
-        backend_callback_url: this.getWorkflowCallbackUrl(),
-        location: server.location ?? this.getDefaultLocation(),
-        private_ipv4: server.privateIpv4 ?? '',
-        provider_server_id: server.providerServerId ?? '',
-        public_ipv4: server.publicIpv4 ?? '',
-        requested_phone_number: workflow.requestedPhoneNumber ?? '',
-        server_name: server.name,
-        server_record_id: server.id,
-        server_type: server.serverType,
-        stacks_per_vps: String(
-          server.plannedStacksCount || workflow.requestedStacksPerVps,
-        ),
-        target_device_type: workflow.targetDeviceType ?? '',
-        workflow_record_id: workflow.id,
-      });
+      this.logger.log(
+        `[dispatch_install_workflow] workflow=${workflow.id} server=${server.id} workflow_file=${this.getProvisionWorkflowFile()} public_ipv4=${installInputs.public_ipv4} private_ipv4=${installInputs.private_ipv4 || 'missing'} callback_url=${installInputs.backend_callback_url}`,
+      );
+
+      await this.dispatchGithubWorkflow(
+        this.getProvisionWorkflowFile(),
+        installInputs,
+      );
 
       const updatedWorkflow = await this.prisma.provisioningWorkflowRun.update({
         where: { id: workflow.id },
@@ -1573,8 +1609,15 @@ export class StackPoolService implements OnModuleInit, OnModuleDestroy {
       );
     }
 
+    const apiUrl = `https://api.github.com/repos/${repository}/actions/workflows/${workflowFile}/dispatches`;
+    const loggedInputs = this.buildWorkflowDispatchLogInputs(inputs);
+
+    this.logger.log(
+      `[dispatch_github_workflow] workflow_file=${workflowFile} ref=${this.getGithubRef()} repository=${repository} url=${apiUrl} inputs=${JSON.stringify(loggedInputs)}`,
+    );
+
     const response = await fetch(
-      `https://api.github.com/repos/${repository}/actions/workflows/${workflowFile}/dispatches`,
+      apiUrl,
       {
         method: 'POST',
         headers: {
@@ -1592,10 +1635,37 @@ export class StackPoolService implements OnModuleInit, OnModuleDestroy {
 
     if (!response.ok) {
       const body = await response.text();
+      this.logger.error(
+        `[dispatch_github_workflow] workflow_file=${workflowFile} status=${response.status} url=${apiUrl} response=${body}`,
+      );
       throw new Error(
         `GitHub workflow dispatch failed (${response.status}): ${body}`,
       );
     }
+
+    this.logger.log(
+      `[dispatch_github_workflow] workflow_file=${workflowFile} status=${response.status} repository=${repository}`,
+    );
+  }
+
+  private buildWorkflowDispatchLogInputs(inputs: Record<string, string>) {
+    return Object.fromEntries(
+      Object.entries(inputs).map(([key, value]) => {
+        if (key === 'requested_phone_number' && value) {
+          return [key, this.maskPhoneNumber(value)];
+        }
+
+        return [key, value || '<empty>'];
+      }),
+    );
+  }
+
+  private maskPhoneNumber(value: string) {
+    if (value.length <= 4) {
+      return '****';
+    }
+
+    return `${value.slice(0, 3)}***${value.slice(-2)}`;
   }
 
   private findWorkflow(dto: WorkflowCallbackDto) {
