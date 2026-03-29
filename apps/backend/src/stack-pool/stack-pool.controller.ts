@@ -39,7 +39,7 @@ export class InfraStackPoolController {
 
   @Get('servers')
   @ApiOperation({
-    summary: 'Lister les VPS provisionnés avec pagination et filtres',
+    summary: 'Lister les VPS provisionnés avec pagination et filtres.',
   })
   async listServers(@Query() query: ListProvisioningServersDto) {
     return this.stackPoolService.listProvisioningServers(query);
