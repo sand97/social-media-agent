@@ -23,6 +23,10 @@ STEP_CA_PROVISIONER_PASSWORD="${STEP_CA_PROVISIONER_PASSWORD:?STEP_CA_PROVISIONE
 api_url="https://api.hetzner.cloud/v1"
 job_total=3
 
+log() {
+  printf '[%s] %s\n' "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" "$*"
+}
+
 sanitize_server_name() {
   local value="$1"
 
@@ -52,8 +56,12 @@ callback() {
   local stage="$2"
   local completed_jobs="$3"
   local extra_json="${4:-{}}"
+  local payload
+  local response_file
+  local http_status
 
-  jq -n \
+  payload="$(
+    jq -n \
     --arg workflowId "${WORKFLOW_RECORD_ID}" \
     --arg status "${status}" \
     --arg stage "${stage}" \
@@ -66,15 +74,31 @@ callback() {
       stage: $stage,
       totalJobs: $totalJobs,
       completedJobs: $completedJobs
-    } + $extra' \
-    | curl -fsS -X POST "${BACKEND_CALLBACK_URL}" \
-        -H "Content-Type: application/json" \
-        -H "x-infra-callback-secret: ${STACK_INFRA_CALLBACK_SECRET}" \
-        --data-binary @-
+    } + $extra'
+  )"
+  response_file="${runtime_dir}/callback-response-${stage}.json"
+
+  log "Callback stage=${stage} status=${status} progress=${completed_jobs}/${job_total} url=${BACKEND_CALLBACK_URL}"
+  log "Callback payload=${payload}"
+
+  http_status="$(
+    curl -sS -o "${response_file}" -w '%{http_code}' -X POST "${BACKEND_CALLBACK_URL}" \
+      -H "Content-Type: application/json" \
+      -H "x-infra-callback-secret: ${STACK_INFRA_CALLBACK_SECRET}" \
+      --data-binary "${payload}"
+  )"
+
+  log "Callback response status=${http_status} body=$(cat "${response_file}")"
+
+  if [[ ! "${http_status}" =~ ^2 ]]; then
+    log "Callback failed for stage=${stage} url=${BACKEND_CALLBACK_URL}"
+    exit 1
+  fi
 }
 
 poll_action() {
   local action_id="$1"
+  log "Polling Hetzner action id=${action_id} url=${api_url}/actions/${action_id}"
   while true; do
     local action_json
     action_json="$(
@@ -97,12 +121,13 @@ poll_action() {
     fi
 
     sleep 5
-    echo "Waiting for Hetzner action ${action_id} (${progress}%)"
+    log "Waiting for Hetzner action id=${action_id} progress=${progress}%"
   done
 }
 
 extract_server_info() {
   local server_id="$1"
+  log "Fetching Hetzner server details id=${server_id} url=${api_url}/servers/${server_id}"
   curl -fsS \
     -H "Authorization: Bearer ${HERZNET_API_KEY}" \
     "${api_url}/servers/${server_id}"
@@ -119,10 +144,12 @@ bootstrap_step_ca() {
   mkdir -p "${runtime_dir}"
   printf '%s' "${STEP_CA_PROVISIONER_PASSWORD}" > "${step_password_file}"
   chmod 600 "${step_password_file}"
+  log "Bootstrapping step-ca url=${STEP_CA_URL}"
   step ca bootstrap \
     --ca-url "${STEP_CA_URL}" \
     --fingerprint "${STEP_CA_FINGERPRINT}" \
     --force >/dev/null
+  log "step-ca bootstrap completed"
 }
 
 issue_certificate() {
@@ -131,6 +158,7 @@ issue_certificate() {
   local key_file="$3"
   shift 3
 
+  log "Issuing certificate subject=${subject} cert=${cert_file}"
   step ca certificate \
     "${subject}" \
     "${cert_file}" \
@@ -185,6 +213,7 @@ EOF
 prepare_runtime_assets() {
   local public_ipv4="$1"
 
+  log "Preparing runtime assets for server=${SERVER_NAME} public_ipv4=${public_ipv4}"
   mkdir -p "${certs_dir}/shared" "${caddy_dir}"
   cp "$(step path)/certs/root_ca.crt" "${certs_dir}/shared/root_ca.crt"
 
@@ -218,6 +247,7 @@ prepare_runtime_assets() {
       --not-after 720h
 
     write_caddyfile "${stack_name}" "${agent_port}" "${connector_port}"
+    log "Prepared stack assets stack=${stack_name} agent_port=${agent_port} connector_port=${connector_port}"
   done
 }
 
@@ -246,10 +276,16 @@ create_payload="$(
 )"
 
 require_step_cli
+log "Starting provisioning server_name=${SERVER_NAME} server_type=${SERVER_TYPE} location=${SERVER_LOCATION} stacks_per_vps=${STACKS_PER_VPS}"
+log "Using backend_callback_url=${BACKEND_CALLBACK_URL}"
+log "Using backend_internal_url=${BACKEND_INTERNAL_URL}"
+log "Using step_ca_url=${STEP_CA_URL}"
 bootstrap_step_ca
 
 callback "running" "SERVER_INITIALIZING" 0
 
+log "Creating Hetzner server name=${SERVER_NAME} type=${SERVER_TYPE} location=${SERVER_LOCATION}"
+log "Hetzner create payload=${create_payload}"
 create_response="$(
   curl -fsS -X POST \
     -H "Authorization: Bearer ${HERZNET_API_KEY}" \
@@ -258,14 +294,18 @@ create_response="$(
     -d "${create_payload}"
 )"
 
+log "Hetzner create response=${create_response}"
+
 server_id="$(echo "${create_response}" | jq -r '.server.id')"
 action_id="$(echo "${create_response}" | jq -r '.action.id')"
 
 poll_action "${action_id}"
 
 server_json="$(extract_server_info "${server_id}")"
+log "Hetzner server response=${server_json}"
 public_ipv4="$(echo "${server_json}" | jq -r '.server.public_net.ipv4.ip')"
 private_ipv4="$(echo "${server_json}" | jq -r '.server.private_net[0].ip // empty')"
+log "Server ready provider_server_id=${server_id} public_ipv4=${public_ipv4} private_ipv4=${private_ipv4}"
 
 callback "running" "SERVER_INITIALIZING" 1 "$(jq -n \
   --arg githubRunId "${GITHUB_RUN_ID:-}" \
@@ -287,14 +327,19 @@ STACKS_PER_VPS="${STACKS_PER_VPS}" \
 BACKEND_INTERNAL_URL="${BACKEND_INTERNAL_URL}" \
 bash .github/scripts/render-bedones-whatsapp-agent-stack.sh
 
+log "Rendered stack file path=${rendered_stack_file}"
+
 callback "running" "STACK_INSTALLING" 1
 
 mkdir -p "${HOME}/.ssh"
 ssh_opts=(-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null)
 
+log "Preparing remote workspace on root@${public_ipv4}"
 ssh "${ssh_opts[@]}" "root@${public_ipv4}" "mkdir -p /root/bedones-whatsapp-agent"
+log "Uploading runtime assets to root@${public_ipv4}:/root/bedones-whatsapp-agent/"
 scp "${ssh_opts[@]}" -r "${runtime_dir}/." "root@${public_ipv4}:/root/bedones-whatsapp-agent/"
 
+log "Starting remote docker compose stack on root@${public_ipv4}"
 ssh "${ssh_opts[@]}" "root@${public_ipv4}" "
   set -euo pipefail
   if command -v docker >/dev/null 2>&1; then
@@ -315,21 +360,26 @@ for slot in $(seq 1 "${STACKS_PER_VPS}"); do
   agent_port=$((3100 + slot))
   connector_port=$((3200 + slot))
 
+  log "Healthcheck agent stack=${stack_name} url=https://${public_ipv4}:${agent_port}/health"
   ssh "${ssh_opts[@]}" "root@${public_ipv4}" "\
     curl -fsS --cacert /root/bedones-whatsapp-agent/certs/shared/root_ca.crt \
       --cert /root/bedones-whatsapp-agent/certs/${stack_name}_agent/client.crt \
       --key /root/bedones-whatsapp-agent/certs/${stack_name}_agent/client.key \
       https://${public_ipv4}:${agent_port}/health >/dev/null"
+  log "Healthcheck connector stack=${stack_name} url=https://${public_ipv4}:${connector_port}/health"
   ssh "${ssh_opts[@]}" "root@${public_ipv4}" "\
     curl -fsS --cacert /root/bedones-whatsapp-agent/certs/shared/root_ca.crt \
       --cert /root/bedones-whatsapp-agent/certs/${stack_name}_connector/client.crt \
       --key /root/bedones-whatsapp-agent/certs/${stack_name}_connector/client.key \
       https://${public_ipv4}:${connector_port}/health >/dev/null"
 
+  log "Stack healthy stack=${stack_name} agent_port=${agent_port} connector_port=${connector_port}"
+
   stack_entries+=("{\"stackSlot\":${slot},\"stackLabel\":\"${stack_label}\",\"agentPort\":${agent_port},\"connectorPort\":${connector_port},\"privateIpv4\":\"${private_ipv4}\",\"publicBaseUrl\":\"https://${public_ipv4}\"}")
 done
 
 printf '[%s]\n' "$(IFS=,; echo "${stack_entries[*]}")" > "${stacks_json_file}"
+log "Provisioning completed successfully for server=${SERVER_NAME}"
 
 callback "success" "STACK_STARTING" 3 "$(jq -n \
   --arg githubRunId "${GITHUB_RUN_ID:-}" \

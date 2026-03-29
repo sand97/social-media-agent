@@ -169,6 +169,7 @@ jobs:
           images: ghcr.io/${{ steps.vars.outputs.owner }}/${{ matrix.image }}
           tags: |
             type=sha,prefix=sha-
+            type=raw,value=git-${{ github.sha }},enable=${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
             type=raw,value=main,enable={{is_default_branch}}
 
       - name: Build and optionally push image
@@ -200,6 +201,7 @@ jobs:
         run: |
           echo "owner=${GITHUB_REPOSITORY_OWNER,,}" >> "${GITHUB_OUTPUT}"
           echo "image=bedones-whatsapp-backend" >> "${GITHUB_OUTPUT}"
+          echo "tag=git-${GITHUB_SHA}" >> "${GITHUB_OUTPUT}"
           echo "stack=bedones-whatsapp-stack" >> "${GITHUB_OUTPUT}"
           echo "service=backend" >> "${GITHUB_OUTPUT}"
 
@@ -212,10 +214,11 @@ jobs:
           script: |
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
-            docker pull ghcr.io/${{ steps.vars.outputs.owner }}/${{ steps.vars.outputs.image }}:main
+            docker pull ghcr.io/${{ steps.vars.outputs.owner }}/${{ steps.vars.outputs.image }}:${{ steps.vars.outputs.tag }}
 
             docker service update \
-              --image ghcr.io/${{ steps.vars.outputs.owner }}/${{ steps.vars.outputs.image }}:main \
+              --force \
+              --image ghcr.io/${{ steps.vars.outputs.owner }}/${{ steps.vars.outputs.image }}:${{ steps.vars.outputs.tag }} \
               --with-registry-auth \
               ${{ steps.vars.outputs.stack }}_${{ steps.vars.outputs.service }}
 

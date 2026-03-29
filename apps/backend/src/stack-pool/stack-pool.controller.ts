@@ -1,8 +1,10 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Headers,
+  HttpCode,
   Post,
   Query,
   UseGuards,
@@ -20,6 +22,7 @@ import { InfraAdminTokenDto } from './dto/infra-admin-token.dto';
 import { ListProvisioningServersDto } from './dto/list-provisioning-servers.dto';
 import { ProvisionStackCapacityDto } from './dto/provision-stack-capacity.dto';
 import { ReconcileStackPoolDto } from './dto/reconcile-stack-pool.dto';
+import { ReleaseStackDto } from './dto/release-stack.dto';
 import { WorkflowCallbackDto } from './dto/workflow-callback.dto';
 import { StackPoolService } from './stack-pool.service';
 
@@ -76,6 +79,14 @@ export class InfraStackPoolController {
 
     return this.stackPoolService.getCapacitySummary();
   }
+
+  @Delete('release')
+  @ApiOperation({
+    summary: 'Décommissionner une stack ou déclencher la release d’un VPS',
+  })
+  async release(@Body() dto: ReleaseStackDto) {
+    return this.stackPoolService.releaseCapacity(dto);
+  }
 }
 
 @Controller('stack-pool')
@@ -84,6 +95,7 @@ export class StackPoolWorkflowsController {
 
   @Post('workflows/callback')
   @ApiExcludeEndpoint()
+  @HttpCode(200)
   @ApiOperation({
     summary: 'Callback interne appelé par les workflows GitHub',
   })

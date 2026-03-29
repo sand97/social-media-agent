@@ -1626,7 +1626,7 @@
     "/infra/stack-pool/servers": {
       "get": {
         "operationId": "InfraStackPoolController_listServers",
-        "summary": "Lister les VPS provisionnés avec pagination et filtres",
+        "summary": "Lister les VPS provisionnés avec pagination et filtres.",
         "parameters": [
           {
             "name": "token",
@@ -1792,6 +1792,31 @@
         },
         "responses": {
           "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "infra-stack-pool"
+        ]
+      }
+    },
+    "/infra/stack-pool/release": {
+      "delete": {
+        "operationId": "InfraStackPoolController_release",
+        "summary": "Décommissionner une stack ou déclencher la release d’un VPS",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReleaseStackDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
             "description": ""
           }
         },
@@ -3941,6 +3966,34 @@
             "type": "string",
             "description": "Token d'administration infra attendu par PasswordGuard(INFRA_ADMIN_TOKEN)",
             "example": "your-infra-admin-token"
+          }
+        }
+      },
+      "ReleaseStackDto": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "description": "Token d'administration infra attendu par PasswordGuard(INFRA_ADMIN_TOKEN)",
+            "example": "your-infra-admin-token"
+          },
+          "userId": {
+            "type": "string"
+          },
+          "agentId": {
+            "type": "string"
+          },
+          "serverId": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string",
+            "example": "manual-release"
+          },
+          "deleteServerWhenEmpty": {
+            "type": "boolean",
+            "description": "Supprimer aussi le VPS si plus aucune stack utile ne reste dessus",
+            "default": false
           }
         }
       },
