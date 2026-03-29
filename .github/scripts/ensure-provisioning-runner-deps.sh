@@ -29,7 +29,14 @@ fi
 apt_runner=(apt-get)
 if [[ "$(id -u)" -ne 0 ]]; then
   if command -v sudo >/dev/null 2>&1; then
-    apt_runner=(sudo apt-get)
+    if sudo -n true >/dev/null 2>&1; then
+      apt_runner=(sudo -n apt-get)
+    else
+      echo "Missing required commands: ${missing[*]}" >&2
+      echo "Runner user cannot use sudo non-interactively." >&2
+      echo "Install jq, curl, openssh-client, ca-certificates and step-cli on the runner, or grant passwordless sudo." >&2
+      exit 1
+    fi
   else
     echo "Missing required commands: ${missing[*]}" >&2
     echo "Runner is not root and sudo is not available." >&2

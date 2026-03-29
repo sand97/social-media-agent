@@ -48,10 +48,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Ensure runner dependencies
-        shell: bash
-        run: bash scripts/ensure-provisioning-runner-deps.sh
-
       - name: Release stack
         shell: bash
         env:
@@ -64,4 +60,4 @@ jobs:
           SERVER_RECORD_ID: ${{ inputs.server_record_id }}
           STACK_INFRA_CALLBACK_SECRET: ${{ secrets.STACK_INFRA_CALLBACK_SECRET }}
           WORKFLOW_RECORD_ID: ${{ inputs.workflow_record_id }}
-        run: bash scripts/release-bedones-whatsapp-agent-vps.sh
+        run: bash .github/scripts/release-bedones-whatsapp-agent-vps.sh

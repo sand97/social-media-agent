@@ -268,7 +268,7 @@ OUTPUT_FILE="${rendered_stack_file}" \
 WHATSAPP_AUTOSTART_TARGET_SLOT="${WHATSAPP_AUTOSTART_TARGET_SLOT}" \
 STACKS_PER_VPS="${STACKS_PER_VPS}" \
 BACKEND_INTERNAL_URL="${BACKEND_INTERNAL_URL}" \
-bash scripts/render-bedones-whatsapp-agent-stack.sh
+bash .github/scripts/render-bedones-whatsapp-agent-stack.sh
 
 callback "running" "STACK_INSTALLING" 1
 

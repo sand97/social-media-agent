@@ -59,10 +59,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Ensure runner dependencies
-        shell: bash
-        run: bash scripts/ensure-provisioning-runner-deps.sh --with-step
-
       - name: Provision VPS and deploy stack
         shell: bash
         env:
@@ -104,4 +100,4 @@ jobs:
           WORKFLOW_RECORD_ID: ${{ inputs.workflow_record_id }}
           XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
           XAI_MODEL: ${{ vars.XAI_MODEL }}
-        run: bash scripts/provision-bedones-whatsapp-agent-vps.sh
+        run: bash .github/scripts/provision-bedones-whatsapp-agent-vps.sh
