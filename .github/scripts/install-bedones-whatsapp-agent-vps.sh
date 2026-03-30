@@ -285,6 +285,19 @@ else
   ssh_opts=(-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null)
 fi
 
+log "Waiting for SSH to become available on root@${PUBLIC_IPV4}"
+ssh_attempts=0
+until ssh "${ssh_opts[@]}" -o ConnectTimeout=5 "root@${PUBLIC_IPV4}" "true" 2>/dev/null; do
+  ssh_attempts=$((ssh_attempts + 1))
+  if [ "${ssh_attempts}" -ge 30 ]; then
+    log "SSH not available after ${ssh_attempts} attempts"
+    exit 1
+  fi
+  log "SSH not ready yet, attempt ${ssh_attempts}/30..."
+  sleep 10
+done
+log "SSH is available on root@${PUBLIC_IPV4}"
+
 log "Preparing remote workspace on root@${PUBLIC_IPV4}"
 ssh "${ssh_opts[@]}" "root@${PUBLIC_IPV4}" "mkdir -p /root/bedones-whatsapp-agent"
 log "Uploading runtime assets to root@${PUBLIC_IPV4}:/root/bedones-whatsapp-agent/"
