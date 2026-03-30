@@ -266,7 +266,20 @@ log "Using backend_internal_url=${BACKEND_INTERNAL_URL}"
 log "Using step_ca_url=${STEP_CA_URL}"
 bootstrap_step_ca
 
-callback "running" "STACK_INSTALLING" 1 "$(build_server_metadata)"
+# Debug: trace the first jq call to find the parse error
+log "DEBUG: build_server_metadata args: PROVIDER_SERVER_ID=${PROVIDER_SERVER_ID} PUBLIC_IPV4=${PUBLIC_IPV4} PRIVATE_IPV4=${PRIVATE_IPV4} SERVER_NAME=${SERVER_NAME} SERVER_TYPE=${SERVER_TYPE} SERVER_LOCATION=${SERVER_LOCATION}"
+server_meta_output="$(build_server_metadata 2>&1)" || {
+  log "DEBUG: build_server_metadata FAILED (exit=$?) output=${server_meta_output}"
+  # Try a minimal jq to isolate the issue
+  log "DEBUG: minimal jq test: $(jq -c -n --arg x 'test' '{"x":$x}' 2>&1)"
+  log "DEBUG: jq with 6 args: $(jq -c -n --arg a '1' --arg b '2' --arg c '3' --arg d '4' --arg e '5' --arg f '6' '{"a":$a,"b":$b,"c":$c,"d":$d,"e":$e,"f":$f}' 2>&1)"
+  log "DEBUG: checking env for JQ vars: $(env | grep -i jq || echo 'none')"
+  log "DEBUG: checking step config: $(cat "${HOME}/.step/config/defaults.json" 2>&1 | head -5)"
+  exit 4
+}
+log "DEBUG: build_server_metadata OK: ${server_meta_output}"
+
+callback "running" "STACK_INSTALLING" 1 "${server_meta_output}"
 
 prepare_runtime_assets
 
