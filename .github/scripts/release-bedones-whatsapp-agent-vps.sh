@@ -17,13 +17,13 @@ callback() {
   local stage="$2"
   local completed_jobs="$3"
 
-  jq -n \
+  jq -c -n \
     --arg workflowId "${WORKFLOW_RECORD_ID}" \
     --arg status "${status}" \
     --arg stage "${stage}" \
-    --argjson totalJobs 1 \
-    --argjson completedJobs "${completed_jobs}" \
-    '{ "workflowId": $workflowId, "status": $status, "stage": $stage, "totalJobs": $totalJobs, "completedJobs": $completedJobs }' \
+    --arg totalJobs "1" \
+    --arg completedJobs "${completed_jobs}" \
+    '{ "workflowId": $workflowId, "status": $status, "stage": $stage, "totalJobs": ($totalJobs | tonumber), "completedJobs": ($completedJobs | tonumber) }' \
     | curl -fsS -X POST "${BACKEND_CALLBACK_URL}" \
         -H "Content-Type: application/json" \
         -H "x-infra-callback-secret: ${STACK_INFRA_CALLBACK_SECRET}" \

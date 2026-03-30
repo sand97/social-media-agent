@@ -68,7 +68,7 @@ caddy_dir="${runtime_dir}/caddy"
 step_password_file="${runtime_dir}/step-provisioner-password.txt"
 
 build_server_metadata() {
-  jq -n \
+  jq -c -n \
     --arg providerServerId "${PROVIDER_SERVER_ID}" \
     --arg publicIpv4 "${PUBLIC_IPV4}" \
     --arg privateIpv4 "${PRIVATE_IPV4}" \
@@ -82,7 +82,7 @@ merge_json_objects() {
   local left_json="${1:-{}}"
   local right_json="${2:-{}}"
 
-  printf '%s\n%s\n' "${left_json}" "${right_json}" | jq -s '.[0] * .[1]'
+  printf '%s\n%s\n' "${left_json}" "${right_json}" | jq -c -s '.[0] * .[1]'
 }
 
 callback() {
@@ -98,13 +98,13 @@ callback() {
   mkdir -p "${runtime_dir}"
 
   base_payload="$(
-    jq -n \
+    jq -c -n \
       --arg workflowId "${WORKFLOW_RECORD_ID}" \
       --arg status "${status}" \
       --arg stage "${stage}" \
-      --argjson totalJobs "${job_total}" \
-      --argjson completedJobs "${completed_jobs}" \
-      '{ "workflowId": $workflowId, "status": $status, "stage": $stage, "totalJobs": $totalJobs, "completedJobs": $completedJobs }'
+      --arg totalJobs "${job_total}" \
+      --arg completedJobs "${completed_jobs}" \
+      '{ "workflowId": $workflowId, "status": $status, "stage": $stage, "totalJobs": ($totalJobs | tonumber), "completedJobs": ($completedJobs | tonumber) }'
   )"
   payload="$(merge_json_objects "${base_payload}" "${extra_json}")"
   response_file="${runtime_dir}/callback-response-${stage}.json"
@@ -246,6 +246,7 @@ prepare_runtime_assets() {
 
 require_step_cli
 log "Starting install workflow server_name=${SERVER_NAME} server_type=${SERVER_TYPE} location=${SERVER_LOCATION} public_ipv4=${PUBLIC_IPV4} stacks_per_vps=${STACKS_PER_VPS}"
+log "jq version: $(jq --version 2>&1 || echo 'unknown')"
 log "Using backend_callback_url=${BACKEND_CALLBACK_URL}"
 log "Using backend_internal_url=${BACKEND_INTERNAL_URL}"
 log "Using step_ca_url=${STEP_CA_URL}"
@@ -317,7 +318,7 @@ done
 printf '[%s]\n' "$(IFS=,; echo "${stack_entries[*]}")" > "${stacks_json_file}"
 log "Install workflow completed successfully for server=${SERVER_NAME}"
 
-callback "success" "STACK_STARTING" 3 "$(jq -n \
+callback "success" "STACK_STARTING" 3 "$(jq -c -n \
   --arg providerServerId "${PROVIDER_SERVER_ID}" \
   --arg publicIpv4 "${PUBLIC_IPV4}" \
   --arg privateIpv4 "${PRIVATE_IPV4}" \
