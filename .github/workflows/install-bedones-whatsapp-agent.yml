@@ -75,7 +75,7 @@ jobs:
 
       - name: Ensure runner dependencies
         shell: bash
-        run: bash .github/scripts/ensure-provisioning-runner-deps.sh --with-step
+        run: bash .github/scripts/ensure-provisioning-runner-deps.sh
 
       - name: Install stack on existing VPS
         id: install
@@ -110,10 +110,8 @@ jobs:
           SERVER_TYPE: ${{ inputs.server_type }}
           STACK_INFRA_CALLBACK_SECRET: ${{ secrets.STACK_INFRA_CALLBACK_SECRET }}
           STACKS_PER_VPS: ${{ inputs.stacks_per_vps }}
-          STEP_CA_FINGERPRINT: ${{ secrets.STEP_CA_FINGERPRINT }}
-          STEP_CA_PROVISIONER_NAME: ${{ secrets.STEP_CA_PROVISIONER_NAME }}
-          STEP_CA_PROVISIONER_PASSWORD: ${{ secrets.STEP_CA_PROVISIONER_PASSWORD }}
-          STEP_CA_URL: ${{ vars.STEP_CA_URL }}
+          CLOUDFLARE_ORIGIN_CERT: ${{ secrets.CLOUDFLARE_ORIGIN_CERTIFICATE }}
+          CLOUDFLARE_ORIGIN_KEY: ${{ secrets.CLOUDFLARE_PRIVATE_KEY }}
           WHATSAPP_AGENT_IMAGE: ${{ vars.WHATSAPP_AGENT_IMAGE }}
           WHATSAPP_AUTOSTART_TARGET_SLOT: 0
           WHATSAPP_CROPPER_IMAGE: ${{ vars.WHATSAPP_CROPPER_IMAGE }}

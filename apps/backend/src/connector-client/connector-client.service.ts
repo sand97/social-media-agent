@@ -3,11 +3,6 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios, { AxiosInstance } from 'axios';
 
-import {
-  createHttpsAgentFromConfig,
-  isHttpsUrl,
-} from '../common/utils/mtls.util';
-
 type ConnectorRequestOptions = {
   targetInstanceId?: string;
 };
@@ -16,26 +11,11 @@ type ConnectorRequestOptions = {
 export class ConnectorClientService {
   private readonly logger = new Logger(ConnectorClientService.name);
   private axiosInstances: Map<string, AxiosInstance> = new Map();
-  private httpsAgent?: ReturnType<typeof createHttpsAgentFromConfig>;
 
   constructor(
     private readonly configService: ConfigService,
     private readonly pageScriptService: PageScriptService,
   ) {}
-
-  private getHttpsAgent() {
-    if (this.httpsAgent !== undefined) {
-      return this.httpsAgent;
-    }
-
-    this.httpsAgent = createHttpsAgentFromConfig(this.configService, {
-      caEnv: 'STEP_CA_ROOT_CERT',
-      certEnv: 'BACKEND_MTLS_CLIENT_CERT',
-      keyEnv: 'BACKEND_MTLS_CLIENT_KEY',
-    });
-
-    return this.httpsAgent;
-  }
 
   private getAxiosInstance(connectorUrl: string): AxiosInstance {
     if (!this.axiosInstances.has(connectorUrl)) {
@@ -44,7 +24,6 @@ export class ConnectorClientService {
         headers: {
           'Content-Type': 'application/json',
         },
-        httpsAgent: isHttpsUrl(connectorUrl) ? this.getHttpsAgent() : undefined,
         timeout: 60000, // 60 seconds timeout
       });
 

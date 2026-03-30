@@ -6,6 +6,7 @@ import { Module, forwardRef } from '@nestjs/common';
 
 import { AuthModule } from '../auth/auth.module';
 
+import { CloudflareDnsService } from './cloudflare-dns.service';
 import { HetznerCloudService } from './hetzner-cloud.service';
 import { HETZNER_POLL_QUEUE } from './hetzner-poll.constants';
 import { HetznerPollProcessor } from './hetzner-poll.processor';
@@ -29,6 +30,7 @@ import { StackPoolService } from './stack-pool.service';
   controllers: [InfraStackPoolController, StackPoolWorkflowsController],
   providers: [
     StackPoolService,
+    CloudflareDnsService,
     HetznerCloudService,
     StackPoolHetznerPollSchedulerService,
     HetznerPollProcessor,

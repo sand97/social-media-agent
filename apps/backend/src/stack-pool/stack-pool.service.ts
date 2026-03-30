@@ -1,7 +1,6 @@
 import * as crypto from 'crypto';
 
 import { CryptoService } from '@app/common/crypto.service';
-import { createHttpsAgentFromConfig } from '@app/common/utils/mtls.util';
 import { ConnectorClientService } from '@app/connector-client';
 import {
   ConnectionStatus,
@@ -39,6 +38,7 @@ import {
 import { ProvisionStackCapacityDto } from './dto/provision-stack-capacity.dto';
 import { ReleaseStackDto } from './dto/release-stack.dto';
 import { WorkflowCallbackDto } from './dto/workflow-callback.dto';
+import { CloudflareDnsService } from './cloudflare-dns.service';
 import {
   HetznerCloudApiError,
   HetznerCloudService,
@@ -71,7 +71,6 @@ type ReconcileOptions = {
 export class StackPoolService implements OnModuleInit {
   private readonly logger = new Logger(StackPoolService.name);
   private reconcilePromise: Promise<void> | null = null;
-  private internalHttpsAgent?: ReturnType<typeof createHttpsAgentFromConfig>;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -79,25 +78,12 @@ export class StackPoolService implements OnModuleInit {
     private readonly cryptoService: CryptoService,
     private readonly connectorClientService: ConnectorClientService,
     private readonly hetznerCloudService: HetznerCloudService,
+    private readonly cloudflareDnsService: CloudflareDnsService,
     private readonly hetznerPollScheduler: StackPoolHetznerPollSchedulerService,
     @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
     @Inject(forwardRef(() => AuthGateway))
     private readonly authGateway: AuthGateway,
   ) {}
-
-  private getInternalHttpsAgent() {
-    if (this.internalHttpsAgent !== undefined) {
-      return this.internalHttpsAgent;
-    }
-
-    this.internalHttpsAgent = createHttpsAgentFromConfig(this.configService, {
-      caEnv: 'STEP_CA_ROOT_CERT',
-      certEnv: 'BACKEND_MTLS_CLIENT_CERT',
-      keyEnv: 'BACKEND_MTLS_CLIENT_KEY',
-    });
-
-    return this.internalHttpsAgent;
-  }
 
   async onModuleInit() {
     if (!this.shouldProvisionOnBoot()) {
@@ -704,7 +690,11 @@ export class StackPoolService implements OnModuleInit {
 
     if (server && dto.stacks?.length) {
       await this.upsertProvisionedStacks(server, dto.stacks);
-      await this.verifyProvisionedConnectivity(server, dto.stacks);
+
+      if (dto.status === 'success') {
+        await this.createCloudflareRecords(server, dto.stacks);
+        await this.verifyProvisionedConnectivity(server, dto.stacks);
+      }
     }
 
     if (server && workflow.type === ProvisioningWorkflowType.RELEASE_CAPACITY) {
@@ -1112,6 +1102,20 @@ export class StackPoolService implements OnModuleInit {
    * Called when a provisioning workflow fails.
    */
   private async cleanupFailedServer(server: ProvisioningServer): Promise<void> {
+    // Cleanup Cloudflare DNS records
+    if (server.cloudflareRecordIds?.length) {
+      for (const recordId of server.cloudflareRecordIds) {
+        try {
+          await this.cloudflareDnsService.deleteDnsRecord(recordId);
+        } catch (error) {
+          this.captureException('cleanup_cloudflare_dns', error, {
+            recordId,
+            serverId: server.id,
+          });
+        }
+      }
+    }
+
     if (!server.providerServerId) {
       return;
     }
@@ -1156,6 +1160,189 @@ export class StackPoolService implements OnModuleInit {
         serverId: server.id,
       });
     }
+  }
+
+  private async createCloudflareRecords(
+    server: ProvisioningServer,
+    stacks: NonNullable<WorkflowCallbackDto['stacks']>,
+  ) {
+    if (!server.publicIpv4) {
+      this.logger.warn(
+        `[create_cloudflare_records] no public IPv4 for server=${server.id}, skipping DNS`,
+      );
+      return;
+    }
+
+    const recordIds: string[] = [];
+
+    for (const stack of stacks) {
+      const subdomain = `vps-${server.name}-s${stack.stackSlot}`;
+      try {
+        const record = await this.cloudflareDnsService.createDnsRecord(
+          subdomain,
+          server.publicIpv4,
+        );
+        recordIds.push(record.id);
+
+        await this.prisma.whatsAppAgent.updateMany({
+          where: {
+            serverId: server.id,
+            stackSlot: stack.stackSlot,
+          },
+          data: {
+            subdomain: record.name,
+          },
+        });
+
+        this.logger.log(
+          `[create_cloudflare_records] created DNS record=${record.id} subdomain=${record.name} -> ${server.publicIpv4}`,
+        );
+      } catch (error) {
+        this.logger.error(
+          `[create_cloudflare_records] failed for subdomain=${subdomain} error=${this.stringifyError(error)}`,
+        );
+        this.captureException('create_cloudflare_records', error, {
+          serverId: server.id,
+          stackSlot: stack.stackSlot,
+          subdomain,
+        });
+      }
+    }
+
+    if (recordIds.length > 0) {
+      await this.prisma.provisioningServer.update({
+        where: { id: server.id },
+        data: {
+          cloudflareRecordIds: recordIds,
+        },
+      });
+    }
+  }
+
+  async cleanupZombieServers(): Promise<{
+    cleaned: number;
+    errors: number;
+    checked: number;
+  }> {
+    const zombieStatuses = [
+      VpsProvisioningStatus.PROVISIONING,
+      VpsProvisioningStatus.ERROR,
+    ];
+
+    const servers = await this.prisma.provisioningServer.findMany({
+      where: {
+        provisioningStatus: { in: zombieStatuses },
+      },
+    });
+
+    let cleaned = 0;
+    let errors = 0;
+
+    for (const server of servers) {
+      try {
+        let isZombie = false;
+
+        if (!server.providerServerId) {
+          isZombie = true;
+        } else {
+          try {
+            await this.hetznerCloudService.getServer(
+              Number.parseInt(server.providerServerId, 10),
+            );
+          } catch (error) {
+            if (this.isHetznerResourceMissing(error)) {
+              isZombie = true;
+            }
+          }
+        }
+
+        if (isZombie) {
+          await this.cleanupFailedServer(server);
+
+          await this.prisma.provisioningServer.update({
+            where: { id: server.id },
+            data: {
+              provisioningStatus: VpsProvisioningStatus.RELEASED,
+              releasedAt: new Date(),
+            },
+          });
+
+          cleaned++;
+          this.logger.log(
+            `[cleanup_zombies] cleaned server=${server.id} name=${server.name}`,
+          );
+        }
+      } catch (error) {
+        errors++;
+        this.captureException('cleanup_zombies', error, {
+          serverId: server.id,
+        });
+      }
+    }
+
+    return { checked: servers.length, cleaned, errors };
+  }
+
+  async testServerConnectivity(serverId: string) {
+    const server = await this.prisma.provisioningServer.findUnique({
+      where: { id: serverId },
+      include: { stacks: true },
+    });
+
+    if (!server) {
+      throw new Error(`Server ${serverId} not found`);
+    }
+
+    const results: Array<{
+      stackSlot: number;
+      subdomain: string | null;
+      agentHealth: boolean;
+      connectorHealth: boolean;
+      error?: string;
+    }> = [];
+
+    for (const stack of server.stacks) {
+      const result = {
+        stackSlot: stack.stackSlot ?? 0,
+        subdomain: stack.subdomain,
+        agentHealth: false,
+        connectorHealth: false,
+        error: undefined as string | undefined,
+      };
+
+      try {
+        const agentUrl = this.buildAgentUrl(stack);
+        const agentResp = await axios.get(`${agentUrl}/health`, {
+          timeout: 10000,
+        });
+        result.agentHealth = agentResp.status >= 200 && agentResp.status < 300;
+      } catch (error: any) {
+        result.error = `Agent: ${error.message}`;
+      }
+
+      try {
+        const connectorUrl = this.buildConnectorUrl(stack);
+        const connectorResp = await axios.get(`${connectorUrl}/health`, {
+          timeout: 10000,
+        });
+        result.connectorHealth =
+          connectorResp.status >= 200 && connectorResp.status < 300;
+      } catch (error: any) {
+        result.error =
+          (result.error ? result.error + '; ' : '') +
+          `Connector: ${error.message}`;
+      }
+
+      results.push(result);
+    }
+
+    return {
+      serverId: server.id,
+      serverName: server.name,
+      publicIpv4: server.publicIpv4,
+      provisioningStatus: server.provisioningStatus,
+      stacks: results,
+    };
   }
 
   private buildProvisioningServersWhere(
@@ -1598,27 +1785,23 @@ export class StackPoolService implements OnModuleInit {
     stacks: NonNullable<WorkflowCallbackDto['stacks']>,
   ) {
     for (const stack of stacks) {
-      const baseIp = stack.privateIpv4 || server.privateIpv4;
-      if (!baseIp) {
-        continue;
-      }
-
-      const publicIp = server.publicIpv4 || baseIp;
+      const subdomain = `vps-${server.name}-s${stack.stackSlot}.bedones.com`;
       const healthTargets = [
-        `https://${publicIp}:${stack.agentPort}/health`,
-        `https://${publicIp}:${stack.connectorPort}/health`,
+        `https://${subdomain}/agent/health`,
+        `https://${subdomain}/connector/health`,
       ];
 
       for (const target of healthTargets) {
         try {
-          const response = await axios.get(target, {
-            httpsAgent: this.getInternalHttpsAgent(),
-            timeout: 5000,
-          });
+          const response = await axios.get(target, { timeout: 10000 });
 
           if (response.status < 200 || response.status >= 300) {
             throw new Error(`Health check failed with ${response.status}`);
           }
+
+          this.logger.log(
+            `[verify_connectivity] target=${target} status=${response.status}`,
+          );
         } catch (error) {
           this.captureException('verify_stack_connectivity', error, {
             stackSlot: stack.stackSlot,
@@ -1701,8 +1884,19 @@ export class StackPoolService implements OnModuleInit {
   }
 
   private buildConnectorUrl(agent: WhatsAppAgent) {
+    if (agent.subdomain) {
+      return `https://${agent.subdomain}/connector`;
+    }
     const protocol = agent.ipAddress === 'localhost' ? 'http' : 'https';
     return `${protocol}://${agent.ipAddress}:${agent.connectorPort}`;
+  }
+
+  private buildAgentUrl(agent: WhatsAppAgent) {
+    if (agent.subdomain) {
+      return `https://${agent.subdomain}/agent`;
+    }
+    const protocol = agent.ipAddress === 'localhost' ? 'http' : 'https';
+    return `${protocol}://${agent.ipAddress}:${agent.port}`;
   }
 
   private getConnectorInstanceId(agent: WhatsAppAgent) {

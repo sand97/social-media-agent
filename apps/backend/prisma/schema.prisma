@@ -242,6 +242,7 @@ model WhatsAppAgent {
   metadata             Json? // { containerId, vpsProvider, region, etc. }
   stackSlot            Int?
   stackLabel           String?
+  subdomain            String?
   assignmentStatus     StackAssignmentStatus @default(FREE)
   reservationExpiresAt DateTime?
   allocatedAt          DateTime?
@@ -281,8 +282,9 @@ model ProvisioningServer {
   privateIpv4        String?
   privateSubnet      String?
   provisioningStatus VpsProvisioningStatus @default(REQUESTED)
-  plannedStacksCount Int                   @default(0)
-  metadata           Json?
+  plannedStacksCount  Int                   @default(0)
+  cloudflareRecordIds String[]              @default([])
+  metadata            Json?
 
   requestedAt DateTime  @default(now())
   readyAt     DateTime?

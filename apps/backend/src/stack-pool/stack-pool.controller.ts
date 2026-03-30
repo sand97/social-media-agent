@@ -82,10 +82,29 @@ export class InfraStackPoolController {
 
   @Delete('release')
   @ApiOperation({
-    summary: 'Décommissionner une stack ou déclencher la release d’un VPS',
+    summary: 'Decommissionner une stack ou declencher la release du VPS',
   })
   async release(@Body() dto: ReleaseStackDto) {
     return this.stackPoolService.releaseCapacity(dto);
+  }
+
+  @Get('test-connectivity')
+  @ApiOperation({
+    summary: 'Tester la connectivite avec les stacks du serveur',
+  })
+  async testConnectivity(
+    @Query('serverId') serverId: string,
+    @Query() _: InfraAdminTokenDto,
+  ) {
+    return this.stackPoolService.testServerConnectivity(serverId);
+  }
+
+  @Post('cleanup-zombies')
+  @ApiOperation({
+    summary: 'Nettoyer les serveurs zombies (PROVISIONING/ERROR sans VPS)',
+  })
+  async cleanupZombies(@Body() _: InfraAdminTokenDto) {
+    return this.stackPoolService.cleanupZombieServers();
   }
 }
 

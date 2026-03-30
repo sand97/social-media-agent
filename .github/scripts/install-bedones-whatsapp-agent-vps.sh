@@ -16,10 +16,8 @@ BACKEND_INTERNAL_URL="${BACKEND_INTERNAL_URL:?BACKEND_INTERNAL_URL is required}"
 STACK_INFRA_CALLBACK_SECRET="${STACK_INFRA_CALLBACK_SECRET:-}"
 WHATSAPP_AUTOSTART_TARGET_SLOT="${WHATSAPP_AUTOSTART_TARGET_SLOT:-0}"
 PRIVATE_NETWORK_NAME="bedones_private"
-STEP_CA_URL="${STEP_CA_URL:?STEP_CA_URL is required}"
-STEP_CA_FINGERPRINT="${STEP_CA_FINGERPRINT:?STEP_CA_FINGERPRINT is required}"
-STEP_CA_PROVISIONER_NAME="${STEP_CA_PROVISIONER_NAME:?STEP_CA_PROVISIONER_NAME is required}"
-STEP_CA_PROVISIONER_PASSWORD="${STEP_CA_PROVISIONER_PASSWORD:?STEP_CA_PROVISIONER_PASSWORD is required}"
+CLOUDFLARE_ORIGIN_CERT="${CLOUDFLARE_ORIGIN_CERT:?CLOUDFLARE_ORIGIN_CERT is required}"
+CLOUDFLARE_ORIGIN_KEY="${CLOUDFLARE_ORIGIN_KEY:?CLOUDFLARE_ORIGIN_KEY is required}"
 
 job_total=3
 current_stage="STACK_INSTALLING"
@@ -34,7 +32,7 @@ sanitize_server_name() {
 
   value="$(printf '%s' "${value}" \
     | tr '[:upper:]' '[:lower:]' \
-    | sed -e "s/[\"']//g" -e 's/[^a-z0-9-]/-/g' -e 's/-\\{2,\\}/-/g' -e 's/^-//' -e 's/-$//')"
+    | sed -e "s/[\"']//g" -e 's/[^a-z0-9-]/-/g' -e 's/-\{2,\}/-/g' -e 's/^-//' -e 's/-$//')"
 
   if [[ -z "${value}" ]]; then
     echo "SERVER_NAME is empty after sanitization" >&2
@@ -65,12 +63,8 @@ rendered_stack_file="${runtime_dir}/stack.yml"
 stacks_json_file="${runtime_dir}/stacks.json"
 certs_dir="${runtime_dir}/certs"
 caddy_dir="${runtime_dir}/caddy"
-step_password_file="${runtime_dir}/step-provisioner-password.txt"
 
-# Build a callback payload as a single jq call — no merge needed.
-# Usage: callback <status> <stage> <completed_jobs> [extra_jq_args...] [extra_jq_filter]
-# The base fields (workflowId, status, stage, totalJobs, completedJobs, server)
-# are always included. Any extra jq filter is merged via `* <extra>`.
+# Build a callback payload as a single jq call.
 callback() {
   local status="$1"
   local stage="$2"
@@ -96,7 +90,6 @@ callback() {
       --arg serverName "${SERVER_NAME}" \
       --arg serverType "${SERVER_TYPE}" \
       --arg location "${SERVER_LOCATION}" \
-      "$@" \
       '{
         "workflowId": $workflowId,
         "status": $status,
@@ -134,130 +127,76 @@ callback() {
   fi
 }
 
-require_step_cli() {
-  if ! command -v step >/dev/null 2>&1; then
-    echo "step CLI is required on the self-hosted runner." >&2
-    exit 1
-  fi
-}
+write_global_caddyfile() {
+  local output_file="${caddy_dir}/Caddyfile"
 
-bootstrap_step_ca() {
-  mkdir -p "${runtime_dir}"
-  printf '%s' "${STEP_CA_PROVISIONER_PASSWORD}" > "${step_password_file}"
-  chmod 600 "${step_password_file}"
-  log "Bootstrapping step-ca url=${STEP_CA_URL}"
-  step ca bootstrap \
-    --ca-url "${STEP_CA_URL}" \
-    --fingerprint "${STEP_CA_FINGERPRINT}" \
-    --force >/dev/null
-  log "step-ca bootstrap completed"
-}
-
-issue_certificate() {
-  local subject="$1"
-  local cert_file="$2"
-  local key_file="$3"
-  shift 3
-
-  log "Issuing certificate subject=${subject} cert=${cert_file}"
-  step ca certificate \
-    "${subject}" \
-    "${cert_file}" \
-    "${key_file}" \
-    --ca-url "${STEP_CA_URL}" \
-    --root "$(step path)/certs/root_ca.crt" \
-    --provisioner "${STEP_CA_PROVISIONER_NAME}" \
-    --provisioner-password-file "${step_password_file}" \
-    --force \
-    "$@" >/dev/null
-}
-
-write_caddyfile() {
-  local stack_name="$1"
-  local agent_port="$2"
-  local connector_port="$3"
-  local output_file="${caddy_dir}/${stack_name}.Caddyfile"
-
-  cat > "${output_file}" <<EOF
+  cat > "${output_file}" <<CADDYEOF
 {
   auto_https off
   admin off
 }
 
-:${agent_port} {
-  tls /certs/server.crt /certs/server.key {
-    client_auth {
-      mode require_and_verify
-      trust_pool file {
-        pem_file /certs/root_ca.crt
-      }
-    }
-  }
-
-  reverse_proxy ${stack_name}_agent:${agent_port}
-}
-
-:${connector_port} {
-  tls /certs/server.crt /certs/server.key {
-    client_auth {
-      mode require_and_verify
-      trust_pool file {
-        pem_file /certs/root_ca.crt
-      }
-    }
-  }
-
-  reverse_proxy ${stack_name}_connector:${connector_port}
-}
-EOF
-}
-
-prepare_runtime_assets() {
-  log "Preparing runtime assets for server=${SERVER_NAME} public_ipv4=${PUBLIC_IPV4}"
-  mkdir -p "${certs_dir}/shared" "${caddy_dir}"
-  cp "$(step path)/certs/root_ca.crt" "${certs_dir}/shared/root_ca.crt"
-
-  issue_certificate \
-    "node-server:${SERVER_NAME}" \
-    "${certs_dir}/shared/server.crt" \
-    "${certs_dir}/shared/server.key" \
-    --san "${PUBLIC_IPV4}" \
-    --not-after 24h
+CADDYEOF
 
   for slot in $(seq 1 "${STACKS_PER_VPS}"); do
     local stack_name="${SERVER_NAME}-s${slot}"
     local stack_label="${SERVER_NAME}-slot-${slot}"
     local agent_port=$((3100 + slot))
     local connector_port=$((3200 + slot))
+    local subdomain="vps-${SERVER_NAME}-s${slot}.bedones.com"
 
-    mkdir -p \
-      "${certs_dir}/${stack_name}_agent" \
-      "${certs_dir}/${stack_name}_connector"
+    cat >> "${output_file}" <<CADDYEOF
+${subdomain} {
+  tls /certs/origin.crt /certs/origin.key
 
-    issue_certificate \
-      "agent:${stack_label}" \
-      "${certs_dir}/${stack_name}_agent/client.crt" \
-      "${certs_dir}/${stack_name}_agent/client.key" \
-      --not-after 24h
+  handle_path /agent/* {
+    reverse_proxy ${stack_name}_agent:${agent_port}
+  }
 
-    issue_certificate \
-      "connector:${stack_label}" \
-      "${certs_dir}/${stack_name}_connector/client.crt" \
-      "${certs_dir}/${stack_name}_connector/client.key" \
-      --not-after 24h
+  handle_path /connector/* {
+    reverse_proxy ${stack_name}_connector:${connector_port}
+  }
 
-    write_caddyfile "${stack_name}" "${agent_port}" "${connector_port}"
+  handle /agent {
+    reverse_proxy ${stack_name}_agent:${agent_port}
+  }
+
+  handle /connector {
+    reverse_proxy ${stack_name}_connector:${connector_port}
+  }
+}
+
+CADDYEOF
+  done
+
+  log "Generated global Caddyfile at ${output_file}"
+}
+
+prepare_runtime_assets() {
+  log "Preparing runtime assets for server=${SERVER_NAME} public_ipv4=${PUBLIC_IPV4}"
+  mkdir -p "${certs_dir}" "${caddy_dir}"
+
+  # Deploy Cloudflare Origin Certificate (wildcard *.bedones.com)
+  printf '%s\n' "${CLOUDFLARE_ORIGIN_CERT}" > "${certs_dir}/origin.crt"
+  printf '%s\n' "${CLOUDFLARE_ORIGIN_KEY}" > "${certs_dir}/origin.key"
+  chmod 600 "${certs_dir}/origin.key"
+  log "Deployed Cloudflare Origin Certificate"
+
+  # Generate global Caddyfile with hostname-based routing
+  write_global_caddyfile
+
+  for slot in $(seq 1 "${STACKS_PER_VPS}"); do
+    local stack_name="${SERVER_NAME}-s${slot}"
+    local agent_port=$((3100 + slot))
+    local connector_port=$((3200 + slot))
     log "Prepared stack assets stack=${stack_name} agent_port=${agent_port} connector_port=${connector_port}"
   done
 }
 
-require_step_cli
 log "Starting install workflow server_name=${SERVER_NAME} server_type=${SERVER_TYPE} location=${SERVER_LOCATION} public_ipv4=${PUBLIC_IPV4} stacks_per_vps=${STACKS_PER_VPS}"
 log "jq version: $(jq --version 2>&1 || echo 'unknown')"
 log "Using backend_callback_url=${BACKEND_CALLBACK_URL}"
 log "Using backend_internal_url=${BACKEND_INTERNAL_URL}"
-log "Using step_ca_url=${STEP_CA_URL}"
-bootstrap_step_ca
 
 callback "running" "STACK_INSTALLING" 1
 
@@ -319,7 +258,7 @@ ssh "${ssh_opts[@]}" "root@${PUBLIC_IPV4}" "
   docker compose -f /root/bedones-whatsapp-agent/stack.yml up -d || {
     echo '=== DOCKER COMPOSE FAILED - Collecting container logs ==='
     docker compose -f /root/bedones-whatsapp-agent/stack.yml ps -a
-    echo '=== Agent container logs ==='
+    echo '=== Container logs ==='
     docker compose -f /root/bedones-whatsapp-agent/stack.yml logs --tail=100
     exit 1
   }
@@ -331,6 +270,7 @@ for slot in $(seq 1 "${STACKS_PER_VPS}"); do
   stack_label="${SERVER_NAME}-slot-${slot}"
   agent_port=$((3100 + slot))
   connector_port=$((3200 + slot))
+  subdomain="vps-${SERVER_NAME}-s${slot}.bedones.com"
 
   compose_file="/root/bedones-whatsapp-agent/stack.yml"
   compose_project="bedones-whatsapp-agent"
@@ -345,9 +285,9 @@ for slot in $(seq 1 "${STACKS_PER_VPS}"); do
     docker compose -f ${compose_file} -p ${compose_project} \
       exec -T ${stack_name}_connector curl -fsS http://127.0.0.1:${connector_port}/health >/dev/null"
 
-  log "Stack healthy stack=${stack_name} agent_port=${agent_port} connector_port=${connector_port}"
+  log "Stack healthy stack=${stack_name} agent_port=${agent_port} connector_port=${connector_port} subdomain=${subdomain}"
 
-  stack_entries+=("{\"stackSlot\":${slot},\"stackLabel\":\"${stack_label}\",\"agentPort\":${agent_port},\"connectorPort\":${connector_port},\"privateIpv4\":\"${PRIVATE_IPV4}\",\"publicBaseUrl\":\"https://${PUBLIC_IPV4}\"}")
+  stack_entries+=("{\"stackSlot\":${slot},\"stackLabel\":\"${stack_label}\",\"agentPort\":${agent_port},\"connectorPort\":${connector_port},\"privateIpv4\":\"${PRIVATE_IPV4}\",\"publicBaseUrl\":\"https://${subdomain}\"}")
 done
 
 printf '[%s]\n' "$(IFS=,; echo "${stack_entries[*]}")" > "${stacks_json_file}"

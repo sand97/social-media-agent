@@ -84,6 +84,43 @@ for slot in $(seq 1 "${STACKS_PER_VPS}"); do
   volume_lines+=("  ${stack_name}_connector:")
 done
 
+# Add shared Caddy edge service with hostname-based routing
+depends_lines=""
+for slot in $(seq 1 "${STACKS_PER_VPS}"); do
+  stack_name="${STACK_PREFIX}-s${slot}"
+  if [[ -n "${depends_lines}" ]]; then
+    depends_lines="${depends_lines}
+"
+  fi
+  depends_lines="${depends_lines}      ${stack_name}_agent:
+        condition: service_healthy
+      ${stack_name}_connector:
+        condition: service_healthy"
+done
+
+cat >> "${OUTPUT_FILE}" <<EDGE_EOF
+  shared_edge:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+${depends_lines}
+    ports:
+      - "443:443"
+      - "80:80"
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./certs/origin.crt:/certs/origin.crt:ro
+      - ./certs/origin.key:/certs/origin.key:ro
+    healthcheck:
+      test: ["CMD", "caddy", "validate", "--config", "/etc/caddy/Caddyfile"]
+      interval: 20s
+      timeout: 5s
+      retries: 10
+    networks:
+      - bedones_private
+
+EDGE_EOF
+
 cat >> "${OUTPUT_FILE}" <<EOF
 networks:
   bedones_private:

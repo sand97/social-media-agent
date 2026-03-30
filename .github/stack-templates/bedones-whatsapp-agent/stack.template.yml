@@ -73,7 +73,6 @@ __STACK_NAME___agent:
   environment:
     NODE_ENV: production
     PORT: "__AGENT_PORT__"
-    AGENT_TLS_PORT: "__AGENT_PORT__"
     DATABASE_URL: "postgresql://agent_user:agent_password@__STACK_NAME___postgres:5432/agent_db?schema=public"
     REDIS_HOST: __STACK_NAME___redis
     REDIS_PORT: "6379"
@@ -98,10 +97,7 @@ __STACK_NAME___agent:
     XAI_MODEL: "__XAI_MODEL__"
     PRIMARY_MODEL: "__PRIMARY_MODEL__"
     FALLBACK_MODEL: "__FALLBACK_MODEL__"
-    MTLS_CLIENT_CERT: /certs/client.crt
-    MTLS_CLIENT_KEY: /certs/client.key
     SERVICE_NAME: __STACK_LABEL__
-    STEP_CA_ROOT_CERT: /certs/root_ca.crt
   command:
     - /bin/sh
     - -c
@@ -117,10 +113,6 @@ __STACK_NAME___agent:
         sleep 5
       done
       exec node dist/main
-  volumes:
-    - ./certs/__STACK_NAME___agent/client.crt:/certs/client.crt:ro
-    - ./certs/__STACK_NAME___agent/client.key:/certs/client.key:ro
-    - ./certs/shared/root_ca.crt:/certs/root_ca.crt:ro
   healthcheck:
     test: ["CMD", "curl", "-fsS", "http://127.0.0.1:__AGENT_PORT__/health"]
     interval: 20s
@@ -140,48 +132,17 @@ __STACK_NAME___connector:
     PORT: "__CONNECTOR_PORT__"
     BACKEND_URL: "__BACKEND_URL__"
     BACKEND_INTERNAL_URL: "__BACKEND_INTERNAL_URL__"
-    CONNECTOR_TLS_PORT: "__CONNECTOR_PORT__"
     WEBHOOK_URLS: "__BACKEND_INTERNAL_URL__/webhooks/whatsapp/events,__BACKEND_INTERNAL_URL__/webhooks/whatsapp/connected"
     CONNECTOR_SECRET: "__CONNECTOR_SECRET__"
     CONNECTOR_INSTANCE_ID: "__STACK_LABEL__"
-    MTLS_CLIENT_CERT: /certs/client.crt
-    MTLS_CLIENT_KEY: /certs/client.key
     WHATSAPP_AUTOSTART: "__WHATSAPP_AUTOSTART__"
     WHATSAPP_SESSION_PATH: /data/sessions
     WHATSAPP_PUPPETEER_HEADLESS: "true"
     PUPPETEER_EXECUTABLE_PATH: "__PUPPETEER_EXECUTABLE_PATH__"
-    STEP_CA_ROOT_CERT: /certs/root_ca.crt
   volumes:
     - __STACK_NAME___connector:/data
-    - ./certs/__STACK_NAME___connector/client.crt:/certs/client.crt:ro
-    - ./certs/__STACK_NAME___connector/client.key:/certs/client.key:ro
-    - ./certs/shared/root_ca.crt:/certs/root_ca.crt:ro
   healthcheck:
     test: ["CMD", "curl", "-fsS", "http://127.0.0.1:__CONNECTOR_PORT__/health"]
-    interval: 20s
-    timeout: 5s
-    retries: 10
-  networks:
-    - bedones_private
-
-__STACK_NAME___edge:
-  image: caddy:2.9-alpine
-  restart: unless-stopped
-  depends_on:
-    __STACK_NAME___agent:
-      condition: service_healthy
-    __STACK_NAME___connector:
-      condition: service_healthy
-  ports:
-    - "__AGENT_PORT__:__AGENT_PORT__"
-    - "__CONNECTOR_PORT__:__CONNECTOR_PORT__"
-  volumes:
-    - ./caddy/__STACK_NAME__.Caddyfile:/etc/caddy/Caddyfile:ro
-    - ./certs/shared/server.crt:/certs/server.crt:ro
-    - ./certs/shared/server.key:/certs/server.key:ro
-    - ./certs/shared/root_ca.crt:/certs/root_ca.crt:ro
-  healthcheck:
-    test: ["CMD", "caddy", "validate", "--config", "/etc/caddy/Caddyfile"]
     interval: 20s
     timeout: 5s
     retries: 10
