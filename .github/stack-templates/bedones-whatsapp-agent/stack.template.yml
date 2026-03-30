@@ -104,7 +104,7 @@ __STACK_NAME___agent:
     STEP_CA_ROOT_CERT: /certs/root_ca.crt
   command:
     - /bin/sh
-    - -lc
+    - -c
     - |
       attempts=0
       until pnpm exec prisma migrate deploy; do
