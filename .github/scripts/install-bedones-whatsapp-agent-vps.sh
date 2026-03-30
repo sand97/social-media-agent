@@ -332,8 +332,8 @@ for slot in $(seq 1 "${STACKS_PER_VPS}"); do
   agent_port=$((3100 + slot))
   connector_port=$((3200 + slot))
 
-  local compose_file="/root/bedones-whatsapp-agent/stack.yml"
-  local compose_project="bedones-whatsapp-agent"
+  compose_file="/root/bedones-whatsapp-agent/stack.yml"
+  compose_project="bedones-whatsapp-agent"
 
   log "Healthcheck agent stack=${stack_name} via docker exec"
   ssh "${ssh_opts[@]}" "root@${PUBLIC_IPV4}" "\
