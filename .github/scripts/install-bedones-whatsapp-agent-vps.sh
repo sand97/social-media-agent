@@ -288,7 +288,7 @@ fi
 log "Preparing remote workspace on root@${PUBLIC_IPV4}"
 ssh "${ssh_opts[@]}" "root@${PUBLIC_IPV4}" "mkdir -p /root/bedones-whatsapp-agent"
 log "Uploading runtime assets to root@${PUBLIC_IPV4}:/root/bedones-whatsapp-agent/"
-scp -O "${ssh_opts[@]}" -r "${runtime_dir}/." "root@${PUBLIC_IPV4}:/root/bedones-whatsapp-agent/"
+tar -C "${runtime_dir}" -cf - . | ssh "${ssh_opts[@]}" "root@${PUBLIC_IPV4}" "tar -C /root/bedones-whatsapp-agent/ -xf -"
 
 current_stage="STACK_STARTING"
 current_completed_jobs=2
