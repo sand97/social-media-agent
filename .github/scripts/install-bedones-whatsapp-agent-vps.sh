@@ -316,7 +316,13 @@ ssh "${ssh_opts[@]}" "root@${PUBLIC_IPV4}" "
   if [ -n \"${GHCR_USERNAME:-}\" ] && [ -n \"${GHCR_READ_TOKEN:-}\" ]; then
     echo \"${GHCR_READ_TOKEN}\" | docker login ghcr.io -u \"${GHCR_USERNAME}\" --password-stdin
   fi
-  docker compose -f /root/bedones-whatsapp-agent/stack.yml up -d
+  docker compose -f /root/bedones-whatsapp-agent/stack.yml up -d || {
+    echo '=== DOCKER COMPOSE FAILED - Collecting container logs ==='
+    docker compose -f /root/bedones-whatsapp-agent/stack.yml ps -a
+    echo '=== Agent container logs ==='
+    docker compose -f /root/bedones-whatsapp-agent/stack.yml logs --tail=100
+    exit 1
+  }
 "
 
 stack_entries=()
