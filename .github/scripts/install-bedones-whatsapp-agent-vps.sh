@@ -75,7 +75,7 @@ build_server_metadata() {
     --arg name "${SERVER_NAME}" \
     --arg serverType "${SERVER_TYPE}" \
     --arg location "${SERVER_LOCATION}" \
-    '{ server: { providerServerId: $providerServerId, publicIpv4: $publicIpv4, privateIpv4: $privateIpv4, name: $name, serverType: $serverType, location: $location } }'
+    '{ "server": { "providerServerId": $providerServerId, "publicIpv4": $publicIpv4, "privateIpv4": $privateIpv4, "name": $name, "serverType": $serverType, "location": $location } }'
 }
 
 merge_json_objects() {
@@ -104,13 +104,7 @@ callback() {
       --arg stage "${stage}" \
       --argjson totalJobs "${job_total}" \
       --argjson completedJobs "${completed_jobs}" \
-      '{
-        workflowId: $workflowId,
-        status: $status,
-        stage: $stage,
-        totalJobs: $totalJobs,
-        completedJobs: $completedJobs
-      }'
+      '{ "workflowId": $workflowId, "status": $status, "stage": $stage, "totalJobs": $totalJobs, "completedJobs": $completedJobs }'
   )"
   payload="$(merge_json_objects "${base_payload}" "${extra_json}")"
   response_file="${runtime_dir}/callback-response-${stage}.json"
@@ -143,7 +137,7 @@ on_error() {
   error_json="$(
     jq -n \
       --arg errorMessage "Install workflow failed at stage ${current_stage}: ${command}" \
-      '{ errorMessage: $errorMessage }'
+      '{ "errorMessage": $errorMessage }'
   )"
   extra_json="$(merge_json_objects "$(build_server_metadata)" "${error_json}")"
   callback "failed" "${current_stage}" "${current_completed_jobs}" "${extra_json}" || true
@@ -349,4 +343,4 @@ callback "success" "STACK_STARTING" 3 "$(jq -n \
   --arg serverType "${SERVER_TYPE}" \
   --arg location "${SERVER_LOCATION}" \
   --slurpfile stacks "${stacks_json_file}" \
-  '{ server: { providerServerId: $providerServerId, publicIpv4: $publicIpv4, privateIpv4: $privateIpv4, name: $name, serverType: $serverType, location: $location }, stacks: $stacks[0] }')"
+  '{ "server": { "providerServerId": $providerServerId, "publicIpv4": $publicIpv4, "privateIpv4": $privateIpv4, "name": $name, "serverType": $serverType, "location": $location }, "stacks": $stacks[0] }')"

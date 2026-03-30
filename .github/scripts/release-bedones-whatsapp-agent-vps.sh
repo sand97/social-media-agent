@@ -23,7 +23,7 @@ callback() {
     --arg stage "${stage}" \
     --argjson totalJobs 1 \
     --argjson completedJobs "${completed_jobs}" \
-    '{ workflowId: $workflowId, status: $status, stage: $stage, totalJobs: $totalJobs, completedJobs: $completedJobs }' \
+    '{ "workflowId": $workflowId, "status": $status, "stage": $stage, "totalJobs": $totalJobs, "completedJobs": $completedJobs }' \
     | curl -fsS -X POST "${BACKEND_CALLBACK_URL}" \
         -H "Content-Type: application/json" \
         -H "x-infra-callback-secret: ${STACK_INFRA_CALLBACK_SECRET}" \

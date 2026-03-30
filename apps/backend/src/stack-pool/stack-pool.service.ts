@@ -43,6 +43,7 @@ import {
   HetznerCloudApiError,
   HetznerCloudService,
 } from './hetzner-cloud.service';
+import { StackPoolHetznerPollSchedulerService } from './stack-pool-hetzner-poll-scheduler.service';
 
 type DeviceType = 'mobile' | 'desktop';
 
@@ -78,6 +79,7 @@ export class StackPoolService implements OnModuleInit {
     private readonly cryptoService: CryptoService,
     private readonly connectorClientService: ConnectorClientService,
     private readonly hetznerCloudService: HetznerCloudService,
+    private readonly hetznerPollScheduler: StackPoolHetznerPollSchedulerService,
     @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
     @Inject(forwardRef(() => AuthGateway))
     private readonly authGateway: AuthGateway,
@@ -101,6 +103,9 @@ export class StackPoolService implements OnModuleInit {
     if (!this.shouldProvisionOnBoot()) {
       return;
     }
+
+    // Re-enqueue orphaned Hetzner initializations from before the restart
+    await this.recoverOrphanedHetznerPolls();
 
     setTimeout(() => {
       this.reconcileCapacity({
@@ -530,6 +535,9 @@ export class StackPoolService implements OnModuleInit {
             workflowId: workflow.id,
           });
         }
+
+        // Enqueue the first Hetzner poll for this workflow
+        await this.hetznerPollScheduler.enqueueHetznerPoll(workflow.id);
       } catch (error) {
         this.logger.error(
           `[provision_capacity] create_hetzner_server_failed workflow=${workflow.id} server=${server.id} error=${this.stringifyError(error)}`,
@@ -727,46 +735,109 @@ export class StackPoolService implements OnModuleInit {
     };
   }
 
-  async processPendingHetznerInitializations() {
+  /**
+   * Advance a single Hetzner initialization workflow.
+   * Returns `true` if the workflow is still pending (caller should re-poll).
+   * Returns `false` if it's done (success, error, or missing).
+   */
+  async advanceHetznerInitialization(workflowId: string): Promise<boolean> {
     try {
-      const workflows = await this.prisma.provisioningWorkflowRun.findMany({
-        where: {
-          currentStage: 'SERVER_INITIALIZING',
-          server: {
-            is: {
-              providerServerId: {
-                not: null,
-              },
-            },
-          },
-          status: {
-            in: [
-              ProvisioningWorkflowStatus.PENDING,
-              ProvisioningWorkflowStatus.RUNNING,
-              ProvisioningWorkflowStatus.DISPATCHED,
-            ],
-          },
-          type: ProvisioningWorkflowType.PROVISION_CAPACITY,
-        },
-        include: {
-          server: true,
-        },
+      const workflow = await this.prisma.provisioningWorkflowRun.findUnique({
+        where: { id: workflowId },
+        include: { server: true },
       });
 
-      if (workflows.length > 0) {
-        this.logger.log(
-          `[poll_pending_hetzner_actions] pending_hetzner_initializations=${workflows.length}`,
+      if (!workflow) {
+        this.logger.warn(
+          `[hetzner_init] workflow_not_found workflow=${workflowId}`,
         );
+        return false;
       }
 
-      for (const workflow of workflows) {
-        await this.advanceServerInitialization(workflow);
+      // Already past SERVER_INITIALIZING → nothing to poll
+      if (workflow.currentStage !== 'SERVER_INITIALIZING') {
+        return false;
       }
+
+      // Terminal states → done
+      if (
+        workflow.status === ProvisioningWorkflowStatus.SUCCEEDED ||
+        workflow.status === ProvisioningWorkflowStatus.FAILED ||
+        workflow.status === ProvisioningWorkflowStatus.CANCELED
+      ) {
+        return false;
+      }
+
+      if (!workflow.server?.providerServerId) {
+        this.logger.warn(
+          `[hetzner_init] no_provider_server_id workflow=${workflowId}`,
+        );
+        return false;
+      }
+
+      await this.advanceServerInitialization(workflow);
+
+      // Re-read to check if it moved past SERVER_INITIALIZING
+      const updated = await this.prisma.provisioningWorkflowRun.findUnique({
+        where: { id: workflowId },
+        select: { currentStage: true, status: true },
+      });
+
+      if (!updated) {
+        return false;
+      }
+
+      const isTerminal =
+        updated.status === ProvisioningWorkflowStatus.SUCCEEDED ||
+        updated.status === ProvisioningWorkflowStatus.FAILED ||
+        updated.status === ProvisioningWorkflowStatus.CANCELED;
+
+      return !isTerminal && updated.currentStage === 'SERVER_INITIALIZING';
     } catch (error) {
       this.logger.error(
-        `[poll_pending_hetzner_actions] failed error=${this.stringifyError(error)}`,
+        `[hetzner_init] failed workflow=${workflowId} error=${this.stringifyError(error)}`,
       );
-      this.captureException('poll_pending_hetzner_actions', error);
+      this.captureException('hetzner_init', error, { workflowId });
+      // Return true to retry on transient errors
+      return true;
+    }
+  }
+
+  /**
+   * On boot, re-enqueue poll jobs for workflows stuck in SERVER_INITIALIZING.
+   * This covers the case where the backend restarted mid-provisioning.
+   */
+  private async recoverOrphanedHetznerPolls(): Promise<void> {
+    const orphans = await this.prisma.provisioningWorkflowRun.findMany({
+      where: {
+        currentStage: 'SERVER_INITIALIZING',
+        server: {
+          is: {
+            providerServerId: { not: null },
+          },
+        },
+        status: {
+          in: [
+            ProvisioningWorkflowStatus.PENDING,
+            ProvisioningWorkflowStatus.RUNNING,
+            ProvisioningWorkflowStatus.DISPATCHED,
+          ],
+        },
+        type: ProvisioningWorkflowType.PROVISION_CAPACITY,
+      },
+      select: { id: true },
+    });
+
+    if (orphans.length === 0) {
+      return;
+    }
+
+    this.logger.log(
+      `[recover_orphaned_polls] found ${orphans.length} orphaned Hetzner initialization(s), re-enqueuing`,
+    );
+
+    for (const orphan of orphans) {
+      await this.hetznerPollScheduler.enqueueHetznerPoll(orphan.id);
     }
   }
 

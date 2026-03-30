@@ -73,6 +73,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Ensure runner dependencies
+        shell: bash
+        run: bash .github/scripts/ensure-provisioning-runner-deps.sh --with-step
+
       - name: Install stack on existing VPS
         shell: bash
         env:
