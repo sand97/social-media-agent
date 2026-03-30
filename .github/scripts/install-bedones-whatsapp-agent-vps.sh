@@ -353,6 +353,53 @@ done
 printf '[%s]\n' "$(IFS=,; echo "${stack_entries[*]}")" > "${stacks_json_file}"
 log "Install workflow completed successfully for server=${SERVER_NAME}"
 
-callback "success" "STACK_STARTING" 3 \
-  --slurpfile stacks "${stacks_json_file}" \
-  '* {"stacks": $stacks[0]}'
+# Build the success payload with stacks included
+success_payload="$(
+  jq -c -n \
+    --arg workflowId "${WORKFLOW_RECORD_ID}" \
+    --arg status "success" \
+    --arg stage "STACK_STARTING" \
+    --arg totalJobs "${job_total}" \
+    --arg completedJobs "3" \
+    --arg providerServerId "${PROVIDER_SERVER_ID}" \
+    --arg publicIpv4 "${PUBLIC_IPV4}" \
+    --arg privateIpv4 "${PRIVATE_IPV4}" \
+    --arg serverName "${SERVER_NAME}" \
+    --arg serverType "${SERVER_TYPE}" \
+    --arg location "${SERVER_LOCATION}" \
+    --slurpfile stacks "${stacks_json_file}" \
+    '{
+      "workflowId": $workflowId,
+      "status": $status,
+      "stage": $stage,
+      "totalJobs": ($totalJobs | tonumber),
+      "completedJobs": ($completedJobs | tonumber),
+      "server": {
+        "providerServerId": $providerServerId,
+        "publicIpv4": $publicIpv4,
+        "privateIpv4": $privateIpv4,
+        "name": $serverName,
+        "serverType": $serverType,
+        "location": $location
+      },
+      "stacks": $stacks[0]
+    }'
+)"
+
+log "Callback stage=STACK_STARTING status=success progress=3/${job_total} url=${BACKEND_CALLBACK_URL}"
+log "Callback payload=${success_payload}"
+
+response_file="${runtime_dir}/callback-response-success.json"
+http_status="$(
+  curl -sS -o "${response_file}" -w '%{http_code}' -X POST "${BACKEND_CALLBACK_URL}" \
+    -H "Content-Type: application/json" \
+    -H "x-infra-callback-secret: ${STACK_INFRA_CALLBACK_SECRET}" \
+    --data-binary "${success_payload}"
+)"
+
+log "Callback response status=${http_status} body=$(cat "${response_file}")"
+
+if [[ ! "${http_status}" =~ ^2 ]]; then
+  log "Success callback failed url=${BACKEND_CALLBACK_URL}"
+  exit 1
+fi
