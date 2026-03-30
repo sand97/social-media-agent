@@ -247,6 +247,20 @@ prepare_runtime_assets() {
 require_step_cli
 log "Starting install workflow server_name=${SERVER_NAME} server_type=${SERVER_TYPE} location=${SERVER_LOCATION} public_ipv4=${PUBLIC_IPV4} stacks_per_vps=${STACKS_PER_VPS}"
 log "jq version: $(jq --version 2>&1 || echo 'unknown')"
+
+# jq loads ~/.jq as a library on every invocation — a stale file corrupts all jq calls
+if [[ -f "${HOME}/.jq" ]]; then
+  log "WARNING: found ~/.jq that interferes with jq, contents: $(cat "${HOME}/.jq")"
+  rm -f "${HOME}/.jq"
+  log "Removed ~/.jq"
+fi
+
+# Sanity check: ensure jq can produce a simple object
+if ! jq -c -n '{"ok":true}' >/dev/null 2>&1; then
+  log "FATAL: jq sanity check failed"
+  exit 1
+fi
+
 log "Using backend_callback_url=${BACKEND_CALLBACK_URL}"
 log "Using backend_internal_url=${BACKEND_INTERNAL_URL}"
 log "Using step_ca_url=${STEP_CA_URL}"
